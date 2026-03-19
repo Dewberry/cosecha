@@ -1,0 +1,399 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = [
+  "hatch-vcs",
+  "hatchling",
+]
+
+[project]
+name = "package-name"
+description = "A short description of the project."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [ { name = "Taher Chegini", email = "cheginit@gmail.com" } ]
+requires-python = ">=3.11"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering",
+  "Typing :: Typed",
+]
+dynamic = [
+  "version",
+]
+dependencies = []
+optional-dependencies.dev = [
+  "ipykernel",
+  "ipywidgets",
+  "jupytext",
+  "matplotlib",
+  "nbconvert",
+  "pytest",
+]
+optional-dependencies.docs = [
+  "jupytext",
+  "mike>=2",
+  "mkdocs>=1.6",
+  "mkdocs-jupyter",
+  "mkdocs-materialx",
+  "mkdocstrings[python]>=0.27",
+  "ruff",
+]
+optional-dependencies.lint = [
+  "codespell",
+  "pre-commit",
+]
+optional-dependencies.test = [
+  "coverage[toml]",
+  "pytest-cov",
+  "pytest-sugar",
+]
+optional-dependencies.typecheck = [
+  "pandas-stubs",
+  "ty",
+  "types-pyyaml",
+]
+urls.Changelog = "https://github.com/dewberry/package-name/blob/main/CHANGELOG.md"
+urls.CI = "https://github.com/dewberry/package-name/actions"
+urls.Documentation = "https://dewberry.github.io/package-name"
+urls.Homepage = "https://dewberry.github.io/package-name"
+urls.Issues = "https://github.com/dewberry/package-name/issues"
+
+[tool.hatch]
+build.targets.wheel.packages = [
+  "src/package_name",
+]
+version.source = "vcs"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [ ".pixi", "__pycache__" ]
+lint.select = [
+  # flake8-bugbear
+  "B",
+  # flake8-comprehensions
+  "C4",
+  # pydocstyle
+  "D",
+  # Error
+  "E",
+  # pyflakes
+  "F",
+  # isort
+  "I",
+  # flake8-gettext
+  "INT",
+  # flake8-implicit-str-concat
+  "ISC",
+  # pep8-naming
+  "N",
+  # compatibility with numpy 2.0
+  "NPY201",
+  # Perflint
+  "PERF",
+  # pygrep-hooks
+  "PGH",
+  # misc lints
+  "PIE",
+  # pylint
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",
+  # flake8-pytest-style
+  "PT",
+  # flake8-use-pathlib
+  "PTH",
+  # flake8-pyi
+  "PYI",
+  # flake8-quotes
+  "Q",
+  # Ruff-specific rules
+  "RUF",
+  # bandit
+  "S",
+  # flake8-simplify
+  "SIM",
+  # flake8-debugger
+  "T10",
+  # flake8-print
+  "T20",
+  # type-checking imports
+  "TC",
+  # tidy imports
+  "TID",
+  # tryceratops
+  "TRY",
+  # pyupgrade
+  "UP",
+  # Warning
+  "W",
+  # flake8-2020
+  "YTT",
+]
+lint.ignore = [
+  "D103",
+  "D105",
+  "E501",
+  # conflict with ruff-formatter
+  "ISC001",
+  "PLR0913",
+  "PLR2004",
+  # url schema
+  "S310",
+  "S603",
+  # shell command
+  "S605",
+  "S607",
+  # custom exception
+  "TRY003",
+]
+lint.per-file-ignores."docs/examples/*.py" = [
+  # notebook-generated files
+  "B018",
+  "D100",
+]
+lint.per-file-ignores."tests/*.py" = [
+  "D100",
+  "D101",
+  "D102",
+  "D103",
+  "D104",
+  "D105",
+  "D106",
+  "D107",
+  # specific type error ignored
+  "PGH003",
+  # use of "assert"
+  "S101",
+]
+lint.extend-safe-fixes = [
+  # module level imports
+  "E402",
+  # break down assert
+  "PT018",
+  # Move imports
+  "TC",
+  # absolute imports
+  "TID252",
+]
+lint.isort.known-first-party = [ "package_name" ]
+lint.isort.required-imports = [ "from __future__ import annotations" ]
+lint.pydocstyle.convention = "numpy"
+
+[tool.codespell]
+skip = "__pycache__,_build,.mypy_cache,.git,./htmlcov,.pixi,pixi.lock,**.ipynb"
+
+[tool.git-cliff.changelog]
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+"""
+body = """
+{%- macro remote_url() -%}
+  https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+{%- endmacro -%}
+
+{% if version -%}
+## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else -%}
+## [Unreleased]
+{% endif -%}
+
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group }}
+{%- for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}**: {% endif %}\
+{{ commit.message | split(pat="\\n") | first | upper_first | trim }}\
+{% if commit.breaking %} (**breaking**){% endif %}\
+{% if commit.remote.username %} by @{{ commit.remote.username }}{% endif %}\
+{% if commit.remote.pr_number %} in \
+[#{{ commit.remote.pr_number }}]({{ self::remote_url() }}/pull/{{ commit.remote.pr_number }})\
+{% endif %}
+{%- endfor %}
+{% endfor %}
+
+{%- if github.contributors | filter(attribute="is_first_time", value=true) | length != 0 %}
+### New Contributors
+{% for contributor in github.contributors | filter(attribute="is_first_time", value=true) %}
+- @{{ contributor.username }} made their first contribution\
+{% if contributor.pr_number %} in \
+[#{{ contributor.pr_number }}]({{ self::remote_url() }}/pull/{{ contributor.pr_number }})\
+{% endif %}
+{%- endfor %}
+{% endif %}\n
+"""
+footer = """
+{%- macro remote_url() -%}
+  https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+{%- endmacro -%}
+
+{% for release in releases -%}
+{% if release.version -%}
+{% if release.previous.version -%}
+[{{ release.version | trim_start_matches(pat="v") }}]: \
+{{ self::remote_url() }}/compare/{{ release.previous.version }}...{{ release.version }}
+{% endif -%}
+{% else -%}
+{% if release.previous.version -%}
+[unreleased]: {{ self::remote_url() }}/compare/{{ release.previous.version }}...HEAD
+{% endif -%}
+{% endif -%}
+{% endfor %}"""
+trim = true
+
+[tool.git-cliff.git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+commit_parsers = [
+  { message = "^feat", group = "Added" },
+  { message = "^fix", group = "Fixed" },
+  { message = "^perf", group = "Changed" },
+  { message = "^refactor", group = "Changed" },
+  { message = "^revert", group = "Fixed" },
+  { message = "^style", group = "Changed" },
+  { message = "^docs", skip = true },
+  { message = "^test", skip = true },
+  { message = "^chore", skip = true },
+  { message = "^ci", skip = true },
+  { message = "^build", skip = true },
+]
+protect_breaking_commits = true
+filter_commits = false
+tag_pattern = "v[0-9].*"
+topo_order = false
+sort_commits = "oldest"
+
+[tool.pyproject-fmt]
+expand_tables = [ "tool.pixi" ]
+
+[tool.pytest]
+ini_options.addopts = [
+  "--import-mode=importlib",
+  "-v",
+  "--cov",
+  "--cov-append",
+  "--cov-branch",
+  "--cov-report=xml",
+  "--junitxml=junit.xml",
+  "--durations=5",
+  "--basetemp=.pytest_tmp",
+]
+ini_options.doctest_optionflags = "NORMALIZE_WHITESPACE IGNORE_EXCEPTION_DETAIL NUMBER"
+ini_options.markers = [
+  "network: tests that make requests to external services",
+]
+ini_options.testpaths = [
+  "tests",
+]
+
+[tool.coverage]
+run.branch = true
+run.parallel = true
+run.source_pkgs = [
+  "package_name",
+]
+paths.source = [ "src", "*/site-packages" ]
+report.exclude_lines = [
+  "if sys.platform",
+  "if TYPE_CHECKING:",
+]
+report.ignore_errors = true
+report.omit = [
+  "**/__init__.py",
+]
+
+[tool.ty]
+environment.python-version = "3.11"
+environment.python = ".pixi/envs/typecheck"
+rules.all = "error"
+src.include = [ "src/package_name" ]
+src.exclude = [
+  "**/__pycache__",
+  "**/__init__.py",
+]
+
+[tool.jupytext]
+formats = "ipynb,py:percent"
+notebook_metadata_filter = "kernelspec,jupytext"
+cell_metadata_filter = "-all"
+
+[tool.pixi.environments]
+dev = { features = [ "dev", "py314" ] }
+test311 = { features = [ "test", "py311" ] }
+test314 = { features = [ "test", "py314" ] }
+typecheck = { features = [ "typecheck", "py314" ] }
+lint = { features = [ "lint", "py314" ], no-default-feature = true }
+docs = { features = [ "docs", "py314" ] }
+
+[tool.pixi.feature.dev.dependencies]
+git-cliff = "*"
+
+[tool.pixi.feature.dev.tasks]
+# Preview unreleased changes without writing to CHANGELOG.md
+changelog = "git cliff --unreleased"
+# Update CHANGELOG.md with all unreleased commits
+changelog-update = "git cliff -o CHANGELOG.md"
+# Sync all percent-format .py scripts → paired .ipynb files
+nb-sync = "jupytext --sync docs/examples/*.py"
+# Execute all notebooks in-place (requires .ipynb to exist; run nb-sync first)
+nb-execute = "jupyter nbconvert --to notebook --execute --inplace docs/examples/*.ipynb"
+# Full workflow: sync .py → .ipynb, then execute — use before building docs or committing
+nb-run = { depends-on = [ "nb-sync", "nb-execute" ] }
+# Pair an existing .ipynb with a .py counterpart (one-time setup for imported notebooks)
+nb-pair = "jupytext --set-formats 'ipynb,py:percent' docs/examples/*.ipynb"
+# Strip all cell outputs from .ipynb files (keeps repo diff clean)
+nb-clear = "jupyter nbconvert --ClearOutputPreprocessor.enabled=True --to notebook --inplace docs/examples/*.ipynb"
+
+[tool.pixi.feature.docs.tasks]
+docs-build = "mkdocs build --strict"
+docs-serve = { cmd = "mkdocs serve", depends-on = [ "docs-build" ] }
+docs-deploy = "mike deploy --push latest"
+docs-release = "mike deploy --push --update-aliases $(git describe --tags --abbrev=0) stable"
+
+[tool.pixi.feature.lint.tasks]
+lint = "pre-commit run --all-files"
+pcupdate = "pre-commit autoupdate"
+spell = "codespell -w"
+
+[tool.pixi.feature.py311.dependencies]
+python = "~=3.11.0"
+
+[tool.pixi.feature.py314.dependencies]
+python = "~=3.14.0"
+
+[tool.pixi.feature.test.tasks]
+test = "pytest -m 'not network'"
+test-network = "pytest -m network"
+test-all = "pytest"
+report = { cmd = [ "coverage", "report" ], depends-on = [ "test-all" ] }
+html = { cmd = [ "coverage", "html" ], depends-on = [ "report" ] }
+
+[tool.pixi.feature.typecheck.tasks]
+typecheck = "ty check"
+
+[tool.pixi.pypi-dependencies]
+package_name = { path = ".", editable = true }
+
+[tool.pixi.tasks]
+# Usage: pixi r release --version v0.1.0
+release = { cmd = "git tag -a {{ version }} -m {{ version }} && git push && git push --tags", args = [
+  { arg = "version" }
+] }
+
+[tool.pixi.workspace]
+channels = [ "conda-forge" ]
+platforms = [ "linux-64", "osx-64", "osx-arm64", "win-64" ]
