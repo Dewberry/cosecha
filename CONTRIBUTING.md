@@ -22,8 +22,9 @@ pixi r lint      # installs hooks and runs them across the repo
 
 ## Commit Messages
 
-This project uses [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
-All commit messages **must** follow this format:
+This project uses
+[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). All commit
+messages **must** follow this format:
 
 ```
 <type>[optional scope]: <description>
@@ -35,17 +36,17 @@ All commit messages **must** follow this format:
 
 ### Types
 
-| Type | When to use | Changelog section |
-|---|---|---|
-| `feat` | A new feature | Added |
-| `fix` | A bug fix | Fixed |
-| `perf` | A performance improvement | Changed |
-| `refactor` | Code restructuring, no behavior change | Changed |
-| `revert` | Reverting a previous commit | Fixed |
-| `docs` | Documentation only | _(skipped)_ |
-| `test` | Adding or updating tests | _(skipped)_ |
-| `chore` | Maintenance, dependencies, tooling | _(skipped)_ |
-| `ci` | CI/CD changes | _(skipped)_ |
+| Type       | When to use                            | Changelog section |
+| ---------- | -------------------------------------- | ----------------- |
+| `feat`     | A new feature                          | Added             |
+| `fix`      | A bug fix                              | Fixed             |
+| `perf`     | A performance improvement              | Changed           |
+| `refactor` | Code restructuring, no behavior change | Changed           |
+| `revert`   | Reverting a previous commit            | Fixed             |
+| `docs`     | Documentation only                     | _(skipped)_       |
+| `test`     | Adding or updating tests               | _(skipped)_       |
+| `chore`    | Maintenance, dependencies, tooling     | _(skipped)_       |
+| `ci`       | CI/CD changes                          | _(skipped)_       |
 
 ### Breaking Changes
 

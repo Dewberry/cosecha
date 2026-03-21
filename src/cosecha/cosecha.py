@@ -1,4 +1,4 @@
-"""Core module for package_name."""
+"""Core module for cosecha."""
 
 from __future__ import annotations
 

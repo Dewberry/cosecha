@@ -1,5 +1,5 @@
-site_name: PackageName
-site_url: https://dewberry.github.io/package-name/
+site_name: Cosecha
+site_url: https://dewberry.github.io/cosecha/
 
 theme:
   name: materialx
@@ -59,7 +59,7 @@ theme:
   - toc.follow
   - toc.integrate
 
-repo_url: https://github.com/dewberry/package-name/
+repo_url: https://github.com/dewberry/cosecha/
 edit_uri: edit/main/docs/
 
 markdown_extensions:
@@ -88,7 +88,7 @@ markdown_extensions:
     permalink: '#'
 
 extra:
-  homepage: https://dewberry.github.io/package-name/
+  homepage: https://dewberry.github.io/cosecha/
   version:
     provider: mike
   social:

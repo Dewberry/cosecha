@@ -1,26 +1,23 @@
-# PackageName
+# Cosecha
 
-> **Using this template?** See [TEMPLATE.md](TEMPLATE.md) for setup instructions, then
-> delete that file.
-
-A short description of the project.
+Tools for harvesting earth observation data for use in flood forecasting.
 
 ## Installation
 
 ```console
-pip install package-name
+pip install cosecha
 ```
 
 Or with conda/pixi:
 
 ```console
-pixi add package-name
+pixi add cosecha
 ```
 
 ## Usage
 
 ```python
-import package_name
+import cosecha
 ```
 
 ## Contributing

@@ -1,3 +1,4 @@
 # Authors
 
-- Taher Chegini ([@cheginit](https://github.com/cheginit))
+- Seth Lawler ([@slawler](https://github.com/slawler))
+- Stevenray Janke ([@sray014](https://github.com/sray014))

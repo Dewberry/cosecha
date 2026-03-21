@@ -1,13 +1,13 @@
-"""PackageName: A short description of the project."""
+"""Cosecha: Tools for harvesting earth observation data for use in flood forecasting."""
 
 from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
 
-from package_name.package_name import hello
+from cosecha.cosecha import hello
 
 try:
-    __version__ = version("package_name")
+    __version__ = version("cosecha")
 except PackageNotFoundError:
     __version__ = "999"
 

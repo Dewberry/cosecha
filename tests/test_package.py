@@ -1,18 +1,18 @@
-"""Tests for package_name."""
+"""Tests for cosecha."""
 
 from __future__ import annotations
 
 import pytest
 
-import package_name
+import cosecha
 
 
 def test_hello_default() -> None:
-    assert package_name.hello() == "Hello, world!"
+    assert cosecha.hello() == "Hello, world!"
 
 
 def test_hello_custom() -> None:
-    assert package_name.hello("Alice") == "Hello, Alice!"
+    assert cosecha.hello("Alice") == "Hello, Alice!"
 
 
 @pytest.mark.network
