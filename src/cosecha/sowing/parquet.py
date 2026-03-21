@@ -1,0 +1,227 @@
+"""ParquetSower for writing time-series data to Parquet format.
+
+This module implements Parquet-based data writing for time-series observations
+(e.g., USGS NWIS streamflow, stage, precipitation data).
+"""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+from typing import Any, Optional
+
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+
+from cosecha.data_models import HarvestedData
+from cosecha.sowing.base import DataSower
+from cosecha.sowing.exceptions import SowerError, WriteError
+
+__all__ = ["ParquetSower"]
+
+logger = logging.getLogger(__name__)
+
+
+class ParquetSower:
+    """Write time-series data to Parquet format.
+
+    Parquet is an efficient columnar storage format suitable for time-series
+    observations. This sower handles transformations (unit conversion, column
+    renaming, filtering) and writes HarvestedData to Parquet files.
+
+    Attributes
+    ----------
+    output_dir : Path
+        Directory where Parquet files will be written.
+
+    Examples
+    --------
+    >>> from cosecha import USGSStreamflowReaper, ParquetSower
+    >>> reaper = USGSStreamflowReaper(
+    ...     site_ids=["01650000"],
+    ...     start_date="2026-01-01",
+    ...     end_date="2026-01-31"
+    ... )
+    >>> sower = ParquetSower(output_dir="./data/streamflow")
+    >>> harvested = reaper.reap()
+    >>> path = sower.sow(harvested)
+    >>> print(f"Data written to: {path}")
+    """
+
+    def __init__(self, output_dir: str | Path) -> None:
+        """Initialize ParquetSower.
+
+        Parameters
+        ----------
+        output_dir : str | Path
+            Directory where Parquet files will be written. Will be created
+            if it does not exist.
+
+        Raises
+        ------
+        ValueError
+            If output_dir is a file (not a directory).
+        """
+        self.output_dir = Path(output_dir)
+
+        # Check if path exists as a file
+        if self.output_dir.exists() and self.output_dir.is_file():
+            raise ValueError(f"output_dir must be a directory, got file: {self.output_dir}")
+
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        logger.debug(f"ParquetSower initialized with output_dir: {self.output_dir}")
+
+    def _validate_input(self, data: HarvestedData) -> None:
+        """Validate input data is suitable for Parquet writing.
+
+        Parameters
+        ----------
+        data : HarvestedData
+            The harvested data to validate.
+
+        Raises
+        ------
+        SowerError
+            If data is not a DataFrame (gridded data not supported for Parquet).
+        """
+        if not data.is_timeseries():
+            raise SowerError(
+                f"ParquetSower only supports time-series (DataFrame) data. "
+                f"Got gridded (Dataset) data with source '{data.source_name}'"
+            )
+        logger.debug(f"Input validation passed for source: {data.source_name}")
+
+    def _apply_transformations(
+        self, df: pd.DataFrame, transformations: Optional[dict[str, Any]] = None
+    ) -> pd.DataFrame:
+        """Apply optional transformations to the DataFrame.
+
+        Supported transformations:
+        - 'unit_conversions': dict mapping column names to conversion factors
+        - 'rename_columns': dict mapping old column names to new names
+        - 'filter_columns': list of columns to keep
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            The DataFrame to transform.
+        transformations : dict[str, Any], optional
+            Dictionary of transformations to apply. If None, no transformations.
+
+        Returns
+        -------
+        pd.DataFrame
+            Transformed DataFrame.
+
+        Raises
+        ------
+        SowerError
+            If transformations reference non-existent columns.
+        """
+        if not transformations:
+            return df
+
+        result = df.copy()
+
+        # Apply unit conversions
+        if "unit_conversions" in transformations:
+            conversions = transformations["unit_conversions"]
+            for col, factor in conversions.items():
+                if col not in result.columns:
+                    raise SowerError(
+                        f"Column '{col}' not found for unit conversion. "
+                        f"Available: {list(result.columns)}"
+                    )
+                result[col] = result[col] * factor
+                logger.debug(f"Applied unit conversion to '{col}': factor={factor}")
+
+        # Rename columns
+        if "rename_columns" in transformations:
+            renames = transformations["rename_columns"]
+            result = result.rename(columns=renames)
+            logger.debug(f"Renamed columns: {renames}")
+
+        # Filter to specific columns
+        if "filter_columns" in transformations:
+            cols = transformations["filter_columns"]
+            missing = set(cols) - set(result.columns)
+            if missing:
+                raise SowerError(
+                    f"Columns {missing} not found for filtering. "
+                    f"Available: {list(result.columns)}"
+                )
+            result = result[cols]
+            logger.debug(f"Filtered to columns: {cols}")
+
+        return result
+
+    def sow(self, data: HarvestedData, transformations: Optional[dict[str, Any]] = None) -> str:
+        """Write HarvestedData to Parquet file.
+
+        Parameters
+        ----------
+        data : HarvestedData
+            The harvested data to write.
+        transformations : dict[str, Any], optional
+            Optional transformations to apply before writing.
+
+        Returns
+        -------
+        str
+            The absolute path to the written Parquet file.
+
+        Raises
+        ------
+        SowerError
+            If data validation fails or transformations are invalid.
+        WriteError
+            If writing to Parquet fails (I/O error, disk space, etc.).
+
+        Examples
+        --------
+        >>> sower = ParquetSower("./output")
+        >>> harvested = reaper.reap()
+        >>> # Write with unit conversion
+        >>> path = sower.sow(
+        ...     harvested,
+        ...     transformations={
+        ...         'unit_conversions': {'discharge_cfs': 0.0283168}  # cfs to cms
+        ...     }
+        ... )
+        """
+        logger.info(f"Sowing {data.source_name} data to Parquet: " f"{len(data.data)} rows")
+
+        try:
+            # Validate input
+            self._validate_input(data)
+
+            # Get DataFrame
+            df = data.data
+
+            # Apply transformations
+            df = self._apply_transformations(df, transformations)
+
+            # Generate output filename from metadata
+            source_clean = data.source_name.lower().replace(" ", "_")
+            timestamp_str = data.timestamp.strftime("%Y%m%d_%H%M%S")
+            filename = f"{source_clean}_{timestamp_str}.parquet"
+            output_path = self.output_dir / filename
+
+            # Write to Parquet
+            table = pa.Table.from_pandas(df)
+            pq.write_table(table, str(output_path), compression="snappy")
+
+            logger.info(f"Successfully wrote Parquet file: {output_path}")
+            return str(output_path)
+
+        except SowerError:
+            raise
+        except Exception as e:
+            logger.error(f"Failed to write Parquet: {e}")
+            raise WriteError(f"Parquet write failed: {e}") from e
+
+
+# Type hint: ParquetSower implements DataSower protocol
+_: type[DataSower] = ParquetSower  # noqa: F841
