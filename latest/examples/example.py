@@ -31,13 +31,13 @@
 # %%
 from __future__ import annotations
 
-import package_name
+import cosecha
 
 # %% [markdown]
 # ## Basic Usage
 
 # %%
-result = package_name.hello("world")
+result = cosecha.hello("world")
 
 # %% [markdown]
 # ## Version
