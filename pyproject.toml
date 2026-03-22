@@ -33,6 +33,7 @@ dynamic = [
   "version",
 ]
 dependencies = [
+  "dataretrieval",
   "httpx>=0.24",
   "icechunk>=0.1",
   "pandas>=2",
@@ -271,6 +272,7 @@ cell_metadata_filter = "-all"
 
 [tool.pixi.dependencies]
 sqlalchemy = ">=2.0.47,<3"
+dataretrieval = ">=1.1.2,<2"
 
 [tool.pixi.environments]
 dev = { features = [ "dev", "test", "lint", "typecheck", "docs", "netcdf", "nwp", "py314" ] }

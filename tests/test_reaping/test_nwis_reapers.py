@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
 
 from cosecha.reaping.exceptions import APIError, DateRangeError, InvalidSiteError
-from cosecha.reaping.nwis import (
-    USGSPrecipReaper,
-    USGSStageReaper,
-    USGSStreamflowReaper,
-)
+from cosecha.reaping.nwis import USGSPrecipReaper, USGSStageReaper, USGSStreamflowReaper
 
 
 class TestUSGSStreamflowReaper:
@@ -76,184 +73,6 @@ class TestUSGSStreamflowReaper:
                 end_date="2026-01-31",
             )
 
-    def test_build_url(self):
-        """Test URL building."""
-        reaper = USGSStreamflowReaper(
-            site_ids=["01018035"],
-            start_date="2026-01-01",
-            end_date="2026-01-31",
-        )
-        url = reaper._build_url()
-        assert "sites=01018035" in url
-        assert "startDT=2026-01-01" in url
-        assert "endDT=2026-01-31" in url
-        assert "parameterCd=00060" in url
-        assert "statCd=00003" in url
-        assert "format=json" in url
-
-    def test_build_url_multiple_sites(self):
-        """Test URL building with multiple sites."""
-        reaper = USGSStreamflowReaper(
-            site_ids=["01018035", "01040000"],
-            start_date="2026-01-01",
-            end_date="2026-01-31",
-        )
-        url = reaper._build_url()
-        assert "sites=01018035,01040000" in url
-
-    def test_parse_response_valid(self):
-        """Test parsing a valid NWIS response."""
-        reaper = USGSStreamflowReaper(
-            site_ids=["01018035"],
-            start_date="2026-01-01",
-            end_date="2026-01-31",
-        )
-        response = {
-            "value": {
-                "timeSeries": [
-                    {
-                        "sourceInfo": {
-                            "siteCd": [{"value": "01018035"}],
-                        },
-                        "values": [
-                            {
-                                "value": [
-                                    {"dateTime": "2026-01-01T00:00:00.000", "value": "1.5"},
-                                    {"dateTime": "2026-01-02T00:00:00.000", "value": "1.6"},
-                                ]
-                            }
-                        ],
-                    }
-                ]
-            }
-        }
-        df = reaper._parse_response(response)
-        assert len(df) == 2
-        assert list(df.columns) == ["time", "site_id", "value"]
-        assert df["site_id"].iloc[0] == "01018035"
-        assert df["value"].iloc[0] == 1.5
-
-    def test_parse_response_multiple_sites(self):
-        """Test parsing response with multiple sites."""
-        reaper = USGSStreamflowReaper(
-            site_ids=["01018035", "01040000"],
-            start_date="2026-01-01",
-            end_date="2026-01-31",
-        )
-        response = {
-            "value": {
-                "timeSeries": [
-                    {
-                        "sourceInfo": {
-                            "siteCd": [{"value": "01018035"}],
-                        },
-                        "values": [
-                            {
-                                "value": [
-                                    {"dateTime": "2026-01-01T00:00:00.000", "value": "1.5"},
-                                ]
-                            }
-                        ],
-                    },
-                    {
-                        "sourceInfo": {
-                            "siteCd": [{"value": "01040000"}],
-                        },
-                        "values": [
-                            {
-                                "value": [
-                                    {"dateTime": "2026-01-01T00:00:00.000", "value": "2.0"},
-                                ]
-                            }
-                        ],
-                    },
-                ]
-            }
-        }
-        df = reaper._parse_response(response)
-        assert len(df) == 2
-        assert df[df["site_id"] == "01018035"].iloc[0]["value"] == 1.5
-        assert df[df["site_id"] == "01040000"].iloc[0]["value"] == 2.0
-
-    def test_parse_response_with_null_values(self):
-        """Test parsing response with null values."""
-        reaper = USGSStreamflowReaper(
-            site_ids=["01018035"],
-            start_date="2026-01-01",
-            end_date="2026-01-31",
-        )
-        response = {
-            "value": {
-                "timeSeries": [
-                    {
-                        "sourceInfo": {
-                            "siteCd": [{"value": "01018035"}],
-                        },
-                        "values": [
-                            {
-                                "value": [
-                                    {"dateTime": "2026-01-01T00:00:00.000", "value": "1.5"},
-                                    {"dateTime": "2026-01-02T00:00:00.000", "value": None},
-                                ]
-                            }
-                        ],
-                    }
-                ]
-            }
-        }
-        df = reaper._parse_response(response)
-        assert len(df) == 2
-        assert pd.notna(df["value"].iloc[0])
-        assert pd.isna(df["value"].iloc[1])
-
-    def test_parse_response_empty_data(self):
-        """Test parsing response with no data values."""
-        reaper = USGSStreamflowReaper(
-            site_ids=["01018035"],
-            start_date="2026-01-01",
-            end_date="2026-01-31",
-        )
-        response = {
-            "value": {
-                "timeSeries": [
-                    {
-                        "sourceInfo": {
-                            "siteCd": [{"value": "01018035"}],
-                        },
-                        "values": [
-                            {
-                                "value": []
-                            }
-                        ],
-                    }
-                ]
-            }
-        }
-        df = reaper._parse_response(response)
-        assert len(df) == 0
-
-    def test_parse_response_missing_value_key(self):
-        """Test parsing fails with missing 'value' key."""
-        reaper = USGSStreamflowReaper(
-            site_ids=["01018035"],
-            start_date="2026-01-01",
-            end_date="2026-01-31",
-        )
-        response = {}
-        with pytest.raises(APIError, match="missing 'value' key"):
-            reaper._parse_response(response)
-
-    def test_parse_response_no_timeseries(self):
-        """Test parsing fails with no timeSeries."""
-        reaper = USGSStreamflowReaper(
-            site_ids=["01018035"],
-            start_date="2026-01-01",
-            end_date="2026-01-31",
-        )
-        response = {"value": {"timeSeries": []}}
-        with pytest.raises(APIError, match="No time series data"):
-            reaper._parse_response(response)
-
     def test_get_variable_name(self):
         """Test variable name for streamflow."""
         reaper = USGSStreamflowReaper(
@@ -262,6 +81,85 @@ class TestUSGSStreamflowReaper:
             end_date="2026-01-31",
         )
         assert reaper._get_variable_name() == "streamflow"
+
+    def test_get_data_type(self):
+        """Test data type for streamflow."""
+        reaper = USGSStreamflowReaper(
+            site_ids=["01018035"],
+            start_date="2026-01-01",
+            end_date="2026-01-31",
+        )
+        assert reaper._get_data_type() == "instantaneous streamflow"
+
+    @patch("cosecha.reaping.nwis.dr_nwis.get_iv")
+    def test_reap_success(self, mock_get_iv):
+        """Test successful data retrieval using dataretrieval."""
+        # Mock dataretrieval response
+        mock_df = pd.DataFrame(
+            {
+                "site_no": ["01018035", "01018035"],
+                "00060": [198.0, 195.0],
+                "00060_cd": ["A, e", "A, e"],
+            }
+        )
+        mock_df.index = pd.to_datetime(["2022-01-01 15:00:00+00:00", "2022-01-02 03:00:00+00:00"])
+        mock_df.index.name = "datetime"
+        mock_metadata = {}
+
+        mock_get_iv.return_value = (mock_df, mock_metadata)
+
+        reaper = USGSStreamflowReaper(
+            site_ids=["01018035"],
+            start_date="2022-01-01",
+            end_date="2022-01-31",
+        )
+
+        harvested = reaper.reap()
+
+        assert len(harvested.data) == 2
+        assert harvested.source_name == "USGS_NWIS"
+        assert harvested.variable_names == ["streamflow"]
+        mock_get_iv.assert_called_once()
+
+    @patch("cosecha.reaping.nwis.dr_nwis.get_iv")
+    def test_reap_multiple_sites(self, mock_get_iv):
+        """Test retrieval for multiple sites."""
+        mock_df = pd.DataFrame(
+            {
+                "site_no": ["01018035", "01040000"],
+                "00060": [198.0, 150.0],
+                "00060_cd": ["A, e", "A, e"],
+            }
+        )
+        mock_df.index = pd.to_datetime(["2022-01-01 15:00:00+00:00", "2022-01-01 15:00:00+00:00"])
+        mock_df.index.name = "datetime"
+
+        mock_get_iv.return_value = (mock_df, {})
+
+        reaper = USGSStreamflowReaper(
+            site_ids=["01018035", "01040000"],
+            start_date="2022-01-01",
+            end_date="2022-01-31",
+        )
+
+        harvested = reaper.reap()
+
+        assert len(harvested.data) == 2
+        assert harvested.metadata["sites"] == ["01018035", "01040000"]
+
+    @patch("cosecha.reaping.nwis.dr_nwis.get_iv")
+    def test_reap_api_error(self, mock_get_iv):
+        """Test error handling when dataretrieval fails."""
+        mock_get_iv.side_effect = Exception("API connection failed")
+
+        reaper = USGSStreamflowReaper(
+            site_ids=["01018035"],
+            start_date="2022-01-01",
+            end_date="2022-01-31",
+        )
+
+        with pytest.raises(APIError, match="Failed to fetch NWIS data"):
+            reaper.reap()
 
 
 class TestUSGSStageReaper:
@@ -307,63 +205,3 @@ class TestUSGSPrecipReaper:
             end_date="2026-01-31",
         )
         assert reaper._get_variable_name() == "precipitation"
-
-
-class TestReaperReapMethod:
-    """Tests for the reap() method (with mocking)."""
-
-    def test_reap_creates_harvested_data(self, mocker):
-        """Test that reap() returns HarvestedData with proper structure."""
-        # Mock the HTTP request
-        mock_response = {
-            "value": {
-                "timeSeries": [
-                    {
-                        "sourceInfo": {
-                            "siteCd": [{"value": "01018035"}],
-                        },
-                        "values": [
-                            {
-                                "value": [
-                                    {"dateTime": "2026-01-01T00:00:00.000", "value": "1.5"},
-                                ]
-                            }
-                        ],
-                    }
-                ]
-            }
-        }
-        mocker.patch.object(
-            USGSStreamflowReaper,
-            '_fetch_with_retry',
-            return_value=mock_response,
-        )
-
-        reaper = USGSStreamflowReaper(
-            site_ids=["01018035"],
-            start_date="2026-01-01",
-            end_date="2026-01-31",
-        )
-        data = reaper.reap()
-
-        assert data.source_name == "USGS_NWIS"
-        assert data.is_timeseries()
-        assert "streamflow" in data.variable_names
-        assert data.metadata["record_count"] == 1
-        assert len(data.data) == 1
-
-    def test_reap_with_api_failure(self, mocker):
-        """Test that reap() raises APIError on fetch failure."""
-        mocker.patch.object(
-            USGSStreamflowReaper,
-            '_fetch_with_retry',
-            side_effect=APIError("API error"),
-        )
-
-        reaper = USGSStreamflowReaper(
-            site_ids=["01018035"],
-            start_date="2026-01-01",
-            end_date="2026-01-31",
-        )
-        with pytest.raises(APIError):
-            reaper.reap()

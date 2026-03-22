@@ -7,12 +7,11 @@ from the USGS NWIS API, including streamflow, stage, and precipitation data.
 from __future__ import annotations
 
 import logging
-import time
 from datetime import UTC, datetime
 from typing import Any
 
-import httpx
 import pandas as pd
+from dataretrieval import nwis as dr_nwis
 
 from cosecha.data_models import HarvestedData, validate_date_range
 from cosecha.reaping.exceptions import APIError, DateRangeError, InvalidSiteError
@@ -32,6 +31,8 @@ class _USGSNWISReaper:
     This class should not be instantiated directly; use subclasses
     (USGSStreamflowReaper, USGSStageReaper, USGSPrecipReaper) instead.
 
+    Uses the dataretrieval library to fetch data from USGS NWIS/Water Data APIs.
+
     Parameters
     ----------
     site_ids : list[str]
@@ -44,14 +45,9 @@ class _USGSNWISReaper:
         USGS parameter code (e.g., "00060" for streamflow).
     stat_code : str, optional
         USGS statistic code. By default "00003" (mean daily value).
+        Not used for instantaneous data.
 
-    Attributes
-    ----------
-    base_url : str
-        Base URL for NWIS API.
     """
-
-    base_url = "https://waterservices.usgs.gov/nwis/dv"
 
     def __init__(
         self,
@@ -95,122 +91,66 @@ class _USGSNWISReaper:
         except ValueError as e:
             raise DateRangeError(str(e))
 
-    def _build_url(self) -> str:
-        """Build request URL for NWIS API.
-
-        Returns
-        -------
-        str
-            Complete URL for API request.
-        """
-        sites = ",".join(self.site_ids)
-        params = {
-            "sites": sites,
-            "startDT": self.start_date,
-            "endDT": self.end_date,
-            "parameterCd": self.parameter_code,
-            "statCd": self.stat_code,
-            "siteStatus": "all",
-            "format": "json",
-        }
-        param_str = "&".join(f"{k}={v}" for k, v in params.items())
-        return f"{self.base_url}?{param_str}"
-
-    def _fetch_with_retry(self, url: str, max_retries: int = 3) -> dict[str, Any]:
-        """Fetch data from URL with exponential backoff retry logic.
-
-        Parameters
-        ----------
-        url : str
-            URL to fetch from.
-        max_retries : int, optional
-            Maximum number of retry attempts. By default 3.
-
-        Returns
-        -------
-        dict[str, Any]
-            JSON response as dictionary.
-
-        Raises
-        ------
-        APIError
-            If request fails after max_retries attempts.
-        """
-        for attempt in range(max_retries):
-            try:
-                logger.debug(f"Fetching {url} (attempt {attempt + 1}/{max_retries})")
-                response = httpx.get(url, timeout=30.0)
-                response.raise_for_status()
-                logger.debug(f"Successfully fetched data from NWIS")
-                return response.json()
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code in (429, 503):
-                    # Retryable errors: rate limit or service unavailable
-                    if attempt < max_retries - 1:
-                        backoff = 2**attempt  # 1, 2, 4 seconds
-                        logger.warning(
-                            f"API returned {e.response.status_code}, " f"retrying in {backoff}s..."
-                        )
-                        time.sleep(backoff)
-                        continue
-                raise APIError(f"NWIS API request failed: {e}")
-            except httpx.RequestError as e:
-                logger.error(f"Request error: {e}")
-                raise APIError(f"Failed to fetch from NWIS: {e}")
-
-        raise APIError(f"Failed after {max_retries} retries")
-
-    def _parse_response(self, response: dict[str, Any]) -> pd.DataFrame:
-        """Parse NWIS JSON response into DataFrame.
-
-        Parameters
-        ----------
-        response : dict[str, Any]
-            JSON response from NWIS API.
+    def _fetch_and_parse(self) -> pd.DataFrame:
+        """Fetch data from NWIS using dataretrieval and parse into DataFrame.
 
         Returns
         -------
         pd.DataFrame
-            Parsed data with columns: time, site_id, value.
+            Parsed data with site_no, datetime index, and parameter columns.
 
         Raises
         ------
         APIError
-            If response parsing fails.
+            If fetching fails.
         """
         try:
-            if "value" not in response:
-                raise APIError("Invalid NWIS response: missing 'value' key")
+            logger.debug(
+                f"Fetching {self._get_data_type()} data for "
+                f"{len(self.site_ids)} site(s) from {self.start_date} to {self.end_date}"
+            )
 
-            time_series = response["value"]["timeSeries"]
-            if not time_series:
-                raise APIError("No time series data in NWIS response")
+            # Convert site IDs to comma-separated string
+            sites = ",".join(self.site_ids)
 
-            data_rows = []
-            for ts in time_series:
-                site_id = ts["sourceInfo"]["siteCd"][0]["value"]
-                values = ts["values"][0]["value"]
+            # Use appropriate function based on data type
+            df, metadata = self._get_data(sites)
 
-                for val in values:
-                    data_rows.append(
-                        {
-                            "time": pd.to_datetime(val["dateTime"]),
-                            "site_id": site_id,
-                            "value": float(val["value"]) if val["value"] else None,
-                        }
-                    )
+            if df.empty:
+                logger.warning("NWIS returned no data")
+                return pd.DataFrame()
 
-            if not data_rows:
-                logger.warning("NWIS response contained no data values")
-                return pd.DataFrame(columns=["time", "site_id", "value"])
-
-            df = pd.DataFrame(data_rows)
-            df = df.sort_values("time").reset_index(drop=True)
-            logger.debug(f"Parsed {len(df)} records from NWIS response")
+            logger.debug(f"Fetched {len(df)} records from NWIS")
             return df
 
-        except (KeyError, ValueError, TypeError) as e:
-            raise APIError(f"Failed to parse NWIS response: {e}")
+        except Exception as e:
+            logger.error(f"Failed to fetch NWIS data: {e}")
+            raise APIError(f"Failed to fetch NWIS data: {e}")
+
+    def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
+        """Fetch data from NWIS. To be implemented by subclasses.
+
+        Parameters
+        ----------
+        sites : str
+            Comma-separated site IDs.
+
+        Returns
+        -------
+        tuple[pd.DataFrame, Any]
+            DataFrame and metadata from dataretrieval.
+        """
+        raise NotImplementedError
+
+    def _get_data_type(self) -> str:
+        """Return data type name (e.g., 'streamflow', 'stage'). To be implemented by subclasses.
+
+        Returns
+        -------
+        str
+            Data type name.
+        """
+        raise NotImplementedError
 
     def reap(self) -> HarvestedData:
         """Fetch data from NWIS and return as HarvestedData.
@@ -223,32 +163,31 @@ class _USGSNWISReaper:
         Raises
         ------
         APIError
-            If fetching or parsing fails.
+            If fetching fails.
         """
-        url = self._build_url()
-        logger.info(f"Reaping data from NWIS for {len(self.site_ids)} site(s)")
+        logger.info(
+            f"Reaping {self._get_data_type()} data from NWIS for {len(self.site_ids)} site(s)"
+        )
 
-        response = self._fetch_with_retry(url)
-        data = self._parse_response(response)
+        df = self._fetch_and_parse()
 
         metadata = {
             "sites": self.site_ids,
             "start_date": self.start_date,
             "end_date": self.end_date,
             "parameter_code": self.parameter_code,
-            "stat_code": self.stat_code,
-            "record_count": len(data),
+            "record_count": len(df),
         }
 
         harvested = HarvestedData(
-            data=data,
+            data=df,
             source_name="USGS_NWIS",
             timestamp=datetime.now(UTC),
             variable_names=[self._get_variable_name()],
             metadata=metadata,
         )
 
-        logger.info(f"Successfully reaped {len(data)} records from {len(self.site_ids)} site(s)")
+        logger.info(f"Successfully reaped {len(df)} records from {len(self.site_ids)} site(s)")
         return harvested
 
     def _get_variable_name(self) -> str:
@@ -265,7 +204,7 @@ class _USGSNWISReaper:
 class USGSStreamflowReaper(_USGSNWISReaper):
     """Reaper for USGS streamflow data.
 
-    Harvests daily mean streamflow measurements from NWIS.
+    Harvests instantaneous streamflow measurements from NWIS.
 
     Parameters
     ----------
@@ -300,8 +239,32 @@ class USGSStreamflowReaper(_USGSNWISReaper):
             start_date=start_date,
             end_date=end_date,
             parameter_code="00060",  # Discharge, cubic feet per second
-            stat_code="00003",  # Mean
+            stat_code="00003",  # Mean (not used for instantaneous data)
         )
+
+    def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
+        """Fetch instantaneous streamflow data from NWIS.
+
+        Parameters
+        ----------
+        sites : str
+            Comma-separated site IDs.
+
+        Returns
+        -------
+        tuple[pd.DataFrame, Any]
+            DataFrame and metadata from dataretrieval.
+        """
+        return dr_nwis.get_iv(
+            sites=sites,
+            start=self.start_date,
+            end=self.end_date,
+            parameterCd=self.parameter_code,
+        )
+
+    def _get_data_type(self) -> str:
+        """Return 'instantaneous streamflow' as data type."""
+        return "instantaneous streamflow"
 
     def _get_variable_name(self) -> str:
         """Return 'streamflow' as variable name."""
@@ -347,6 +310,30 @@ class USGSStageReaper(_USGSNWISReaper):
             stat_code="00003",  # Mean
         )
 
+    def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
+        """Fetch instantaneous stage data from NWIS.
+
+        Parameters
+        ----------
+        sites : str
+            Comma-separated site IDs.
+
+        Returns
+        -------
+        tuple[pd.DataFrame, Any]
+            DataFrame and metadata from dataretrieval.
+        """
+        return dr_nwis.get_iv(
+            sites=sites,
+            start=self.start_date,
+            end=self.end_date,
+            parameterCd=self.parameter_code,
+        )
+
+    def _get_data_type(self) -> str:
+        """Return 'instantaneous stage' as data type."""
+        return "instantaneous stage"
+
     def _get_variable_name(self) -> str:
         """Return 'stage' as variable name."""
         return "stage"
@@ -390,6 +377,30 @@ class USGSPrecipReaper(_USGSNWISReaper):
             parameter_code="00045",  # Precipitation, inches
             stat_code="00006",  # Sum
         )
+
+    def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
+        """Fetch instantaneous precipitation data from NWIS.
+
+        Parameters
+        ----------
+        sites : str
+            Comma-separated site IDs.
+
+        Returns
+        -------
+        tuple[pd.DataFrame, Any]
+            DataFrame and metadata from dataretrieval.
+        """
+        return dr_nwis.get_iv(
+            sites=sites,
+            start=self.start_date,
+            end=self.end_date,
+            parameterCd=self.parameter_code,
+        )
+
+    def _get_data_type(self) -> str:
+        """Return 'instantaneous precipitation' as data type."""
+        return "instantaneous precipitation"
 
     def _get_variable_name(self) -> str:
         """Return 'precipitation' as variable name."""
