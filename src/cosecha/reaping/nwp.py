@@ -172,7 +172,8 @@ class HRRRReaper:
             h = FastHerbie([self.init_time], model=self.model, fxx=self.forecast_hours)
 
             # Fetch all variables; filtering is a sower concern
-            ds = h.xarray()
+            # ':m:' searches for all matching variables
+            ds = h.xarray(search=":m:")
 
             logger.info(f"Successfully fetched HRRR data: {len(ds.data_vars)} variables")
             return ds
