@@ -101,8 +101,8 @@ class GriddedReaper(Protocol):
 
     Examples
     --------
-    >>> from cosecha.reaping.nwp import HRRRReaper
-    >>> reaper = HRRRReaper(
+    >>> from cosecha.reaping.nwp import NWPReaper
+    >>> reaper = NWPReaper(
     ...     model="hrrr",
     ...     init_time="2026-03-20 12:00",
     ...     forecast_hours=range(1, 19),

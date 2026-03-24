@@ -64,9 +64,9 @@ class HarvestPipeline:
 
     Gridded data pipeline (HRRR → Zarr):
 
-    >>> from cosecha import HRRRReaper
+    >>> from cosecha import NWPReaper
     >>> from cosecha.sowing.zarr import ZarrSower
-    >>> reaper = HRRRReaper(init_time="2026-01-01T00:00:00", forecast_hours=[0, 6, 12])
+    >>> reaper = NWPReaper(init_time="2026-01-01T00:00:00", forecast_hours=[0, 6, 12])
     >>> sower = ZarrSower(output_dir="./data/hrrr")
     >>> pipeline = HarvestPipeline()
     >>> pipeline.add_reaper(reaper)

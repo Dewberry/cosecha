@@ -8,16 +8,16 @@ import pytest
 
 from cosecha.data_models import HarvestedData
 from cosecha.reaping.exceptions import APIError, DateRangeError, ReaperError
-from cosecha.reaping.nwp import HRRRReaper
+from cosecha.reaping.nwp import NWPReaper
 
 
 @pytest.mark.requires_herbie
-class TestHRRRReaper:
-    """Test HRRRReaper implementation."""
+class TestNWPReaper:
+    """Test NWPReaper implementation."""
     
     def test_initialization_valid(self):
         """Test valid initialization."""
-        reaper = HRRRReaper(
+        reaper = NWPReaper(
             init_time="2026-01-01 00:00",
             forecast_hours=[1, 6, 12]
         )
@@ -27,7 +27,7 @@ class TestHRRRReaper:
     
     def test_initialization_with_range(self):
         """Test initialization with range for forecast_hours."""
-        reaper = HRRRReaper(
+        reaper = NWPReaper(
             init_time="2026-01-01 00:00",
             forecast_hours=range(1, 13)
         )
@@ -35,7 +35,7 @@ class TestHRRRReaper:
     
     def test_initialization_custom_model(self):
         """Test initialization with custom model."""
-        reaper = HRRRReaper(
+        reaper = NWPReaper(
             init_time="2026-01-01 00:00",
             forecast_hours=[1, 6],
             model="nam"
@@ -45,7 +45,7 @@ class TestHRRRReaper:
     def test_invalid_init_time(self):
         """Test initialization fails with invalid init_time."""
         with pytest.raises(DateRangeError, match="Could not parse init_time"):
-            HRRRReaper(
+            NWPReaper(
                 init_time="invalid time",
                 forecast_hours=[1, 6]
             )
@@ -53,7 +53,7 @@ class TestHRRRReaper:
     def test_invalid_forecast_hours_empty(self):
         """Test initialization fails with empty forecast_hours."""
         with pytest.raises(DateRangeError, match="cannot be empty"):
-            HRRRReaper(
+            NWPReaper(
                 init_time="2026-01-01 00:00",
                 forecast_hours=[]
             )
@@ -61,7 +61,7 @@ class TestHRRRReaper:
     def test_invalid_forecast_hours_negative(self):
         """Test initialization fails with negative forecast_hours."""
         with pytest.raises(DateRangeError, match="must be positive integers"):
-            HRRRReaper(
+            NWPReaper(
                 init_time="2026-01-01 00:00",
                 forecast_hours=[-1, 0, 1]
             )
@@ -69,14 +69,14 @@ class TestHRRRReaper:
     def test_invalid_forecast_hours_non_int(self):
         """Test initialization fails with non-integer forecast_hours."""
         with pytest.raises(DateRangeError, match="must be positive integers"):
-            HRRRReaper(
+            NWPReaper(
                 init_time="2026-01-01 00:00",
                 forecast_hours=[1.5, 6, 12]
             )
     
     def test_validate_params_valid_dates(self):
         """Test _validate_params with valid dates."""
-        reaper = HRRRReaper(
+        reaper = NWPReaper(
             init_time="2026-01-01 00:00",
             forecast_hours=[1, 6]
         )
@@ -84,7 +84,7 @@ class TestHRRRReaper:
     
     def test_validate_params_iso_format(self):
         """Test _validate_params with ISO format date."""
-        reaper = HRRRReaper(
+        reaper = NWPReaper(
             init_time="2026-01-01T00:00:00Z",
             forecast_hours=[1, 6]
         )
@@ -92,7 +92,7 @@ class TestHRRRReaper:
     
     def test_reap_requires_herbie(self):
         """Test that reap raises APIError if herbie not available."""
-        reaper = HRRRReaper(
+        reaper = NWPReaper(
             init_time="2026-01-01 00:00",
             forecast_hours=[1, 6]
         )
@@ -119,7 +119,7 @@ class TestHRRRReaper:
         mock_herbie.return_value.xarray.return_value = mock_ds
         mocker.patch("herbie.FastHerbie", mock_herbie)
         
-        reaper = HRRRReaper(
+        reaper = NWPReaper(
             init_time="2026-01-01 00:00",
             forecast_hours=[1, 6]
         )
@@ -150,7 +150,7 @@ class TestHRRRReaper:
         mock_herbie.return_value.xarray.return_value = mock_ds
         mocker.patch("herbie.FastHerbie", mock_herbie)
         
-        reaper = HRRRReaper(
+        reaper = NWPReaper(
             init_time="2026-01-01 00:00",
             forecast_hours=[1, 6, 12]
         )
@@ -171,7 +171,7 @@ class TestHRRRReaper:
         mock_herbie.return_value.xarray.side_effect = Exception("Network error")
         mocker.patch("herbie.FastHerbie", mock_herbie)
         
-        reaper = HRRRReaper(
+        reaper = NWPReaper(
             init_time="2026-01-01 00:00",
             forecast_hours=[1, 6]
         )
@@ -200,7 +200,7 @@ class TestGetVariableNames:
         mock_herbie.return_value.xarray.return_value = mock_ds
         mocker.patch("herbie.FastHerbie", mock_herbie)
         
-        reaper = HRRRReaper(
+        reaper = NWPReaper(
             init_time="2026-01-01 00:00",
             forecast_hours=[1]
         )
@@ -222,7 +222,7 @@ class TestGetVariableNames:
         mock_herbie.return_value.xarray.return_value = mock_ds
         mocker.patch("herbie.FastHerbie", mock_herbie)
         
-        reaper = HRRRReaper(
+        reaper = NWPReaper(
             init_time="2026-01-01 00:00",
             forecast_hours=[1]
         )

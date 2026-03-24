@@ -16,17 +16,31 @@ from cosecha.data_models import HarvestedData
 from cosecha.reaping.base import GriddedReaper
 from cosecha.reaping.exceptions import APIError, DateRangeError, ReaperError
 
-__all__ = ["HRRRReaper"]
+__all__ = ["NWPReaper"]
 
 logger = logging.getLogger(__name__)
 
+NWP_SEARCH_STRINGS = {
+    "hrrr": {
+        "hourly_precip": r":APCP:.*:(?:0-1|[1-9]\d*-\d+) hour",
+        "total_precip": r":APCP:surface:0-[1-9]*",
+        "temp_2m": r"TMP:2 m above",
+    },
+    "rrfs": {
+        "hourly_precip": r":APCP:.*:(?:0-1|[1-9]\d*-\d+) hour",
+        "total_precip": r":APCP:surface:0-[1-9]*",
+        "temp_2m": r":TMP:2 m above ground:",
+    },
+    "rtma": {
+        "temp_2m": r"TMP:2 m above ground",
+    }
+    # Add other models and variables as needed
+}
 
-class HRRRReaper:
-    """Fetch High-Resolution Rapid Refresh (HRRR) forecast data.
+class NWPReaper:
+    """Fetch NOAA Numerical Weather Prediction (NWP) forecast data.
 
-    The HRRR is a real-time, high-resolution (3-km grid spacing) numerical
-    weather prediction model that is updated hourly. This reaper fetches
-    raw HRRR data without applying transformations; transformations
+    This reaper fetches raw NWP data without applying transformations; transformations
     (unit conversion, spatial subsetting, etc.) are handled by sowers.
 
     Attributes
@@ -40,8 +54,8 @@ class HRRRReaper:
 
     Examples
     --------
-    >>> from cosecha import HRRRReaper
-    >>> reaper = HRRRReaper(
+    >>> from cosecha import NWPReaper
+    >>> reaper = NWPReaper(
     ...     init_time="2026-01-01 00:00",
     ...     forecast_hours=range(1, 7)  # 1-6 hour forecasts
     ... )
@@ -52,7 +66,7 @@ class HRRRReaper:
     Notes
     -----
     - Requires herbie >= 2.6.0 to be installed
-    - HRRR data is publicly available from NOAA AWS buckets
+    - NWP data is publicly available from NOAA AWS buckets
     - Raw data uses degrees east longitude; conversion to degrees west
       and regional subsetting are handled by ZarrSower or custom pipelines
     """
@@ -60,20 +74,29 @@ class HRRRReaper:
     def __init__(
         self,
         init_time: str,
-        forecast_hours: list[int] | range,
+        forecast_hours: list[int] | range | None = None,
         model: str = "hrrr",
+        variable: Optional[str] = "hourly_precip",
+        search_str: Optional[str] = None,
+        product: Optional[str] = None,
     ) -> None:
-        """Initialize HRRRReaper.
+        """Initialize NWPReaper.
 
         Parameters
         ----------
         init_time : str
             Model initialization time in format "YYYY-MM-DD HH:MM" or similar.
             Will be parsed by pandas.to_datetime().
-        forecast_hours : list[int] | range
-            Forecast hours to request (e.g., [1, 6, 12] or range(1, 19)).
+        forecast_hours : list[int] | range | None, optional
+            Forecast hours to request (e.g., [1, 6, 12] or range(1, 19)). Can be none if fetching analysis product.
         model : str, optional
-            NWP model name (default: 'hrrr'). Other options: 'nam', 'gfs', etc.
+            NWP model name (default: 'hrrr'). Other options: 'rrfs', 'rtma', etc.
+        variable: str, optional
+            A simplified variable name mapping to a predefined GRIB regex search string. Common examples include 'hourly_precip', 'total_precip', 'temp_2m'. Ignored if `search_str` is provided.
+        search_str: str, optional
+            Exact GRIB regex search string to use. Overrides the `variable` lookup if provided.
+        product: str, optional
+            Specific Herbie model product string.
 
         Raises
         ------
@@ -84,7 +107,7 @@ class HRRRReaper:
 
         Examples
         --------
-        >>> reaper = HRRRReaper(
+        >>> reaper = NWPReaper(
         ...     init_time="2026-01-01 00:00",
         ...     forecast_hours=range(1, 19)
         ... )
@@ -94,6 +117,17 @@ class HRRRReaper:
         self.forecast_hours = (
             list(forecast_hours) if isinstance(forecast_hours, range) else forecast_hours
         )
+        if search_str is not None:
+            self.search_str = search_str
+        elif variable and model in NWP_SEARCH_STRINGS and variable in NWP_SEARCH_STRINGS[model]:
+            self.search_str = NWP_SEARCH_STRINGS[model][variable]
+        else:
+            raise ValueError(
+                f"Invalid variable '{variable}' for model '{model}'. "
+                f"Available variables: {list(NWP_SEARCH_STRINGS.get(model, {}).keys())}. "
+                f"Or provide a custom search_str."
+            )
+        self.product = product
 
         # Validate parameters
         self._validate_params()
@@ -105,14 +139,14 @@ class HRRRReaper:
             self._herbie_available = True
         except ImportError:
             logger.warning(
-                "herbie not installed; HRRRReaper will not be able to fetch data. "
+                "herbie not installed; NWPReaper will not be able to fetch data. "
                 "Install with: pip install 'cosecha[nwp]'"
             )
             self._herbie_available = False
 
         logger.debug(
-            f"HRRRReaper initialized: model={model}, init_time={init_time}, "
-            f"forecast_hours={len(self.forecast_hours)}"
+            f"NWPReaper initialized: model={model}, init_time={init_time}, "
+            f"forecast_hours={len(self.forecast_hours) if self.forecast_hours else 'None'}, search_str='{search_str}', product='{product}'"
         )
 
     def _validate_params(self) -> None:
@@ -132,11 +166,7 @@ class HRRRReaper:
         except Exception as e:
             raise DateRangeError(f"Could not parse init_time '{self.init_time}': {e}") from e
 
-        # Validate forecast_hours
-        if not self.forecast_hours or len(self.forecast_hours) == 0:
-            raise DateRangeError("forecast_hours cannot be empty")
-
-        if not all(isinstance(h, int) and h > 0 for h in self.forecast_hours):
+        if self.forecast_hours is not None and not all(isinstance(h, int) and h > 0 for h in self.forecast_hours):
             raise DateRangeError(
                 f"forecast_hours must be positive integers, got {self.forecast_hours}"
             )
@@ -169,22 +199,25 @@ class HRRRReaper:
 
             # Use default filter (all variables) or a specific filter if desired
             # Users can customize via transformations in sowers
-            h = FastHerbie([self.init_time], model=self.model, fxx=self.forecast_hours)
+            if self.forecast_hours:
+                h = FastHerbie([self.init_time], model=self.model, fxx=self.forecast_hours, product=self.product)
+            else:
+                h = FastHerbie([self.init_time], model=self.model, product=self.product)
 
             # Fetch all variables; filtering is a sower concern
-            # ':m:' searches for all matching variables
-            ds = h.xarray(search=":m:")
+            ds = h.xarray(search=self.search_str)
 
-            logger.info(f"Successfully fetched HRRR data: {len(ds.data_vars)} variables")
+            ds.herbie.to_180()  # Convert longitudes to -180 to 180 for easier donwnstream processing
+
+            logger.info(f"Successfully fetched NWP data: {len(ds.data_vars)} variables")
             return ds
 
         except Exception as e:
-            logger.error(f"Failed to fetch HRRR data: {e}")
-            raise APIError(f"HRRR fetch failed: {e}") from e
+            logger.error(f"Failed to fetch NWP data: {e}")
+            raise APIError(f"NWP fetch failed: {e}") from e
 
     def reap(self) -> HarvestedData:
-        """Fetch and return HRRR forecast data.
-
+        """Fetch and return NWP forecast data.
         Returns
         -------
         HarvestedData
@@ -198,7 +231,7 @@ class HRRRReaper:
 
         Examples
         --------
-        >>> reaper = HRRRReaper(
+        >>> reaper = NWPReaper(
         ...     init_time="2026-01-01 00:00",
         ...     forecast_hours=range(1, 7)
         ... )
@@ -220,7 +253,7 @@ class HRRRReaper:
 
             # Create metadata
             metadata = {
-                "source_name": "HRRR Forecast",
+                "source_name": f"{self.model} Forecast",
                 "timestamp": datetime.now(UTC),
                 "variable_names": variable_names,
                 "model": self.model,
@@ -232,7 +265,7 @@ class HRRRReaper:
             # Create HarvestedData
             harvested = HarvestedData(
                 data=ds,
-                source_name="HRRR Forecast",
+                source_name=self.model,
                 timestamp=metadata["timestamp"],
                 variable_names=variable_names,
                 metadata=metadata,
@@ -240,7 +273,7 @@ class HRRRReaper:
 
             logger.info(
                 f"Successfully reaped HRRR data: {len(variable_names)} variables, "
-                f"{len(self.forecast_hours)} forecast hours"
+                f"{len(self.forecast_hours) if self.forecast_hours else 'None'} forecast hours"
             )
             return harvested
 
@@ -251,5 +284,5 @@ class HRRRReaper:
             raise ReaperError(f"HRRR reaping failed: {e}") from e
 
 
-# Type hint: HRRRReaper implements GriddedReaper protocol
-_: type[GriddedReaper] = HRRRReaper  # noqa: F841
+# Type hint: NWPReaper implements GriddedReaper protocol
+_: type[GriddedReaper] = NWPReaper  # noqa: F841
