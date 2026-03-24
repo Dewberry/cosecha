@@ -41,6 +41,7 @@ dependencies = [
   "pyiceberg>=0.5",
   "xarray>=2025.11",
   "zarr>=3",
+  "sqlalchemy",
 ]
 optional-dependencies.dev = [
   "ipykernel",
@@ -215,6 +216,7 @@ lint.pydocstyle.convention = "numpy"
 
 [tool.codespell]
 skip = "__pycache__,_build,.mypy_cache,.git,./htmlcov,.pixi,pixi.lock,**.ipynb"
+ignore-words-list = "gage,gages"
 
 [tool.pyproject-fmt]
 expand_tables = [ "tool.pixi" ]
@@ -270,10 +272,6 @@ formats = "ipynb,py:percent"
 notebook_metadata_filter = "kernelspec,jupytext"
 cell_metadata_filter = "-all"
 
-[tool.pixi.dependencies]
-sqlalchemy = ">=2.0.47,<3"
-dataretrieval = ">=1.1.2,<2"
-
 [tool.pixi.environments]
 dev = { features = [ "dev", "test", "lint", "typecheck", "docs", "netcdf", "nwp", "py314" ] }
 test311 = { features = [ "test", "py311" ] }
@@ -314,9 +312,17 @@ spell = "codespell -w"
 
 [tool.pixi.feature.py311.dependencies]
 python = "~=3.11.0"
+libgdal-core = "*"
+proj = "*"
+libnetcdf = "*"
+hdf5 = "*"
 
 [tool.pixi.feature.py314.dependencies]
 python = "~=3.14.0"
+libgdal-core = "*"
+proj = "*"
+libnetcdf = "*"
+hdf5 = "*"
 
 [tool.pixi.feature.test.tasks]
 test = "pytest -m 'not network'"
