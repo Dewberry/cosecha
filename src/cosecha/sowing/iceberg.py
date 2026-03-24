@@ -18,6 +18,7 @@ from pyiceberg.catalog import Catalog
 from cosecha.data_models import HarvestedData
 from cosecha.sowing.base import DataSower
 from cosecha.sowing.exceptions import SowerError, WriteError
+from cosecha.sowing.utils import apply_ts_transformations
 
 __all__ = ["IcebergSower"]
 
@@ -141,70 +142,6 @@ class IcebergSower:
             )
         logger.debug(f"Input validation passed for source: {data.source_name}")
 
-    def _apply_transformations(
-        self, df: pd.DataFrame, transformations: Optional[dict[str, Any]] = None
-    ) -> pd.DataFrame:
-        """Apply optional transformations to the DataFrame.
-
-        Supported transformations:
-        - 'unit_conversions': dict mapping column names to conversion factors
-        - 'rename_columns': dict mapping old column names to new names
-        - 'filter_columns': list of columns to keep
-
-        Parameters
-        ----------
-        df : pd.DataFrame
-            The DataFrame to transform.
-        transformations : dict[str, Any], optional
-            Dictionary of transformations to apply. If None, no transformations.
-
-        Returns
-        -------
-        pd.DataFrame
-            Transformed DataFrame.
-
-        Raises
-        ------
-        SowerError
-            If transformations reference non-existent columns.
-        """
-        if not transformations:
-            return df
-
-        result = df.copy()
-
-        # Apply unit conversions
-        if "unit_conversions" in transformations:
-            conversions = transformations["unit_conversions"]
-            for col, factor in conversions.items():
-                if col not in result.columns:
-                    raise SowerError(
-                        f"Column '{col}' not found for unit conversion. "
-                        f"Available: {list(result.columns)}"
-                    )
-                result[col] = result[col] * factor
-                logger.debug(f"Applied unit conversion to '{col}': factor={factor}")
-
-        # Rename columns
-        if "rename_columns" in transformations:
-            renames = transformations["rename_columns"]
-            result = result.rename(columns=renames)
-            logger.debug(f"Renamed columns: {renames}")
-
-        # Filter to specific columns
-        if "filter_columns" in transformations:
-            cols = transformations["filter_columns"]
-            missing = set(cols) - set(result.columns)
-            if missing:
-                raise SowerError(
-                    f"Columns {missing} not found for filtering. "
-                    f"Available: {list(result.columns)}"
-                )
-            result = result[cols]
-            logger.debug(f"Filtered to columns: {cols}")
-
-        return result
-
     def _get_or_create_table(self, table_name: str, df: pd.DataFrame):
         """Get existing table or create new Iceberg table.
 
@@ -297,7 +234,7 @@ class IcebergSower:
             df = data.data
 
             # Apply transformations
-            df = self._apply_transformations(df, transformations)
+            df = apply_ts_transformations(df, transformations)
 
             # Generate table name from source
             table_name = data.source_name.lower().replace(" ", "_")

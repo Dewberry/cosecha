@@ -16,6 +16,7 @@ import xarray as xr
 from cosecha.data_models import HarvestedData
 from cosecha.sowing.base import DataSower
 from cosecha.sowing.exceptions import SowerError, WriteError
+from cosecha.sowing.utils import apply_gridded_transformations
 
 __all__ = ["IceChunkSower"]
 
@@ -36,8 +37,8 @@ class IceChunkSower:
 
     Examples
     --------
-    >>> from cosecha import HRRRReaper, IceChunkSower
-    >>> reaper = HRRRReaper(
+    >>> from cosecha import NWPReaper, IceChunkSower
+    >>> reaper = NWPReaper(
     ...     model="hrrr",
     ...     init_time="2026-01-01 00:00",
     ...     forecast_hours=[0, 6, 12]
@@ -91,87 +92,6 @@ class IceChunkSower:
             )
         logger.debug(f"Input validation passed for source: {data.source_name}")
 
-    def _apply_transformations(
-        self, ds: xr.Dataset, transformations: Optional[dict[str, Any]] = None
-    ) -> xr.Dataset:
-        """Apply optional transformations to the xarray Dataset.
-
-        Supported transformations:
-        - 'spatial_subset': dict with 'lon_bounds' (min, max) and 'lat_bounds' (min, max)
-        - 'unit_conversions': dict mapping variable names to conversion factors
-        - 'variable_rename': dict mapping old variable names to new names
-        - 'keep_variables': list of variables to keep
-
-        Parameters
-        ----------
-        ds : xr.Dataset
-            The Dataset to transform.
-        transformations : dict[str, Any], optional
-            Dictionary of transformations to apply. If None, no transformations.
-
-        Returns
-        -------
-        xr.Dataset
-            Transformed Dataset.
-
-        Raises
-        ------
-        SowerError
-            If transformations reference non-existent variables or coordinates.
-        """
-        if not transformations:
-            return ds
-
-        result = ds.copy()
-
-        # Spatial subset
-        if "spatial_subset" in transformations:
-            subset = transformations["spatial_subset"]
-            try:
-                if "lon_bounds" in subset:
-                    lon_min, lon_max = subset["lon_bounds"]
-                    result = result.sel(lon=slice(lon_min, lon_max))
-                    logger.debug(f"Applied longitude subset: [{lon_min}, {lon_max}]")
-
-                if "lat_bounds" in subset:
-                    lat_min, lat_max = subset["lat_bounds"]
-                    result = result.sel(lat=slice(lat_min, lat_max))
-                    logger.debug(f"Applied latitude subset: [{lat_min}, {lat_max}]")
-            except KeyError as e:
-                raise SowerError(f"Spatial subset failed: coordinate not found: {e}") from e
-
-        # Unit conversions
-        if "unit_conversions" in transformations:
-            conversions = transformations["unit_conversions"]
-            for var, factor in conversions.items():
-                if var not in result.data_vars:
-                    raise SowerError(
-                        f"Variable '{var}' not found for unit conversion. "
-                        f"Available: {list(result.data_vars)}"
-                    )
-                result[var] = result[var] * factor
-                logger.debug(f"Applied unit conversion to '{var}': factor={factor}")
-
-        # Variable rename
-        if "variable_rename" in transformations:
-            renames = transformations["variable_rename"]
-            result = result.rename(renames)
-            logger.debug(f"Renamed variables: {renames}")
-
-        # Keep specific variables
-        if "keep_variables" in transformations:
-            keep = transformations["keep_variables"]
-            missing = set(keep) - set(result.data_vars)
-            if missing:
-                raise SowerError(
-                    f"Variables {missing} not found for filtering. "
-                    f"Available: {list(result.data_vars)}"
-                )
-            result = result[keep]
-            logger.debug(f"Filtered to variables: {keep}")
-
-        return result
-
     def sow(self, data: HarvestedData, transformations: Optional[dict[str, Any]] = None) -> str:
         """Write HarvestedData to IceChunk store.
 
@@ -222,7 +142,7 @@ class IceChunkSower:
             ds = data.data
 
             # Apply transformations
-            ds = self._apply_transformations(ds, transformations)
+            ds = apply_gridded_transformations(ds, transformations)
 
             # Generate output store name
             source_clean = data.source_name.lower().replace(" ", "_")
