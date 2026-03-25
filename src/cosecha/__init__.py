@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
 
-from cosecha.cosecha import hello
 from cosecha.data_models import HarvestedData
 from cosecha.logging_config import configure_logging, get_logger
 from cosecha.pipeline import HarvestPipeline
