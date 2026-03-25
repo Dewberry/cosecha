@@ -10,8 +10,10 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import Any, Optional
+import re
 
 import xarray as xr
+import icechunk
 
 from cosecha.data_models import HarvestedData
 from cosecha.sowing.base import DataSower
@@ -69,6 +71,15 @@ class IceChunkSower:
             raise ValueError(f"storage_path must be a directory, got file: {self.storage_path}")
 
         self.storage_path.mkdir(parents=True, exist_ok=True)
+
+            
+        storage = icechunk.local_filesystem_storage(str(self.storage_path))
+        try:
+            self.repo = icechunk.Repository.open(storage)
+            logger.debug("Opened existing IceChunk repository")
+        except Exception:
+            self.repo = icechunk.Repository.create(storage)
+            logger.debug("Created new IceChunk repository")
 
         logger.debug(f"IceChunkSower initialized with storage_path: {self.storage_path}")
 
@@ -140,24 +151,32 @@ class IceChunkSower:
 
             # Get Dataset
             ds = data.data
+            
+            assert isinstance(ds, xr.Dataset)
 
             # Apply transformations
             ds = apply_gridded_transformations(ds, transformations)
 
-            # Generate output store name
-            source_clean = data.source_name.lower().replace(" ", "_")
+            source_clean = re.sub(r'[^a-z0-9_]', '_', data.source_name.lower()).strip('_')
             timestamp_str = data.timestamp.strftime("%Y%m%d_%H%M%S")
-            store_name = f"{source_clean}_{timestamp_str}"
-            output_path = self.storage_path / store_name
+            group_path = f"{source_clean}/{timestamp_str}"
 
-            output_path.mkdir(parents=True, exist_ok=True)
-
-            # Write directly using zarr with icechunk-compatible structure
-            # IceChunk provides versioning through xarray's zarr backend
-            ds.to_zarr(str(output_path), mode="w", consolidated=False)
-
-            logger.info(f"Successfully wrote IceChunk-compatible store: {output_path}")
-            return str(output_path)
+            session = self.repo.writable_session("main")
+            
+            # IceChunk exclusively uses Zarr v3 specification
+            ds.to_zarr(
+                store=session.store,
+                group=group_path,
+                mode="w",
+                zarr_format=3,
+                consolidated=False
+            )
+            
+            commit_msg = f"Appended {data.source_name} data for {timestamp_str}"
+            session.commit(commit_msg)
+            
+            logger.info(f"Successfully committed to IceChunk repo at group: {group_path}")
+            return str(self.storage_path / group_path)
 
         except SowerError:
             raise
