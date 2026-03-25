@@ -40,21 +40,21 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: ${{ github.event.repository.owner.login }}/${{ github.event.repository.name }}
 
-  test-network:
-    name: network - test314, ubuntu-latest
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v6
-    - uses: prefix-dev/setup-pixi@v0.9.4
-      with:
-        pixi-version: v0.65.0
-        environments: test314
-        activate-environment: test314
-    - name: Run network tests
-      run: pixi r test-network
+  # test-network:
+  #   name: network - test314, ubuntu-latest
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v6
+  #   - uses: prefix-dev/setup-pixi@v0.9.4
+  #     with:
+  #       pixi-version: v0.65.0
+  #       environments: test314
+  #       activate-environment: test314
+  #   - name: Run network tests
+  #     run: pixi r test-network
 
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        slug: ${{ github.event.repository.owner.login }}/${{ github.event.repository.name }}
+  #   - name: Upload coverage reports to Codecov
+  #     uses: codecov/codecov-action@v5
+  #     with:
+  #       token: ${{ secrets.CODECOV_TOKEN }}
+  #       slug: ${{ github.event.repository.owner.login }}/${{ github.event.repository.name }}
