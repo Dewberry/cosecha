@@ -11,6 +11,7 @@ import pytest
 from cosecha.data_models import HarvestedData
 from cosecha.sowing.iceberg import IcebergSower
 from cosecha.sowing.parquet import ParquetSower
+from cosecha.sowing.utils import apply_ts_transformations
 
 
 class TestParquetSower:
@@ -91,13 +92,13 @@ class TestParquetSower:
     def test_apply_transformations_none(self, temp_output_dir, sample_dataframe):
         """Test apply_transformations with None."""
         sower = ParquetSower(output_dir=temp_output_dir)
-        result = sower._apply_transformations(sample_dataframe, transformations=None)
+        result = apply_ts_transformations(sample_dataframe, transformations=None)
         pd.testing.assert_frame_equal(result, sample_dataframe)
     
     def test_apply_unit_conversions(self, temp_output_dir, sample_dataframe):
         """Test unit conversion transformation."""
         sower = ParquetSower(output_dir=temp_output_dir)
-        result = sower._apply_transformations(
+        result = apply_ts_transformations(
             sample_dataframe,
             transformations={"unit_conversions": {"value": 0.5}}
         )
@@ -106,7 +107,7 @@ class TestParquetSower:
     def test_apply_column_rename(self, temp_output_dir, sample_dataframe):
         """Test column rename transformation."""
         sower = ParquetSower(output_dir=temp_output_dir)
-        result = sower._apply_transformations(
+        result = apply_ts_transformations(
             sample_dataframe,
             transformations={"rename_columns": {"value": "discharge_cms"}}
         )
@@ -116,7 +117,7 @@ class TestParquetSower:
     def test_apply_filter_columns(self, temp_output_dir, sample_dataframe):
         """Test column filtering transformation."""
         sower = ParquetSower(output_dir=temp_output_dir)
-        result = sower._apply_transformations(
+        result = apply_ts_transformations(
             sample_dataframe,
             transformations={"filter_columns": ["time", "value"]}
         )

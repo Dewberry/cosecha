@@ -12,7 +12,7 @@ from cosecha.data_models import HarvestedData
 from cosecha.sowing.icechunk import IceChunkSower
 from cosecha.sowing.netcdf import NetCDFSower
 from cosecha.sowing.zarr import ZarrSower
-
+from cosecha.sowing.utils import apply_gridded_transformations
 
 class TestZarrSower:
     """Test ZarrSower implementation."""
@@ -92,13 +92,13 @@ class TestZarrSower:
     def test_apply_transformations_none(self, temp_output_dir, sample_dataset):
         """Test apply_transformations with None."""
         sower = ZarrSower(output_dir=temp_output_dir)
-        result = sower._apply_transformations(sample_dataset, transformations=None)
+        result = apply_gridded_transformations(sample_dataset, transformations=None)
         xr.testing.assert_identical(result, sample_dataset)
     
     def test_apply_unit_conversions(self, temp_output_dir, sample_dataset):
         """Test unit conversion transformation."""
         sower = ZarrSower(output_dir=temp_output_dir)
-        result = sower._apply_transformations(
+        result = apply_gridded_transformations(
             sample_dataset,
             transformations={"unit_conversions": {"precip": 2.0}}
         )
@@ -107,7 +107,7 @@ class TestZarrSower:
     def test_apply_variable_rename(self, temp_output_dir, sample_dataset):
         """Test variable rename transformation."""
         sower = ZarrSower(output_dir=temp_output_dir)
-        result = sower._apply_transformations(
+        result = apply_gridded_transformations(
             sample_dataset,
             transformations={"variable_rename": {"precip": "precipitation_mm"}}
         )
@@ -117,7 +117,7 @@ class TestZarrSower:
     def test_apply_keep_variables(self, temp_output_dir, sample_dataset):
         """Test keep variables transformation."""
         sower = ZarrSower(output_dir=temp_output_dir)
-        result = sower._apply_transformations(
+        result = apply_gridded_transformations(
             sample_dataset,
             transformations={"keep_variables": ["precip"]}
         )
@@ -226,7 +226,7 @@ class TestIceChunkSower:
     def test_apply_transformations_none(self, temp_storage_dir, sample_dataset):
         """Test apply_transformations with None."""
         sower = IceChunkSower(storage_path=temp_storage_dir)
-        result = sower._apply_transformations(sample_dataset, transformations=None)
+        result = apply_gridded_transformations(sample_dataset, transformations=None)
         xr.testing.assert_identical(result, sample_dataset)
     
     def test_sow_creates_icechunk_store(self, temp_storage_dir, harvested_data):
@@ -234,7 +234,10 @@ class TestIceChunkSower:
         sower = IceChunkSower(storage_path=temp_storage_dir)
         path = sower.sow(harvested_data)
         
-        assert Path(path).exists()
+        # IceChunk manages its own internal layout, so we check if the storage root exists
+        # and has populated data rather than assuming a Zarr v2 style literal directory path
+        assert sower.storage_path.exists()
+        assert any(sower.storage_path.iterdir())
     
     def test_sow_returns_path_string(self, temp_storage_dir, harvested_data):
         """Test that sow returns a string path."""
@@ -337,13 +340,13 @@ class TestNetCDFSower:
     def test_apply_transformations_none(self, temp_output_dir, sample_dataset):
         """Test apply_transformations with None."""
         sower = NetCDFSower(output_dir=temp_output_dir)
-        result = sower._apply_transformations(sample_dataset, transformations=None)
+        result = apply_gridded_transformations(sample_dataset, transformations=None)
         xr.testing.assert_identical(result, sample_dataset)
     
     def test_apply_unit_conversions(self, temp_output_dir, sample_dataset):
         """Test unit conversion transformation."""
         sower = NetCDFSower(output_dir=temp_output_dir)
-        result = sower._apply_transformations(
+        result = apply_gridded_transformations(
             sample_dataset,
             transformations={"unit_conversions": {"precip": 2.0}}
         )
@@ -352,7 +355,7 @@ class TestNetCDFSower:
     def test_apply_variable_rename(self, temp_output_dir, sample_dataset):
         """Test variable rename transformation."""
         sower = NetCDFSower(output_dir=temp_output_dir)
-        result = sower._apply_transformations(
+        result = apply_gridded_transformations(
             sample_dataset,
             transformations={"variable_rename": {"precip": "precipitation_mm"}}
         )
@@ -362,7 +365,7 @@ class TestNetCDFSower:
     def test_apply_keep_variables(self, temp_output_dir, sample_dataset):
         """Test keep variables transformation."""
         sower = NetCDFSower(output_dir=temp_output_dir)
-        result = sower._apply_transformations(
+        result = apply_gridded_transformations(
             sample_dataset,
             transformations={"keep_variables": ["precip"]}
         )

@@ -11,6 +11,35 @@ from cosecha.reaping.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.reaping.nwp import NWPReaper
 
 
+def _create_mock_hrrr_dataset(variables: list[str] | None = None):
+    import xarray as xr
+    import pandas as pd
+    import numpy as np
+
+    if variables is None:
+        variables = ["tp"]
+
+    data_vars = {
+        var: (["step", "y", "x"], np.zeros((1, 2, 2), dtype=np.float32))
+        for var in variables
+    }
+    
+    return xr.Dataset(
+        data_vars=data_vars,
+        coords=dict(
+            step=(["step"], pd.to_timedelta([1], unit="h")),
+            valid_time=(["step"], [pd.Timestamp("2026-03-23T01:00")]),
+            latitude=(["y", "x"], [[21.14, 21.15], [21.16, 21.17]]),
+            longitude=(["y", "x"], [[-122.7, -122.6], [-122.5, -122.4]]),
+            time=pd.Timestamp("2026-03-23"),
+            surface=0.0
+        ),
+        attrs=dict(
+            model="hrrr",
+            product="sfc",
+        )
+    )
+
 @pytest.mark.requires_herbie
 class TestNWPReaper:
     """Test NWPReaper implementation."""
@@ -38,7 +67,8 @@ class TestNWPReaper:
         reaper = NWPReaper(
             init_time="2026-01-01 00:00",
             forecast_hours=[1, 6],
-            model="nam"
+            model="nam",
+            search_str="custom"
         )
         assert reaper.model == "nam"
     
@@ -50,13 +80,13 @@ class TestNWPReaper:
                 forecast_hours=[1, 6]
             )
     
-    def test_invalid_forecast_hours_empty(self):
-        """Test initialization fails with empty forecast_hours."""
-        with pytest.raises(DateRangeError, match="cannot be empty"):
-            NWPReaper(
-                init_time="2026-01-01 00:00",
-                forecast_hours=[]
-            )
+    def test_valid_forecast_hours_empty(self):
+        """Test initialization with empty forecast_hours."""
+        reaper = NWPReaper(
+            init_time="2026-01-01 00:00",
+            forecast_hours=[]
+        )
+        assert reaper.forecast_hours == []
     
     def test_invalid_forecast_hours_negative(self):
         """Test initialization fails with negative forecast_hours."""
@@ -108,11 +138,9 @@ class TestNWPReaper:
         pytest.importorskip("herbie")
         import xarray as xr
         
-        # Create mock xarray Dataset
-        mock_ds = xr.Dataset({
-            "precip": (("time", "y", "x"), [[[1, 2], [3, 4]]]),
-            "temp": (("time", "y", "x"), [[[20, 21], [22, 23]]]),
-        })
+        # Create mock xarray Dataset that reflects genuine NWP structure with dims and coords
+        mock_ds = _create_mock_hrrr_dataset(["tp", "t2m"])
+        mocker.patch.object(mock_ds.herbie, "to_180")
         
         # Mock FastHerbie from herbie import
         mock_herbie = mocker.MagicMock()
@@ -130,21 +158,20 @@ class TestNWPReaper:
         harvested = reaper.reap()
         
         assert isinstance(harvested, HarvestedData)
-        assert harvested.source_name == "HRRR Forecast"
+        assert harvested.source_name == "hrrr"
         assert harvested.is_gridded()
         assert not harvested.is_timeseries()
         assert len(harvested.variable_names) == 2
-        assert "precip" in harvested.variable_names
-        assert "temp" in harvested.variable_names
+        assert "tp" in harvested.variable_names
+        assert "t2m" in harvested.variable_names
     
     def test_reap_returns_harvested_data(self, mocker):
         """Test that reap returns properly formatted HarvestedData."""
         pytest.importorskip("herbie")
         import xarray as xr
         
-        mock_ds = xr.Dataset({
-            "var1": (("y", "x"), [[1, 2], [3, 4]]),
-        })
+        mock_ds = _create_mock_hrrr_dataset(["tp"])
+        mocker.patch.object(mock_ds.herbie, "to_180")
         
         mock_herbie = mocker.MagicMock()
         mock_herbie.return_value.xarray.return_value = mock_ds
@@ -177,7 +204,7 @@ class TestNWPReaper:
         )
         reaper._herbie_available = True
         
-        with pytest.raises(APIError, match="HRRR fetch failed"):
+        with pytest.raises(APIError, match="NWP fetch failed"):
             reaper.reap()
 
 
@@ -190,11 +217,8 @@ class TestGetVariableNames:
         pytest.importorskip("herbie")
         import xarray as xr
         
-        mock_ds = xr.Dataset({
-            "precip": (("y", "x"), [[1, 2]]),
-            "temp": (("y", "x"), [[20, 21]]),
-            "wind_u": (("y", "x"), [[5, 6]]),
-        })
+        mock_ds = _create_mock_hrrr_dataset(["tp", "t2m", "u10"])
+        mocker.patch.object(mock_ds.herbie, "to_180")
         
         mock_herbie = mocker.MagicMock()
         mock_herbie.return_value.xarray.return_value = mock_ds
@@ -209,14 +233,15 @@ class TestGetVariableNames:
         harvested = reaper.reap()
         
         assert len(harvested.variable_names) == 3
-        assert set(harvested.variable_names) == {"precip", "temp", "wind_u"}
+        assert set(harvested.variable_names) == {"tp", "t2m", "u10"}
     
     def test_empty_variables_handled(self, mocker):
         """Test handling of Dataset with no variables."""
         pytest.importorskip("herbie")
         import xarray as xr
         
-        mock_ds = xr.Dataset()  # Empty dataset
+        mock_ds = _create_mock_hrrr_dataset([])  # Empty dataset
+        mocker.patch.object(mock_ds.herbie, "to_180")
         
         mock_herbie = mocker.MagicMock()
         mock_herbie.return_value.xarray.return_value = mock_ds
