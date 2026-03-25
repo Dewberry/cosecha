@@ -14,7 +14,7 @@ pixi r nb-run
 
 <div class="grid cards" markdown>
 
-- [![Example Notebook](images/example.svg){ loading=lazy }](example.ipynb "Example Notebook")
+- [![Example Notebook](images/example.svg){ loading=lazy }](/home/sjanke/repos/cosecha/docs/examples/hrrr_example.ipynb "Example HRRR Notebook")
     **Example Notebook**
 
 </div>
