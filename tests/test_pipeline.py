@@ -12,8 +12,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
@@ -22,10 +21,8 @@ import xarray as xr
 from cosecha import (
     HarvestedData,
     HarvestPipeline,
-    USGSStreamflowReaper,
 )
 from cosecha.data_models import HarvestedData
-from cosecha.logging_config import get_logger
 from cosecha.reaping.exceptions import APIError, ReaperError
 from cosecha.sowing.exceptions import SowerError, WriteError
 
@@ -43,13 +40,15 @@ class TestHarvestPipelineInitialization:
         """Test adding a valid reaper to the pipeline."""
         pipeline = HarvestPipeline()
         reaper = MagicMock()
-        reaper.reap = MagicMock(return_value=HarvestedData(
-            data=pd.DataFrame({"a": [1, 2, 3]}),
-            source_name="test",
-            timestamp=datetime.now(UTC),
-            variable_names=["a"],
-        ))
-        
+        reaper.reap = MagicMock(
+            return_value=HarvestedData(
+                data=pd.DataFrame({"a": [1, 2, 3]}),
+                source_name="test",
+                timestamp=datetime.now(UTC),
+                variable_names=["a"],
+            )
+        )
+
         pipeline.add_reaper(reaper)
         assert len(pipeline.reapers) == 1
         assert pipeline.reapers[0] == reaper
@@ -58,7 +57,7 @@ class TestHarvestPipelineInitialization:
         """Test that adding invalid reaper (no reap method) raises TypeError."""
         pipeline = HarvestPipeline()
         invalid_reaper = MagicMock(spec=[])  # No reap method
-        
+
         with pytest.raises(TypeError, match="must implement.*protocol"):
             pipeline.add_reaper(invalid_reaper)
 
@@ -69,7 +68,7 @@ class TestHarvestPipelineInitialization:
         reaper1.reap = MagicMock()
         reaper2 = MagicMock()
         reaper2.reap = MagicMock()
-        
+
         pipeline.add_reaper(reaper1)
         pipeline.add_reaper(reaper2)
         assert len(pipeline.reapers) == 2
@@ -79,7 +78,7 @@ class TestHarvestPipelineInitialization:
         pipeline = HarvestPipeline()
         sower = MagicMock()
         sower.sow = MagicMock(return_value="./data/output.parquet")
-        
+
         pipeline.add_sower(sower)
         assert len(pipeline.sowers) == 1
         assert pipeline.sowers[0] == sower
@@ -88,7 +87,7 @@ class TestHarvestPipelineInitialization:
         """Test that adding invalid sower (no sow method) raises TypeError."""
         pipeline = HarvestPipeline()
         invalid_sower = MagicMock(spec=[])  # No sow method
-        
+
         with pytest.raises(TypeError, match="must implement.*protocol"):
             pipeline.add_sower(invalid_sower)
 
@@ -99,7 +98,7 @@ class TestHarvestPipelineInitialization:
         sower1.sow = MagicMock(return_value="./parquet.parquet")
         sower2 = MagicMock()
         sower2.sow = MagicMock(return_value="./zarr.zarr")
-        
+
         pipeline.add_sower(sower1)
         pipeline.add_sower(sower2)
         assert len(pipeline.sowers) == 2
@@ -114,7 +113,7 @@ class TestHarvestPipelineExecution:
         sower = MagicMock()
         sower.sow = MagicMock()
         pipeline.add_sower(sower)
-        
+
         with pytest.raises(ValueError, match="no reapers configured"):
             pipeline.execute()
 
@@ -124,38 +123,40 @@ class TestHarvestPipelineExecution:
         reaper = MagicMock()
         reaper.reap = MagicMock()
         pipeline.add_reaper(reaper)
-        
+
         with pytest.raises(ValueError, match="no sowers configured"):
             pipeline.execute()
 
     def test_execute_single_reaper_single_sower_timeseries(self) -> None:
         """Test execute with single reaper and sower for time-series data."""
         # Setup reaper to return time-series data
-        df = pd.DataFrame({
-            "time": pd.date_range("2026-01-01", periods=3),
-            "site_id": ["01018035", "01018035", "01018035"],
-            "value": [1.5, 1.6, 1.7],
-        })
+        df = pd.DataFrame(
+            {
+                "time": pd.date_range("2026-01-01", periods=3),
+                "site_id": ["01018035", "01018035", "01018035"],
+                "value": [1.5, 1.6, 1.7],
+            }
+        )
         harvested = HarvestedData(
             data=df,
             source_name="USGS_NWIS",
             timestamp=datetime.now(UTC),
             variable_names=["value"],
         )
-        
+
         reaper = MagicMock()
         reaper.reap = MagicMock(return_value=harvested)
-        
+
         # Setup sower to return a path
         sower = MagicMock()
         sower.sow = MagicMock(return_value="./data/nwis.parquet")
-        
+
         # Execute pipeline
         pipeline = HarvestPipeline()
         pipeline.add_reaper(reaper)
         pipeline.add_sower(sower)
         paths = pipeline.execute()
-        
+
         # Verify outputs
         assert len(paths) == 1
         assert paths[0] == "./data/nwis.parquet"
@@ -165,29 +166,31 @@ class TestHarvestPipelineExecution:
     def test_execute_single_reaper_single_sower_gridded(self) -> None:
         """Test execute with single reaper and sower for gridded data."""
         # Setup reaper to return gridded data
-        ds = xr.Dataset({
-            "tp": (["time", "lat", "lon"], [[[1, 2], [3, 4]]]),
-        })
+        ds = xr.Dataset(
+            {
+                "tp": (["time", "lat", "lon"], [[[1, 2], [3, 4]]]),
+            }
+        )
         harvested = HarvestedData(
             data=ds,
             source_name="HRRR",
             timestamp=datetime.now(UTC),
             variable_names=["tp"],
         )
-        
+
         reaper = MagicMock()
         reaper.reap = MagicMock(return_value=harvested)
-        
+
         # Setup sower
         sower = MagicMock()
         sower.sow = MagicMock(return_value="./data/hrrr.zarr")
-        
+
         # Execute pipeline
         pipeline = HarvestPipeline()
         pipeline.add_reaper(reaper)
         pipeline.add_sower(sower)
         paths = pipeline.execute()
-        
+
         # Verify outputs
         assert len(paths) == 1
         assert paths[0] == "./data/hrrr.zarr"
@@ -202,23 +205,23 @@ class TestHarvestPipelineExecution:
             timestamp=datetime.now(UTC),
             variable_names=["value"],
         )
-        
+
         reaper = MagicMock()
         reaper.reap = MagicMock(return_value=harvested)
-        
+
         # Setup multiple sowers
         sower1 = MagicMock()
         sower1.sow = MagicMock(return_value="./parquet.parquet")
         sower2 = MagicMock()
         sower2.sow = MagicMock(return_value="./iceberg.iceberg")
-        
+
         # Execute pipeline
         pipeline = HarvestPipeline()
         pipeline.add_reaper(reaper)
         pipeline.add_sower(sower1)
         pipeline.add_sower(sower2)
         paths = pipeline.execute()
-        
+
         # Verify that data was passed to both sowers
         assert len(paths) == 2
         assert "./parquet.parquet" in paths
@@ -236,25 +239,23 @@ class TestHarvestPipelineExecution:
             timestamp=datetime.now(UTC),
             variable_names=["flow"],
         )
-        
+
         reaper = MagicMock()
         reaper.reap = MagicMock(return_value=harvested)
-        
+
         # Setup sower
         sower = MagicMock()
         sower.sow = MagicMock(return_value="./data.parquet")
-        
+
         # Define transformations
-        transformations = {
-            "unit_conversions": {"flow": 0.0283168}
-        }
-        
+        transformations = {"unit_conversions": {"flow": 0.0283168}}
+
         # Execute pipeline with transformations
         pipeline = HarvestPipeline()
         pipeline.add_reaper(reaper)
         pipeline.add_sower(sower)
         paths = pipeline.execute(transformations=transformations)
-        
+
         # Verify transformations were passed to sower
         sower.sow.assert_called_once_with(harvested, transformations=transformations)
         assert len(paths) == 1
@@ -266,34 +267,30 @@ class TestHarvestPipelineErrorHandling:
     def test_execute_reaper_error(self) -> None:
         """Test that reaper errors are propagated as ReaperError."""
         reaper = MagicMock()
-        reaper.reap = MagicMock(
-            side_effect=APIError("Connection timeout")
-        )
-        
+        reaper.reap = MagicMock(side_effect=APIError("Connection timeout"))
+
         sower = MagicMock()
         sower.sow = MagicMock()
-        
+
         pipeline = HarvestPipeline()
         pipeline.add_reaper(reaper)
         pipeline.add_sower(sower)
-        
+
         with pytest.raises(APIError, match="Connection timeout"):
             pipeline.execute()
 
     def test_execute_reaper_unexpected_error(self) -> None:
         """Test that unexpected reaper errors are wrapped in ReaperError."""
         reaper = MagicMock()
-        reaper.reap = MagicMock(
-            side_effect=ValueError("Unexpected error in reaper")
-        )
-        
+        reaper.reap = MagicMock(side_effect=ValueError("Unexpected error in reaper"))
+
         sower = MagicMock()
         sower.sow = MagicMock()
-        
+
         pipeline = HarvestPipeline()
         pipeline.add_reaper(reaper)
         pipeline.add_sower(sower)
-        
+
         with pytest.raises(ReaperError, match="Unexpected error"):
             pipeline.execute()
 
@@ -307,20 +304,18 @@ class TestHarvestPipelineErrorHandling:
             timestamp=datetime.now(UTC),
             variable_names=["value"],
         )
-        
+
         reaper = MagicMock()
         reaper.reap = MagicMock(return_value=harvested)
-        
+
         # Setup sower that fails
         sower = MagicMock()
-        sower.sow = MagicMock(
-            side_effect=WriteError("Disk full")
-        )
-        
+        sower.sow = MagicMock(side_effect=WriteError("Disk full"))
+
         pipeline = HarvestPipeline()
         pipeline.add_reaper(reaper)
         pipeline.add_sower(sower)
-        
+
         with pytest.raises(WriteError, match="Disk full"):
             pipeline.execute()
 
@@ -334,20 +329,18 @@ class TestHarvestPipelineErrorHandling:
             timestamp=datetime.now(UTC),
             variable_names=["value"],
         )
-        
+
         reaper = MagicMock()
         reaper.reap = MagicMock(return_value=harvested)
-        
+
         # Setup sower that fails unexpectedly
         sower = MagicMock()
-        sower.sow = MagicMock(
-            side_effect=RuntimeError("Unexpected sower error")
-        )
-        
+        sower.sow = MagicMock(side_effect=RuntimeError("Unexpected sower error"))
+
         pipeline = HarvestPipeline()
         pipeline.add_reaper(reaper)
         pipeline.add_sower(sower)
-        
+
         with pytest.raises(SowerError, match="unexpected error"):
             pipeline.execute()
 
@@ -361,24 +354,24 @@ class TestHarvestPipelineErrorHandling:
             timestamp=datetime.now(UTC),
             variable_names=["value"],
         )
-        
+
         reaper = MagicMock()
         reaper.reap = MagicMock(return_value=harvested)
-        
+
         # Setup first sower that fails, second sower (not called)
         sower1 = MagicMock()
         sower1.sow = MagicMock(side_effect=SowerError("Sower 1 failed"))
         sower2 = MagicMock()
         sower2.sow = MagicMock(return_value="./data2.parquet")
-        
+
         pipeline = HarvestPipeline()
         pipeline.add_reaper(reaper)
         pipeline.add_sower(sower1)
         pipeline.add_sower(sower2)
-        
+
         with pytest.raises(SowerError):
             pipeline.execute()
-        
+
         # Verify second sower was not called
         sower2.sow.assert_not_called()
 
@@ -396,10 +389,10 @@ class TestHarvestPipelineMultipleReapers:
             timestamp=datetime.now(UTC),
             variable_names=["value"],
         )
-        
+
         reaper1 = MagicMock()
         reaper1.reap = MagicMock(return_value=harvested1)
-        
+
         # Setup second reaper
         df2 = pd.DataFrame({"value": [4, 5, 6]})
         harvested2 = HarvestedData(
@@ -408,24 +401,26 @@ class TestHarvestPipelineMultipleReapers:
             timestamp=datetime.now(UTC),
             variable_names=["value"],
         )
-        
+
         reaper2 = MagicMock()
         reaper2.reap = MagicMock(return_value=harvested2)
-        
+
         # Setup sower
         sower = MagicMock()
-        sower.sow = MagicMock(side_effect=[
-            "./data1.parquet",
-            "./data2.parquet",
-        ])
-        
+        sower.sow = MagicMock(
+            side_effect=[
+                "./data1.parquet",
+                "./data2.parquet",
+            ]
+        )
+
         # Execute pipeline
         pipeline = HarvestPipeline()
         pipeline.add_reaper(reaper1)
         pipeline.add_reaper(reaper2)
         pipeline.add_sower(sower)
         paths = pipeline.execute()
-        
+
         # Verify both reapers were called and both outputs were written
         assert len(paths) == 2
         assert sower.sow.call_count == 2
@@ -447,18 +442,18 @@ class TestHarvestPipelineLogging:
                 timestamp=datetime.now(UTC),
                 variable_names=["value"],
             )
-            
+
             reaper = MagicMock()
             reaper.reap = MagicMock(return_value=harvested)
-            
+
             sower = MagicMock()
             sower.sow = MagicMock(return_value="./data.parquet")
-            
+
             pipeline = HarvestPipeline()
             pipeline.add_reaper(reaper)
             pipeline.add_sower(sower)
             pipeline.execute()
-        
+
         assert "Starting harvest pipeline" in caplog.text
         assert "1 reaper(s)" in caplog.text
         assert "1 sower(s)" in caplog.text
@@ -473,18 +468,18 @@ class TestHarvestPipelineLogging:
                 timestamp=datetime.now(UTC),
                 variable_names=["value"],
             )
-            
+
             reaper = MagicMock()
             reaper.reap = MagicMock(return_value=harvested)
-            
+
             sower = MagicMock()
             sower.sow = MagicMock(return_value="./data.parquet")
-            
+
             pipeline = HarvestPipeline()
             pipeline.add_reaper(reaper)
             pipeline.add_sower(sower)
             pipeline.execute()
-        
+
         assert "Successfully reaped data from TEST_SOURCE" in caplog.text
         assert "1 variables" in caplog.text
 
@@ -498,18 +493,18 @@ class TestHarvestPipelineLogging:
                 timestamp=datetime.now(UTC),
                 variable_names=["value"],
             )
-            
+
             reaper = MagicMock()
             reaper.reap = MagicMock(return_value=harvested)
-            
+
             sower = MagicMock()
             sower.sow = MagicMock(return_value="./data/output.parquet")
-            
+
             pipeline = HarvestPipeline()
             pipeline.add_reaper(reaper)
             pipeline.add_sower(sower)
             pipeline.execute()
-        
+
         assert "Successfully sowed data" in caplog.text
         assert "./data/output.parquet" in caplog.text
 
@@ -523,17 +518,17 @@ class TestHarvestPipelineLogging:
                 timestamp=datetime.now(UTC),
                 variable_names=["value"],
             )
-            
+
             reaper = MagicMock()
             reaper.reap = MagicMock(return_value=harvested)
-            
+
             sower = MagicMock()
             sower.sow = MagicMock(return_value="./data.parquet")
-            
+
             pipeline = HarvestPipeline()
             pipeline.add_reaper(reaper)
             pipeline.add_sower(sower)
             pipeline.execute()
-        
+
         assert "completed successfully" in caplog.text
         assert "1 output(s)" in caplog.text

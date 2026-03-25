@@ -27,9 +27,7 @@ class TestValidateData:
 
     def test_validate_dataset_valid(self):
         """Test validation of valid xarray Dataset."""
-        ds = xr.Dataset({
-            "var": (['x', 'y'], [[1, 2], [3, 4]])
-        })
+        ds = xr.Dataset({"var": (["x", "y"], [[1, 2], [3, 4]])})
         validate_data(ds)  # Should not raise
 
     def test_validate_empty_dataframe(self):
@@ -177,9 +175,7 @@ class TestHarvestedData:
 
     def test_create_with_dataset(self):
         """Test creating HarvestedData with xarray Dataset."""
-        ds = xr.Dataset({
-            "var": (['x', 'y'], [[1, 2], [3, 4]])
-        })
+        ds = xr.Dataset({"var": (["x", "y"], [[1, 2], [3, 4]])})
         data = HarvestedData(
             data=ds,
             source_name="TEST",

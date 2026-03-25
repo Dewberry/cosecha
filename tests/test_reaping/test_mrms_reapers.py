@@ -35,10 +35,7 @@ class TestMRMSReaper:
 
     def test_initialization_custom_variable(self):
         """Test valid initialization with custom variable."""
-        reaper = MRMSReaper(
-            time=datetime(2026, 1, 1),
-            variable="custom_var"
-        )
+        reaper = MRMSReaper(time=datetime(2026, 1, 1), variable="custom_var")
         assert reaper.variable == "custom_var"
 
     def test_invalid_no_time(self):
@@ -70,15 +67,17 @@ class TestMRMSReaper:
 
     def test_reap_mocked_success(self, mocker):
         """Test reap with mocked fetch_data."""
-        mock_ds = xr.Dataset({
-            "test_var": (("time", "latitude", "longitude"), [[[1, 2], [3, 4]]]),
-        })
-        
+        mock_ds = xr.Dataset(
+            {
+                "test_var": (("time", "latitude", "longitude"), [[[1, 2], [3, 4]]]),
+            }
+        )
+
         reaper = MRMSReaper(time=datetime(2026, 1, 1))
         mocker.patch.object(reaper, "fetch_data", return_value=mock_ds)
-        
+
         harvested = reaper.reap()
-        
+
         assert isinstance(harvested, HarvestedData)
         assert harvested.source_name == "MRMS"
         assert len(harvested.variable_names) == 1
@@ -90,6 +89,6 @@ class TestMRMSReaper:
         """Test that reap handles errors from fetch_data gracefully."""
         reaper = MRMSReaper(time=datetime(2026, 1, 1))
         mocker.patch.object(reaper, "fetch_data", side_effect=APIError("S3 fetch failed"))
-        
+
         with pytest.raises(ReaperError, match="MRMS reaping failed"):
             reaper.reap()
