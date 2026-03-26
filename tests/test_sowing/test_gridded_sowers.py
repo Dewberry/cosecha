@@ -10,6 +10,7 @@ import pytest
 import xarray as xr
 
 from cosecha.data_models import HarvestedData
+from cosecha.reaping.utils import apply_gridded_transformations
 from cosecha.sowing.exceptions import SowerError
 from cosecha.sowing.icechunk import IceChunkSower
 from cosecha.sowing.netcdf import NetCDFSower
@@ -102,6 +103,20 @@ class TestZarrSower:
         sower = ZarrSower(output_dir=temp_output_dir)
         path = sower.sow(harvested_data)
         assert isinstance(path, str)
+
+    def test_sow_with_transformations(self, temp_output_dir, harvested_data):
+        """Test that transformations can be applied manually before sowing."""
+        sower = ZarrSower(output_dir=temp_output_dir)
+        transformations = {"unit_conversions": {"temp": 1.8}}
+        transformed_data = apply_gridded_transformations(harvested_data, transformations)
+        
+        path = sower.sow(transformed_data)
+        
+        assert Path(path).exists()
+        
+        # Verify transformation (temp should be multiplied by 1.8)
+        ds = xr.open_zarr(path)
+        assert ds["temp"].values[0, 0] == 20.0 * 1.8  # original was 20.0
 
 class TestIceChunkSower:
     """Test IceChunkSower implementation."""
@@ -292,3 +307,21 @@ class TestNetCDFSower:
         sower = NetCDFSower(output_dir=temp_output_dir)
         path = sower.sow(harvested_data)
         assert isinstance(path, str)
+
+    def test_sow_with_transformations_keep_variables(self, temp_output_dir, harvested_data):
+        """Test that variable selection transformations can be applied before sowing."""
+        sower = NetCDFSower(output_dir=temp_output_dir)
+        transformations = {"keep_variables": ["precip"]}
+        transformed_data = apply_gridded_transformations(harvested_data, transformations)
+        
+        path = sower.sow(transformed_data)
+        
+        assert Path(path).exists()
+        
+        # Verify transformation (temp should not exist)
+        try:
+            ds = xr.open_dataset(path, engine="h5netcdf")
+            assert "precip" in ds.data_vars
+            assert "temp" not in ds.data_vars
+        finally:
+            ds.close()

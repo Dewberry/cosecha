@@ -10,6 +10,7 @@ import pytest
 import xarray as xr
 
 from cosecha.data_models import HarvestedData
+from cosecha.reaping.utils import apply_ts_transformations
 from cosecha.sowing.exceptions import SowerError
 from cosecha.sowing.iceberg import IcebergSower
 from cosecha.sowing.parquet import ParquetSower
@@ -104,6 +105,20 @@ class TestParquetSower:
         sower = ParquetSower(output_dir=temp_output_dir)
         path = sower.sow(harvested_data)
         assert isinstance(path, str)
+
+    def test_sow_with_transformations(self, temp_output_dir, harvested_data):
+        """Test that transformations can be applied manually before sowing."""
+        sower = ParquetSower(output_dir=temp_output_dir)
+        transformations = {"unit_conversions": {"value": 2.0}}
+        transformed_data = apply_ts_transformations(harvested_data, transformations)
+        
+        path = sower.sow(transformed_data)
+        
+        assert Path(path).exists()
+        
+        # Verify transformation (value should be multiplied by 2.0)
+        df_result = pd.read_parquet(path)
+        assert df_result["value"].iloc[0] == 100.0 * 2.0  # original was 100.0
 
 
 @pytest.mark.requires_iceberg
