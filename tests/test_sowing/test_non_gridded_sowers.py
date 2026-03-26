@@ -13,7 +13,6 @@ from cosecha.data_models import HarvestedData
 from cosecha.sowing.exceptions import SowerError
 from cosecha.sowing.iceberg import IcebergSower
 from cosecha.sowing.parquet import ParquetSower
-from cosecha.sowing.utils import apply_ts_transformations
 
 
 class TestParquetSower:
@@ -92,37 +91,6 @@ class TestParquetSower:
         with pytest.raises(SowerError, match="only supports time-series"):
             sower._validate_input(data)
 
-    def test_apply_transformations_none(self, temp_output_dir, sample_dataframe):
-        """Test apply_transformations with None."""
-        ParquetSower(output_dir=temp_output_dir)
-        result = apply_ts_transformations(sample_dataframe, transformations=None)
-        pd.testing.assert_frame_equal(result, sample_dataframe)
-
-    def test_apply_unit_conversions(self, temp_output_dir, sample_dataframe):
-        """Test unit conversion transformation."""
-        ParquetSower(output_dir=temp_output_dir)
-        result = apply_ts_transformations(
-            sample_dataframe, transformations={"unit_conversions": {"value": 0.5}}
-        )
-        assert (result["value"] == sample_dataframe["value"] * 0.5).all()
-
-    def test_apply_column_rename(self, temp_output_dir, sample_dataframe):
-        """Test column rename transformation."""
-        ParquetSower(output_dir=temp_output_dir)
-        result = apply_ts_transformations(
-            sample_dataframe, transformations={"rename_columns": {"value": "discharge_cms"}}
-        )
-        assert "discharge_cms" in result.columns
-        assert "value" not in result.columns
-
-    def test_apply_filter_columns(self, temp_output_dir, sample_dataframe):
-        """Test column filtering transformation."""
-        ParquetSower(output_dir=temp_output_dir)
-        result = apply_ts_transformations(
-            sample_dataframe, transformations={"filter_columns": ["time", "value"]}
-        )
-        assert set(result.columns) == {"time", "value"}
-
     def test_sow_creates_parquet_file(self, temp_output_dir, harvested_data):
         """Test that sow creates a Parquet file."""
         sower = ParquetSower(output_dir=temp_output_dir)
@@ -136,12 +104,6 @@ class TestParquetSower:
         sower = ParquetSower(output_dir=temp_output_dir)
         path = sower.sow(harvested_data)
         assert isinstance(path, str)
-
-    def test_sow_with_transformations(self, temp_output_dir, harvested_data):
-        """Test sow with transformations."""
-        sower = ParquetSower(output_dir=temp_output_dir)
-        path = sower.sow(harvested_data, transformations={"unit_conversions": {"value": 0.5}})
-        assert Path(path).exists()
 
 
 @pytest.mark.requires_iceberg

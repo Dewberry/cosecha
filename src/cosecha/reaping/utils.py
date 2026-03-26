@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import pandas as pd
 import xarray as xr
 
 from cosecha.sowing.exceptions import SowerError
+from cosecha.data_models import HarvestedData
 
 logger = logging.getLogger(__name__)
 
 
 def apply_gridded_transformations(
-    ds: xr.Dataset, transformations: Optional[dict[str, Any]] = None
-) -> xr.Dataset:
+    data: Union[HarvestedData, xr.Dataset], transformations: Optional[dict[str, Any]] = None
+) -> Union[HarvestedData, xr.Dataset]:
     """Apply optional transformations to the xarray Dataset.
 
     Supported transformations:
@@ -26,15 +27,15 @@ def apply_gridded_transformations(
 
     Parameters
     ----------
-    ds : xr.Dataset
-        The Dataset to transform.
+    data : Union[HarvestedData, xr.Dataset]
+        The harvested data or Dataset to transform.
     transformations : dict[str, Any], optional
         Dictionary of transformations to apply. If None, no transformations.
 
     Returns
     -------
-    xr.Dataset
-        Transformed Dataset.
+    Union[HarvestedData, xr.Dataset]
+        Harvested data or Dataset with transformations applied.
 
     Raises
     ------
@@ -42,9 +43,11 @@ def apply_gridded_transformations(
         If transformations reference non-existent variables or coordinates.
     """
     if not transformations:
-        return ds
+        return data
 
-    result = ds.copy()
+    is_harvested = isinstance(data, HarvestedData)
+    dataset = data.data if is_harvested else data
+    result = dataset.copy()
 
     # Spatial subset
     if "spatial_subset" in transformations:
@@ -113,6 +116,8 @@ def apply_gridded_transformations(
     if "variable_rename" in transformations:
         renames = transformations["variable_rename"]
         result = result.rename(renames)
+        if is_harvested:
+            data.variable_names = [renames.get(var, var) for var in data.variable_names]
         logger.debug(f"Renamed variables: {renames}")
 
     # Keep specific variables
@@ -125,13 +130,19 @@ def apply_gridded_transformations(
                 f"Available: {list(result.data_vars)}"
             )
         result = result[list(vars_to_keep)]
+        if is_harvested:
+            data.variable_names = [var for var in data.variable_names if var in vars_to_keep]
         logger.debug(f"Kept variables: {vars_to_keep}")
+
+    if is_harvested:
+        data.data = result
+        return data
 
     return result
 
 def apply_ts_transformations(
-    df: pd.DataFrame, transformations: Optional[dict[str, Any]] = None
-) -> pd.DataFrame:
+    data: Union[HarvestedData, pd.DataFrame], transformations: Optional[dict[str, Any]] = None
+) -> Union[HarvestedData, pd.DataFrame]:
     """Apply optional transformations to the DataFrame.
 
     Supported transformations:
@@ -141,15 +152,15 @@ def apply_ts_transformations(
 
     Parameters
     ----------
-    df : pd.DataFrame
-        The DataFrame to transform.
+    data : Union[HarvestedData, pd.DataFrame]
+        The harvested data or DataFrame to transform.
     transformations : dict[str, Any], optional
         Dictionary of transformations to apply. If None, no transformations.
 
     Returns
     -------
-    pd.DataFrame
-        Transformed DataFrame.
+    Union[HarvestedData, pd.DataFrame]
+        Transformed harvested data or DataFrame.
 
     Raises
     ------
@@ -157,8 +168,10 @@ def apply_ts_transformations(
         If transformations reference non-existent columns.
     """
     if not transformations:
-        return df
+        return data
 
+    is_harvested = isinstance(data, HarvestedData)
+    df = data.data if is_harvested else data
     result = df.copy()
 
     # Apply unit conversions
@@ -191,4 +204,7 @@ def apply_ts_transformations(
         result = result[cols]
         logger.debug(f"Filtered to columns: {cols}")
 
+    if is_harvested:
+        data.data = result
+        return data
     return result

@@ -16,7 +16,6 @@ import xarray as xr
 from cosecha.data_models import HarvestedData
 from cosecha.sowing.base import DataSower
 from cosecha.sowing.exceptions import SowerError, WriteError
-from cosecha.sowing.utils import apply_gridded_transformations
 
 __all__ = ["ZarrSower"]
 
@@ -150,9 +149,6 @@ class ZarrSower:
 
             # Get Dataset
             ds = data.data
-
-            # Apply transformations
-            ds = apply_gridded_transformations(ds, transformations)
 
             # Generate output store name
             source_clean = data.source_name.lower().replace(" ", "_")

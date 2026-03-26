@@ -27,6 +27,7 @@ from cosecha import (
     ZarrSower,
 )
 from cosecha.reaping.exceptions import APIError
+from cosecha.reaping.utils import apply_gridded_transformations, apply_ts_transformations
 from cosecha.sowing.exceptions import SowerError
 
 
@@ -117,27 +118,27 @@ class TestTimeSeriesWorkflow:
 
     def test_nwis_to_parquet_with_unit_conversion(self, temp_output_dir, sample_streamflow_data):
         """Test NWIS → Parquet with unit conversion transformation."""
-        reaper = MagicMock()
-        reaper.reap = MagicMock(
-            return_value=HarvestedData(
-                data=sample_streamflow_data,
-                source_name="USGS_Streamflow",
-                timestamp=datetime(2026, 1, 31, 12, 0, 0),
-                variable_names=["discharge_cfs"],
-                metadata={"site_ids": ["01018035"]},
-            )
+        harvested = HarvestedData(
+            data=sample_streamflow_data,
+            source_name="USGS_Streamflow",
+            timestamp=datetime(2026, 1, 31, 12, 0, 0),
+            variable_names=["discharge_cfs"],
+            metadata={"site_ids": ["01018035"]},
         )
+        cfs_to_cms = 0.0283168
+        transformations={"unit_conversions": {"discharge_cfs": cfs_to_cms}}
+        transformed_harvested = apply_ts_transformations(harvested, transformations)
+        
+        reaper = MagicMock()
+        reaper.reap = MagicMock(return_value=transformed_harvested)
 
         sower = ParquetSower(output_dir=temp_output_dir)
         pipeline = HarvestPipeline()
         pipeline.add_reaper(reaper)
         pipeline.add_sower(sower)
 
-        # Execute with transformation (cfs to m³/s)
-        cfs_to_cms = 0.0283168
-        paths = pipeline.execute(
-            transformations={"unit_conversions": {"discharge_cfs": cfs_to_cms}}
-        )
+        # Execute
+        paths = pipeline.execute()
 
         # Verify transformation was applied
         written_df = pd.read_parquet(paths[0])
@@ -148,24 +149,26 @@ class TestTimeSeriesWorkflow:
 
     def test_nwis_to_parquet_with_column_filtering(self, temp_output_dir, sample_streamflow_data):
         """Test NWIS → Parquet with column filtering."""
-        reaper = MagicMock()
-        reaper.reap = MagicMock(
-            return_value=HarvestedData(
-                data=sample_streamflow_data,
-                source_name="USGS_Streamflow",
-                timestamp=datetime(2026, 1, 31, 12, 0, 0),
-                variable_names=["discharge_cfs"],
-                metadata={"site_ids": ["01018035"]},
-            )
+        harvested = HarvestedData(
+            data=sample_streamflow_data,
+            source_name="USGS_Streamflow",
+            timestamp=datetime(2026, 1, 31, 12, 0, 0),
+            variable_names=["discharge_cfs"],
+            metadata={"site_ids": ["01018035"]},
         )
+        transformations={"filter_columns": ["time", "discharge_cfs"]}
+        transformed_harvested = apply_ts_transformations(harvested, transformations)
+        
+        reaper = MagicMock()
+        reaper.reap = MagicMock(return_value=transformed_harvested)
 
         sower = ParquetSower(output_dir=temp_output_dir)
         pipeline = HarvestPipeline()
         pipeline.add_reaper(reaper)
         pipeline.add_sower(sower)
 
-        # Execute with column filtering
-        paths = pipeline.execute(transformations={"filter_columns": ["time", "discharge_cfs"]})
+        # Execute
+        paths = pipeline.execute()
 
         # Verify only selected columns remain
         written_df = pd.read_parquet(paths[0])
@@ -270,28 +273,28 @@ class TestGriddedWorkflow:
 
     def test_hrrr_to_netcdf_with_unit_conversion(self, temp_output_dir, sample_hrrr_data):
         """Test HRRR → NetCDF with unit conversion."""
-        reaper = MagicMock()
-        reaper.reap = MagicMock(
-            return_value=HarvestedData(
-                data=sample_hrrr_data,
-                source_name="HRRR_Forecast",
-                timestamp=datetime(2026, 1, 20, 0, 0, 0),
-                variable_names=["precip", "temp"],
-                metadata={"model": "HRRR"},
-            )
+        harvested = HarvestedData(
+            data=sample_hrrr_data,
+            source_name="HRRR_Forecast",
+            timestamp=datetime(2026, 1, 20, 0, 0, 0),
+            variable_names=["precip", "temp"],
+            metadata={"model": "HRRR"},
         )
+        transformations={
+            "unit_conversions": {"temp": 1.8}  # °C to °F scale conversion factor
+        }
+        transformed_harvested = apply_gridded_transformations(harvested, transformations)
+        
+        reaper = MagicMock()
+        reaper.reap = MagicMock(return_value=transformed_harvested)
 
         sower = NetCDFSower(output_dir=temp_output_dir)
         pipeline = HarvestPipeline()
         pipeline.add_reaper(reaper)
         pipeline.add_sower(sower)
 
-        # Execute with transformation (temperature: Celsius to Fahrenheit)
-        paths = pipeline.execute(
-            transformations={
-                "unit_conversions": {"temp": 1.8}  # °C to °F scale conversion factor
-            }
-        )
+        # Execute
+        paths = pipeline.execute()
 
         # Verify transformation
         written_ds = xr.open_dataset(paths[0], engine="h5netcdf")
@@ -301,16 +304,18 @@ class TestGriddedWorkflow:
 
     def test_hrrr_to_netcdf_with_variable_selection(self, temp_output_dir, sample_hrrr_data):
         """Test HRRR → NetCDF with variable selection."""
-        reaper = MagicMock()
-        reaper.reap = MagicMock(
-            return_value=HarvestedData(
-                data=sample_hrrr_data,
-                source_name="HRRR_Forecast",
-                timestamp=datetime(2026, 1, 20, 0, 0, 0),
-                variable_names=["precip", "temp"],
-                metadata={"model": "HRRR"},
-            )
+        harvested = HarvestedData(
+            data=sample_hrrr_data,
+            source_name="HRRR_Forecast",
+            timestamp=datetime(2026, 1, 20, 0, 0, 0),
+            variable_names=["precip", "temp"],
+            metadata={"model": "HRRR"},
         )
+        transformations={"keep_variables": ["precip"]}
+        transformed_harvested = apply_gridded_transformations(harvested, transformations)
+        
+        reaper = MagicMock()
+        reaper.reap = MagicMock(return_value=transformed_harvested)
 
         sower = NetCDFSower(output_dir=temp_output_dir)
         pipeline = HarvestPipeline()
@@ -318,7 +323,7 @@ class TestGriddedWorkflow:
         pipeline.add_sower(sower)
 
         # Execute keeping only precip
-        paths = pipeline.execute(transformations={"keep_variables": ["precip"]})
+        paths = pipeline.execute()
 
         # Verify only precip is in output
         written_ds = xr.open_dataset(paths[0], engine="h5netcdf")

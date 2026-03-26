@@ -17,7 +17,6 @@ import pyarrow.parquet as pq
 from cosecha.data_models import HarvestedData
 from cosecha.sowing.base import DataSower
 from cosecha.sowing.exceptions import SowerError, WriteError
-from cosecha.sowing.utils import apply_ts_transformations
 
 __all__ = ["ParquetSower"]
 
@@ -94,15 +93,13 @@ class ParquetSower:
             )
         logger.debug(f"Input validation passed for source: {data.source_name}")
 
-    def sow(self, data: HarvestedData, transformations: Optional[dict[str, Any]] = None) -> str:
+    def sow(self, data: HarvestedData) -> str:
         """Write HarvestedData to Parquet file.
 
         Parameters
         ----------
         data : HarvestedData
             The harvested data to write.
-        transformations : dict[str, Any], optional
-            Optional transformations to apply before writing.
 
         Returns
         -------
@@ -120,13 +117,8 @@ class ParquetSower:
         --------
         >>> sower = ParquetSower("./output")
         >>> harvested = reaper.reap()
-        >>> # Write with unit conversion
-        >>> path = sower.sow(
-        ...     harvested,
-        ...     transformations={
-        ...         'unit_conversions': {'discharge_cfs': 0.0283168}  # cfs to cms
-        ...     }
-        ... )
+        >>> path = sower.sow(harvested)
+        >>> print(f"Data written to: {path}")
         """
         logger.info(f"Sowing {data.source_name} data to Parquet: " f"{len(data.data)} rows")
 
@@ -136,9 +128,6 @@ class ParquetSower:
 
             # Get DataFrame
             df = data.data
-
-            # Apply transformations
-            df = apply_ts_transformations(df, transformations)
 
             # Generate output filename from metadata
             source_clean = data.source_name.lower().replace(" ", "_")

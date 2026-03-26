@@ -15,6 +15,7 @@ from dataretrieval import nwis as dr_nwis
 
 from cosecha.data_models import HarvestedData, validate_date_range
 from cosecha.reaping.exceptions import APIError, DateRangeError, InvalidSiteError
+from cosecha.reaping.utils import apply_ts_transformations
 
 __all__ = [
     "USGSStreamflowReaper",
@@ -56,11 +57,13 @@ class _USGSNWISReaper:
         end_date: str,
         parameter_code: str,
         stat_code: str = "00003",
+        transformations: dict[str, Any] | None = None,
     ) -> None:
         """Initialize USGS NWIS reaper."""
         self.site_ids = site_ids
         self.start_date = start_date
         self.end_date = end_date
+        self.transformations = transformations
         self.parameter_code = parameter_code
         self.stat_code = stat_code
         self._validate_params()
@@ -186,7 +189,9 @@ class _USGSNWISReaper:
             variable_names=[self._get_variable_name()],
             metadata=metadata,
         )
-
+        if self.transformations:
+            harvested = apply_ts_transformations(harvested, self.transformations)
+            
         logger.info(f"Successfully reaped {len(df)} records from {len(self.site_ids)} site(s)")
         return harvested
 
@@ -352,6 +357,8 @@ class USGSPrecipReaper(_USGSNWISReaper):
         Start date in ISO 8601 format (YYYY-MM-DD).
     end_date : str
         End date in ISO 8601 format (YYYY-MM-DD).
+    transformations : dict[str, Any], optional
+        Optional transformations to apply to the data (e.g., renaming columns).
 
     Examples
     --------
@@ -359,6 +366,7 @@ class USGSPrecipReaper(_USGSNWISReaper):
     ...     site_ids=["01018035"],
     ...     start_date="2026-01-01",
     ...     end_date="2026-01-31",
+    ...     transformations={"rename_columns": {"00045": "precipitation"}}
     ... )
     >>> data = reaper.reap()
     """
@@ -368,6 +376,7 @@ class USGSPrecipReaper(_USGSNWISReaper):
         site_ids: list[str],
         start_date: str,
         end_date: str,
+        transformations: Optional[dict[str, Any]] = None,
     ) -> None:
         """Initialize precipitation reaper with parameter code 00045."""
         super().__init__(
@@ -377,6 +386,7 @@ class USGSPrecipReaper(_USGSNWISReaper):
             parameter_code="00045",  # Precipitation, inches
             stat_code="00006",  # Sum
         )
+        self.transformations = transformations
 
     def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
         """Fetch instantaneous precipitation data from NWIS.

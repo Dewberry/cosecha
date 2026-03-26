@@ -18,7 +18,6 @@ from pyiceberg.catalog import Catalog
 from cosecha.data_models import HarvestedData
 from cosecha.sowing.base import DataSower
 from cosecha.sowing.exceptions import SowerError, WriteError
-from cosecha.sowing.utils import apply_ts_transformations
 
 __all__ = ["IcebergSower"]
 
@@ -190,15 +189,13 @@ class IcebergSower:
             except Exception as e:
                 raise WriteError(f"Failed to create Iceberg table: {e}") from e
 
-    def sow(self, data: HarvestedData, transformations: Optional[dict[str, Any]] = None) -> str:
+    def sow(self, data: HarvestedData) -> str:
         """Write HarvestedData to Iceberg table.
 
         Parameters
         ----------
         data : HarvestedData
             The harvested data to write.
-        transformations : dict[str, Any], optional
-            Optional transformations to apply before writing.
 
         Returns
         -------
@@ -216,12 +213,8 @@ class IcebergSower:
         --------
         >>> sower = IcebergSower(warehouse_path="./data/iceberg")
         >>> harvested = reaper.reap()
-        >>> # Write with unit conversion
         >>> table_name = sower.sow(
-        ...     harvested,
-        ...     transformations={
-        ...         'unit_conversions': {'discharge_cfs': 0.0283168}
-        ...     }
+        ...     harvested
         ... )
         """
         logger.info(f"Sowing {data.source_name} data to Iceberg: " f"{len(data.data)} rows")
@@ -232,9 +225,6 @@ class IcebergSower:
 
             # Get DataFrame
             df = data.data
-
-            # Apply transformations
-            df = apply_ts_transformations(df, transformations)
 
             # Generate table name from source
             table_name = data.source_name.lower().replace(" ", "_")

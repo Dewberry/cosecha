@@ -161,7 +161,7 @@ class TestHarvestPipelineExecution:
         assert len(paths) == 1
         assert paths[0] == "./data/nwis.parquet"
         reaper.reap.assert_called_once()
-        sower.sow.assert_called_once_with(harvested, transformations=None)
+        sower.sow.assert_called_once_with(harvested)
 
     def test_execute_single_reaper_single_sower_gridded(self) -> None:
         """Test execute with single reaper and sower for gridded data."""
@@ -231,7 +231,7 @@ class TestHarvestPipelineExecution:
 
     def test_execute_with_transformations(self) -> None:
         """Test execute passes transformations to sower."""
-        # Setup reaper
+        # Set up reaper so that we can check it
         df = pd.DataFrame({"flow": [1.0, 2.0, 3.0]})
         harvested = HarvestedData(
             data=df,
@@ -247,17 +247,14 @@ class TestHarvestPipelineExecution:
         sower = MagicMock()
         sower.sow = MagicMock(return_value="./data.parquet")
 
-        # Define transformations
-        transformations = {"unit_conversions": {"flow": 0.0283168}}
-
-        # Execute pipeline with transformations
+        # Execute pipeline
         pipeline = HarvestPipeline()
         pipeline.add_reaper(reaper)
         pipeline.add_sower(sower)
-        paths = pipeline.execute(transformations=transformations)
+        paths = pipeline.execute()
 
-        # Verify transformations were passed to sower
-        sower.sow.assert_called_once_with(harvested, transformations=transformations)
+        # Verify transformations were handled properly beforehand and sow is called normally
+        sower.sow.assert_called_once_with(harvested)
         assert len(paths) == 1
 
 

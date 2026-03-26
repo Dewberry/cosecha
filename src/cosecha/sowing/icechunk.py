@@ -18,8 +18,6 @@ import icechunk
 from cosecha.data_models import HarvestedData
 from cosecha.sowing.base import DataSower
 from cosecha.sowing.exceptions import SowerError, WriteError
-from cosecha.sowing.utils import apply_gridded_transformations
-
 __all__ = ["IceChunkSower"]
 
 logger = logging.getLogger(__name__)
@@ -103,16 +101,13 @@ class IceChunkSower:
             )
         logger.debug(f"Input validation passed for source: {data.source_name}")
 
-    def sow(self, data: HarvestedData, transformations: Optional[dict[str, Any]] = None) -> str:
+    def sow(self, data: HarvestedData) -> str:
         """Write HarvestedData to IceChunk store.
 
         Parameters
         ----------
         data : HarvestedData
             The harvested data to write.
-        transformations : dict[str, Any], optional
-            Optional transformations to apply before writing.
-
         Returns
         -------
         str
@@ -130,15 +125,7 @@ class IceChunkSower:
         >>> sower = IceChunkSower("./output")
         >>> harvested = reaper.reap()
         >>> # Write with spatial subsetting
-        >>> path = sower.sow(
-        ...     harvested,
-        ...     transformations={
-        ...         'spatial_subset': {
-        ...             'lon_bounds': [-100, -95],
-        ...             'lat_bounds': [30, 35]
-        ...         }
-        ...     }
-        ... )
+        >>> path = sower.sow(harvested)
         """
         logger.info(
             f"Sowing {data.source_name} data to IceChunk: "
@@ -151,11 +138,6 @@ class IceChunkSower:
 
             # Get Dataset
             ds = data.data
-            
-            assert isinstance(ds, xr.Dataset)
-
-            # Apply transformations
-            ds = apply_gridded_transformations(ds, transformations)
 
             source_clean = re.sub(r'[^a-z0-9_]', '_', data.source_name.lower()).strip('_')
             timestamp_str = data.timestamp.strftime("%Y%m%d_%H%M%S")

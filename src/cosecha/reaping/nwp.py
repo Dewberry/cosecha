@@ -15,6 +15,7 @@ import xarray as xr
 from cosecha.data_models import HarvestedData
 from cosecha.reaping.base import GriddedReaper
 from cosecha.reaping.exceptions import APIError, DateRangeError, ReaperError
+from cosecha.reaping.utils import apply_gridded_transformations
 
 __all__ = ["NWPReaper"]
 
@@ -79,6 +80,7 @@ class NWPReaper:
         variable: Optional[str] = "hourly_precip",
         search_str: Optional[str] = None,
         product: Optional[str] = None,
+        transformations: Optional[dict[str, Any]] = None,
     ) -> None:
         """Initialize NWPReaper.
 
@@ -97,6 +99,8 @@ class NWPReaper:
             Exact GRIB regex search string to use. Overrides the `variable` lookup if provided.
         product: str, optional
             Specific Herbie model product string.
+        transformations: dict[str, Any], optional
+            Optional transformations to apply to the raw data before returning.
 
         Raises
         ------
@@ -128,6 +132,7 @@ class NWPReaper:
                 f"Or provide a custom search_str."
             )
         self.product = product
+        self.transformations = transformations
 
         # Validate parameters
         self._validate_params()
@@ -191,7 +196,7 @@ class NWPReaper:
 
         try:
             from herbie import FastHerbie
-
+            
             logger.info(
                 f"Fetching HRRR data: model={self.model}, init_time={self.init_time}, "
                 f"forecast_hours={self.forecast_hours}"
@@ -204,7 +209,6 @@ class NWPReaper:
             else:
                 h = FastHerbie([self.init_time], model=self.model, product=self.product)
 
-            # Fetch all variables; filtering is a sower concern
             ds = h.xarray(search=self.search_str)
 
             ds.herbie.to_180()  # Convert longitudes to -180 to 180 for easier donwnstream processing
@@ -270,6 +274,9 @@ class NWPReaper:
                 variable_names=variable_names,
                 metadata=metadata,
             )
+            
+            if self.transformations:
+                harvested = apply_gridded_transformations(harvested, self.transformations)
 
             logger.info(
                 f"Successfully reaped HRRR data: {len(variable_names)} variables, "

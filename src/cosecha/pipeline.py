@@ -178,28 +178,13 @@ class HarvestPipeline:
         self.sowers.append(sower)
         logger.debug(f"Added sower: {type(sower).__name__}")
 
-    def execute(
-        self,
-        transformations: dict[str, Any] | None = None,
-    ) -> list[str]:
-        """Execute the harvest pipeline: reap → transform → sow.
+    def execute(self) -> list[str]:
+        """Execute the harvest pipeline: reap → sow.
 
         Orchestrates the complete data harvesting workflow:
         1. Call reap() on each registered reaper
-        2. Apply optional transformations to harvested data
-        3. Call sow() on each registered sower with transformed data
-        4. Return list of paths/table names from all sowers
-
-        Parameters
-        ----------
-        transformations : dict[str, Any] | None, optional
-            Optional transformations to apply to harvested data before
-            sowing. Exact format depends on the sower implementations.
-            Common transformations include:
-            - 'unit_conversions': dict of column → conversion_factor
-            - 'rename_columns': dict of old_name → new_name
-            - 'filter_columns': list of columns to keep
-            By default None (no transformations).
+        2. Call sow() on each registered sower with harvested data
+        3. Return list of paths/table names from all sowers
 
         Returns
         -------
@@ -238,13 +223,6 @@ class HarvestPipeline:
         >>> pipeline.add_reaper(reaper)
         >>> pipeline.add_sower(sower)
         >>> paths = pipeline.execute()
-
-        Execute with unit conversion:
-
-        >>> transformations = {
-        ...     "unit_conversions": {"flow_cfs": 0.0283168}
-        ... }
-        >>> paths = pipeline.execute(transformations=transformations)
         """
         if not self.reapers:
             raise ValueError("Pipeline has no reapers configured. Use add_reaper() first.")
@@ -287,7 +265,7 @@ class HarvestPipeline:
                         f"source={data.source_name}, "
                         f"variables={len(data.variable_names)}"
                     )
-                    path = sower.sow(data, transformations=transformations)
+                    path = sower.sow(data)
                     paths.append(path)
                     logger.info(f"Successfully sowed data to {type(sower).__name__}: {path}")
                 except SowerError as e:

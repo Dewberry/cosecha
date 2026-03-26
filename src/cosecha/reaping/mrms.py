@@ -12,10 +12,13 @@ from datetime import UTC, datetime, timedelta
 from typing import Optional
 
 import xarray as xr
+import s3fs
 
 from cosecha.data_models import HarvestedData
 from cosecha.reaping.base import GriddedReaper
 from cosecha.reaping.exceptions import APIError, DateRangeError, ReaperError
+from cosecha.reaping.utils import apply_gridded_transformations
+
 
 __all__ = ["MRMSReaper"]
 
@@ -37,6 +40,8 @@ class MRMSReaper:
         End time for fetching.
     time : datetime | None
         Single time for fetching.
+    transformations : dict[str, Any] | None
+        Optional transformations to apply to the raw data before returning.
     """
 
     def __init__(
@@ -45,6 +50,7 @@ class MRMSReaper:
         time: Optional[datetime] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
+        transformations: Optional[dict[str, Any]] = None,
     ) -> None:
         """Initialize MRMSReaper.
 
@@ -63,10 +69,10 @@ class MRMSReaper:
         self.time = time
         self.start_time = start_time
         self.end_time = end_time
+        self.transformations = transformations
 
         self._validate_params()
 
-        import s3fs
         self.aws = s3fs.S3FileSystem(anon=True, config_kwargs={"connect_timeout": 30, "read_timeout": 60})
 
     def _validate_params(self) -> None:
@@ -157,15 +163,18 @@ class MRMSReaper:
                 
                 mrms_da = mrms_da.expand_dims("time")
                 mrms_da = mrms_da.sortby("latitude")
-                data_arrays.append(mrms_da)
+                
+                mrms_ds = mrms_da.to_dataset(name=self.variable)
+                if self.transformations:
+                    mrms_ds = apply_gridded_transformations(mrms_ds, self.transformations)
+                data_arrays.append(mrms_ds)
 
         if not data_arrays:
             raise APIError("No data could be successfully fetched and processed.")
         elif len(data_arrays) == 1:
-            return data_arrays[0].to_dataset(name=self.variable)
+            return data_arrays[0]
         else:
-            merged_da = xr.concat(data_arrays, dim="time", coords="minimal")
-            return merged_da.to_dataset(name=self.variable)
+            return xr.concat(data_arrays, dim="time")
 
 
     def reap(self) -> HarvestedData:

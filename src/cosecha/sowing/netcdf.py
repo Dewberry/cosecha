@@ -16,7 +16,6 @@ import xarray as xr
 from cosecha.data_models import HarvestedData
 from cosecha.sowing.base import DataSower
 from cosecha.sowing.exceptions import SowerError, WriteError
-from cosecha.sowing.utils import apply_gridded_transformations
 
 __all__ = ["NetCDFSower"]
 
@@ -118,7 +117,6 @@ class NetCDFSower:
     def sow(
         self,
         data: HarvestedData,
-        transformations: Optional[dict[str, Any]] = None,
     ) -> str:
         """Write harvested gridded data to NetCDF file.
 
@@ -126,8 +124,6 @@ class NetCDFSower:
         ----------
         data : HarvestedData
             The harvested gridded data to write.
-        transformations : dict[str, Any] | None, optional
-            Optional transformations to apply before writing. By default None.
 
         Returns
         -------
@@ -145,10 +141,7 @@ class NetCDFSower:
             self._validate_input(data)
 
             # Transform if needed
-            ds_to_transform = data.data
-            import typing
-            ds_to_transform = typing.cast(xr.Dataset, ds_to_transform)
-            ds = apply_gridded_transformations(ds_to_transform, transformations=transformations)
+            ds = data.data
 
             # Construct filename from source name and timestamp
             filename = (
