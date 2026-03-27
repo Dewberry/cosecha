@@ -42,6 +42,10 @@ dependencies = [
   "xarray>=2025.11",
   "zarr>=3",
   "sqlalchemy",
+  "h5netcdf>=1.2",
+  "h5py>=3.0",
+  "s3fs",
+  "cfgrib",
 ]
 optional-dependencies.dev = [
   "ipykernel",
@@ -67,16 +71,8 @@ optional-dependencies.lint = [
   "codespell",
   "pre-commit",
 ]
-optional-dependencies.netcdf = [
-  "h5netcdf>=1.2",
-  "h5py>=3.0",
-]
 optional-dependencies.nwp = [
   "herbie-data>=2026.3.0",
-]
-optional-dependencies.mrms = [
-  "s3fs",
-  "cfgrib",
 ]
 optional-dependencies.test = [
   "coverage[toml]",
@@ -277,9 +273,9 @@ notebook_metadata_filter = "kernelspec,jupytext"
 cell_metadata_filter = "-all"
 
 [tool.pixi.environments]
-dev = { features = [ "dev", "test", "lint", "typecheck", "docs", "netcdf", "nwp", "mrms", "py314" ] }
-test311 = { features = [ "test", "netcdf", "nwp", "mrms", "py311" ] }
-test314 = { features = [ "test", "netcdf", "nwp", "mrms", "py314" ] }
+dev = { features = [ "dev", "test", "lint", "typecheck", "docs", "nwp", "py314" ] }
+test311 = { features = [ "test", "nwp", "py311" ] }
+test314 = { features = [ "test", "nwp", "py314" ] }
 typecheck = { features = [ "typecheck", "py314" ] }
 lint = { features = [ "lint", "py314" ], no-default-feature = true }
 docs = { features = [ "docs", "py314" ] }
