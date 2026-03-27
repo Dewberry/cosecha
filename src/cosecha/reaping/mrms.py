@@ -63,7 +63,7 @@ class MRMSReaper:
         self.cache_data = cache_data
         
         # tempdir cache directory
-        self.cache_dir = os.path.join(tempfile.gettempdir(), "rms_cache")
+        self.cache_dir = os.path.join(tempfile.gettempdir(), "mrms_cache")
 
         self._validate_params()
 
