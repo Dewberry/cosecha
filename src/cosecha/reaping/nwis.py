@@ -345,31 +345,7 @@ class USGSStageReaper(_USGSNWISReaper):
 
 
 class USGSPrecipReaper(_USGSNWISReaper):
-    """Reaper for USGS precipitation data.
-
-    Harvests daily accumulated precipitation from NWIS.
-
-    Parameters
-    ----------
-    site_ids : list[str]
-        List of USGS site IDs.
-    start_date : str
-        Start date in ISO 8601 format (YYYY-MM-DD).
-    end_date : str
-        End date in ISO 8601 format (YYYY-MM-DD).
-    transformations : dict[str, Any], optional
-        Optional transformations to apply to the data (e.g., renaming columns).
-
-    Examples
-    --------
-    >>> reaper = USGSPrecipReaper(
-    ...     site_ids=["01018035"],
-    ...     start_date="2026-01-01",
-    ...     end_date="2026-01-31",
-    ...     transformations={"rename_columns": {"00045": "precipitation"}}
-    ... )
-    >>> data = reaper.reap()
-    """
+    """Reaper for USGS precipitation data."""
 
     def __init__(
         self,
@@ -378,7 +354,29 @@ class USGSPrecipReaper(_USGSNWISReaper):
         end_date: str,
         transformations: Optional[dict[str, Any]] = None,
     ) -> None:
-        """Initialize precipitation reaper with parameter code 00045."""
+        """Harvests daily accumulated precipitation from NWIS.
+
+        Parameters
+        ----------
+        site_ids : list[str]
+            List of USGS site IDs.
+        start_date : str
+            Start date in ISO 8601 format (YYYY-MM-DD).
+        end_date : str
+            End date in ISO 8601 format (YYYY-MM-DD).
+        transformations : dict[str, Any], optional
+            Optional transformations to apply to the data (e.g., renaming columns).
+
+        Examples
+        --------
+        >>> reaper = USGSPrecipReaper(
+        ...     site_ids=["01018035"],
+        ...     start_date="2026-01-01",
+        ...     end_date="2026-01-31",
+        ...     transformations={"rename_columns": {"00045": "precipitation"}}
+        ... )
+        >>> data = reaper.reap()
+        """
         super().__init__(
             site_ids=site_ids,
             start_date=start_date,

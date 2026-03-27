@@ -39,38 +39,7 @@ NWP_SEARCH_STRINGS = {
 }
 
 class NWPReaper:
-    """Fetch NOAA Numerical Weather Prediction (NWP) forecast data.
-
-    This reaper fetches raw NWP data without applying transformations; transformations
-    (unit conversion, spatial subsetting, etc.) are handled by sowers.
-
-    Attributes
-    ----------
-    model : str
-        NWP model name (default: 'hrrr').
-    init_time : str
-        Model initialization time in YYYYMMDDHH format or datetime string.
-    forecast_hours : list[int] or range
-        Forecast hours to request (e.g., [1, 6, 12] or range(1, 19)).
-
-    Examples
-    --------
-    >>> from cosecha import NWPReaper
-    >>> reaper = NWPReaper(
-    ...     init_time="2026-01-01 00:00",
-    ...     forecast_hours=range(1, 7)  # 1-6 hour forecasts
-    ... )
-    >>> harvested = reaper.reap()
-    >>> print(f"Fetched {len(harvested.data.data_vars)} variables")
-    >>> print(f"Grid dimensions: {harvested.data.dims}")
-
-    Notes
-    -----
-    - Requires herbie >= 2.6.0 to be installed
-    - NWP data is publicly available from NOAA AWS buckets
-    - Raw data uses degrees east longitude; conversion to degrees west
-      and regional subsetting are handled by ZarrSower or custom pipelines
-    """
+    """Fetch NOAA Numerical Weather Prediction (NWP) forecast data."""
 
     def __init__(
         self,
@@ -113,7 +82,13 @@ class NWPReaper:
         --------
         >>> reaper = NWPReaper(
         ...     init_time="2026-01-01 00:00",
-        ...     forecast_hours=range(1, 19)
+        ...     forecast_hours=range(1, 19),
+        ...     model="hrrr",
+        ...     variable="hourly_precip",
+        ...     transformations={
+        ...         "spatial_subset": {'lat_bounds': (40, 50), 'lon_bounds': (-90, -80)},
+        ...         "variable_rename": {"tp": "total_precipitation"},
+        ...     }
         ... )
         """
         self.model = model
