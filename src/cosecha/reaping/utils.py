@@ -15,6 +15,57 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _apply_spatial_subset(result: xr.Dataset, subset: dict[str, Any]) -> xr.Dataset:
+    try:
+        if "lon_bounds" in subset or "lat_bounds" in subset:
+            # Handle naming variances (usually latitude/longitude for Herbie, lat/lon for generic)
+            lat_coord = result.latitude if hasattr(result, "latitude") else result.lat
+            lon_coord = result.longitude if hasattr(result, "longitude") else result.lon
+
+            if result.coords[lat_coord.name].ndim > 1 or result.coords[lon_coord.name].ndim > 1:
+                mask = None
+
+                if "lat_bounds" in subset:
+                    lat_min, lat_max = subset["lat_bounds"]
+                    lat_mask = (lat_coord >= lat_min) & (lat_coord <= lat_max)
+                    mask = lat_mask
+
+                if "lon_bounds" in subset:
+                    lon_min, lon_max = subset["lon_bounds"]
+                    lon_mask = (lon_coord >= lon_min) & (lon_coord <= lon_max)
+                    mask = lon_mask if mask is None else (mask & lon_mask)
+
+                if mask is not None:
+                    # Find the bounding box in y/x index space
+                    y_idx, x_idx = mask.values.nonzero()
+
+                    if len(y_idx) > 0 and len(x_idx) > 0:
+                        y_slice = slice(y_idx.min(), y_idx.max() + 1)
+                        x_slice = slice(x_idx.min(), x_idx.max() + 1)
+                        result = result.isel(y=y_slice, x=x_slice)
+                        logger.debug(
+                            f"Applied bounding box subset: lat={subset.get('lat_bounds')}, "
+                            f"lon={subset.get('lon_bounds')}"
+                        )
+                    else:
+                        logger.warning("Spatial subset resulted in an empty mask; skipping subset")
+            else:
+                result = result.sel(
+                    {
+                        lat_coord.name: slice(*subset.get("lat_bounds", (None, None))),
+                        lon_coord.name: slice(*subset.get("lon_bounds", (None, None))),
+                    }
+                )
+        else:
+            logger.warning("spatial_subset requires at least one of 'lon_bounds' or 'lat_bounds'")
+
+    except Exception as e:
+        raise SowerError(
+            f"Spatial subset failed: {e}. Available dimensions: {list(result.dims)}"
+        ) from e
+    return result
+
+
 def apply_gridded_transformations(
     data: HarvestedData | xr.Dataset, transformations: dict[str, Any] | None = None
 ) -> HarvestedData | xr.Dataset:
@@ -52,56 +103,7 @@ def apply_gridded_transformations(
 
     # Spatial subset
     if "spatial_subset" in transformations:
-        subset = transformations["spatial_subset"]
-        try:
-            if "lon_bounds" in subset or "lat_bounds" in subset:
-                # Handle naming variances (usually latitude/longitude for Herbie, lat/lon for generic)
-                lat_coord = result.latitude if hasattr(result, "latitude") else result.lat
-                lon_coord = result.longitude if hasattr(result, "longitude") else result.lon
-
-                if result.coords[lat_coord.name].ndim > 1 or result.coords[lon_coord.name].ndim > 1:
-                    mask = None
-
-                    if "lat_bounds" in subset:
-                        lat_min, lat_max = subset["lat_bounds"]
-                        lat_mask = (lat_coord >= lat_min) & (lat_coord <= lat_max)
-                        mask = lat_mask
-
-                    if "lon_bounds" in subset:
-                        lon_min, lon_max = subset["lon_bounds"]
-                        lon_mask = (lon_coord >= lon_min) & (lon_coord <= lon_max)
-                        mask = lon_mask if mask is None else (mask & lon_mask)
-
-                    if mask is not None:
-                        # Find the bounding box in y/x index space
-                        y_idx, x_idx = mask.values.nonzero()
-
-                        if len(y_idx) > 0 and len(x_idx) > 0:
-                            y_slice = slice(y_idx.min(), y_idx.max() + 1)
-                            x_slice = slice(x_idx.min(), x_idx.max() + 1)
-                            result = result.isel(y=y_slice, x=x_slice)
-                            logger.debug(
-                                f"Applied bounding box subset: lat={subset.get('lat_bounds')}, "
-                                f"lon={subset.get('lon_bounds')}"
-                            )
-                        else:
-                            logger.warning(
-                                "Spatial subset resulted in an empty mask; skipping subset"
-                            )
-                else:
-                    result = result.sel(
-                        {
-                            lat_coord.name: slice(*subset.get("lat_bounds", (None, None))),
-                            lon_coord.name: slice(*subset.get("lon_bounds", (None, None))),
-                        }
-                    )
-            else:
-                logger.warning(
-                    "spatial_subset requires at least one of 'lon_bounds' or 'lat_bounds'"
-                )
-
-        except Exception as e:
-            raise SowerError(f"Spatial subset failed: {e}. Available dimensions: {list(ds.dims)}")
+        result = _apply_spatial_subset(result, transformations["spatial_subset"])
 
     # Unit conversions
     if "unit_conversions" in transformations:

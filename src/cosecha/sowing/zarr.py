@@ -164,7 +164,7 @@ class ZarrSower:
         except SowerError:
             raise
         except Exception as e:
-            logger.exception(f"Failed to write Zarr: {e}")
+            logger.exception("Failed to write Zarr")
             raise WriteError(f"Zarr write failed: {e}") from e
 
 

@@ -248,11 +248,11 @@ class HarvestPipeline:
                     f"{len(data.variable_names)} variables, "
                     f"data type={data._data_type()}"
                 )
-            except ReaperError as e:
-                logger.exception(f"Reaper {type(reaper).__name__} failed: {e}")
+            except ReaperError:
+                logger.exception(f"Reaper {type(reaper).__name__} failed")
                 raise
             except Exception as e:
-                logger.exception(f"Unexpected error in reaper {type(reaper).__name__}: {e}")
+                logger.exception(f"Unexpected error in reaper {type(reaper).__name__}")
                 raise ReaperError(
                     f"Reaper {type(reaper).__name__} failed with unexpected error: {e}"
                 ) from e
@@ -269,11 +269,11 @@ class HarvestPipeline:
                     path = sower.sow(data)
                     paths.append(path)
                     logger.info(f"Successfully sowed data to {type(sower).__name__}: {path}")
-                except SowerError as e:
-                    logger.exception(f"Sower {type(sower).__name__} failed: {e}")
+                except SowerError:
+                    logger.exception(f"Sower {type(sower).__name__} failed")
                     raise
                 except Exception as e:
-                    logger.exception(f"Unexpected error in sower {type(sower).__name__}: {e}")
+                    logger.exception(f"Unexpected error in sower {type(sower).__name__}")
                     raise SowerError(
                         f"Sower {type(sower).__name__} failed with unexpected error: {e}"
                     ) from e

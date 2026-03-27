@@ -161,7 +161,7 @@ class IceChunkSower:
         except SowerError:
             raise
         except Exception as e:
-            logger.exception(f"Failed to write to IceChunk: {e}")
+            logger.exception("Failed to write to IceChunk")
             raise WriteError(f"IceChunk write failed: {e}") from e
 
 

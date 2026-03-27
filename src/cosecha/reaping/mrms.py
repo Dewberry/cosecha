@@ -7,9 +7,10 @@ from __future__ import annotations
 
 import gzip
 import logging
-import os
 import tempfile
+import time as time_mod
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import s3fs
@@ -78,7 +79,7 @@ class MRMSReaper:
         self.cache_data = cache_data
 
         # tempdir cache directory
-        self.cache_dir = os.path.join(tempfile.gettempdir(), "mrms_cache")
+        self.cache_dir = Path(tempfile.gettempdir()) / "mrms_cache"
 
         self._validate_params()
 
@@ -112,6 +113,58 @@ class MRMSReaper:
         ds["longitude"] = ((ds["longitude"] + 180) % 360) - 180
         return ds.sortby("longitude")
 
+    def _process_single_file(self, file: str) -> xr.Dataset | None:
+        # Deterministic filename for cache based on the S3 file path name
+        filename = file.rsplit("/", maxsplit=1)[-1].replace(".gz", ".grib2")
+        cached_file_path = self.cache_dir / filename
+
+        if self.cache_data and cached_file_path.exists():
+            logger.info(f"Loading cached MRMS file from {cached_file_path}")
+            data_in = xr.load_dataarray(cached_file_path, engine="cfgrib", decode_timedelta=True)
+        else:
+            logger.info(f"Fetching MRMS data from S3: {file}")
+
+            max_retries = 3
+            compressed_file = None
+            for attempt in range(max_retries):
+                try:
+                    with self.aws.open(file, "rb") as s3_file:
+                        compressed_file = s3_file.read()
+                    break
+                except Exception as e:
+                    logger.warning(f"Attempt {attempt + 1} failed: {e}")
+                    if attempt == max_retries - 1:
+                        logger.exception(f"Skipping {file} after {max_retries} failed attempts.")
+
+                    time_mod.sleep(2**attempt)
+
+            if not compressed_file:
+                return None
+
+            decompressed_data = gzip.decompress(compressed_file)
+
+            if self.cache_data:
+                with cached_file_path.open("wb") as f:
+                    f.write(decompressed_data)
+                data_in = xr.load_dataarray(
+                    cached_file_path, engine="cfgrib", decode_timedelta=True
+                )
+            else:
+                with tempfile.NamedTemporaryFile(suffix=".grib2") as f:
+                    f.write(decompressed_data)
+                    f.flush()
+                    data_in = xr.load_dataarray(f.name, engine="cfgrib", decode_timedelta=True)
+
+        mrms_da = self._to_180(data_in)
+        mrms_da = mrms_da.expand_dims("time")
+        mrms_da = mrms_da.sortby("latitude")
+
+        mrms_ds = mrms_da.to_dataset(name=self.variable)
+        if self.transformations:
+            mrms_ds = apply_gridded_transformations(mrms_ds, self.transformations)
+
+        return mrms_ds
+
     def fetch_data(self) -> xr.Dataset:
         """Fetch MRMS data from S3.
 
@@ -133,64 +186,12 @@ class MRMSReaper:
 
         data_arrays = []
         if self.cache_data:
-            os.makedirs(self.cache_dir, exist_ok=True)
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
 
         for file in files:
-            # Deterministic filename for cache based on the S3 file path name
-            filename = file.split("/")[-1].replace(".gz", ".grib2")
-            cached_file_path = os.path.join(self.cache_dir, filename)
-
-            if self.cache_data and os.path.exists(cached_file_path):
-                logger.info(f"Loading cached MRMS file from {cached_file_path}")
-                data_in = xr.load_dataarray(
-                    cached_file_path, engine="cfgrib", decode_timedelta=True
-                )
-            else:
-                logger.info(f"Fetching MRMS data from S3: {file}")
-
-                max_retries = 3
-                compressed_file = None
-                for attempt in range(max_retries):
-                    try:
-                        with self.aws.open(file, "rb") as s3_file:
-                            compressed_file = s3_file.read()
-                        break
-                    except Exception as e:
-                        logger.warning(f"Attempt {attempt + 1} failed: {e}")
-                        if attempt == max_retries - 1:
-                            logger.exception(
-                                f"Skipping {file} after {max_retries} failed attempts."
-                            )
-                        import time as time_mod
-
-                        time_mod.sleep(2**attempt)
-
-                if not compressed_file:
-                    continue
-
-                decompressed_data = gzip.decompress(compressed_file)
-
-                if self.cache_data:
-                    with open(cached_file_path, "wb") as f:
-                        f.write(decompressed_data)
-                    data_in = xr.load_dataarray(
-                        cached_file_path, engine="cfgrib", decode_timedelta=True
-                    )
-                else:
-                    with tempfile.NamedTemporaryFile(suffix=".grib2") as f:
-                        f.write(decompressed_data)
-                        f.flush()
-                        data_in = xr.load_dataarray(f.name, engine="cfgrib", decode_timedelta=True)
-
-            mrms_da = self._to_180(data_in)
-
-            mrms_da = mrms_da.expand_dims("time")
-            mrms_da = mrms_da.sortby("latitude")
-
-            mrms_ds = mrms_da.to_dataset(name=self.variable)
-            if self.transformations:
-                mrms_ds = apply_gridded_transformations(mrms_ds, self.transformations)
-            data_arrays.append(mrms_ds)
+            mrms_ds = self._process_single_file(file)
+            if mrms_ds is not None:
+                data_arrays.append(mrms_ds)
 
         if not data_arrays:
             raise APIError("No data could be successfully fetched and processed.")
@@ -240,12 +241,12 @@ class MRMSReaper:
                 metadata=metadata,
             )
 
+        except Exception as e:
+            logger.exception("Failed to reap MRMS data")
+            raise ReaperError(f"MRMS reaping failed: {e}") from e
+        else:
             logger.info(f"Successfully reaped MRMS data: {len(variable_names)} variables")
             return harvested
-
-        except Exception as e:
-            logger.exception(f"Failed to reap MRMS data: {e}")
-            raise ReaperError(f"MRMS reaping failed: {e}") from e
 
 
 _: type[GriddedReaper] = MRMSReaper

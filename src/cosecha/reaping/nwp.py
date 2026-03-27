@@ -1,14 +1,24 @@
 """NWP (Numerical Weather Prediction) reapers for gridded forecast data.
 
 This module implements reapers for high-resolution numerical weather prediction
-models (HRRR, NAM, etc.) using the herbie library for data fetching.
+models (HRRR, RRFS, etc.) using the herbie library for data fetching.
 """
 
 from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+import pandas as pd
+
+try:
+    from herbie import FastHerbie
+
+    _HERBIE_AVAILABLE = True
+except ImportError:
+    FastHerbie = None
+    _HERBIE_AVAILABLE = False
 
 from cosecha.data_models import HarvestedData
 from cosecha.reaping.exceptions import APIError, DateRangeError, ReaperError
@@ -43,6 +53,30 @@ NWP_SEARCH_STRINGS = {
 
 class NWPReaper:
     """Fetch NOAA Numerical Weather Prediction (NWP) forecast data."""
+
+    def _validate_params(self) -> None:
+        """Validate initialization parameters.
+
+        Raises
+        ------
+        DateRangeError
+            If init_time cannot be parsed or forecast_hours are invalid.
+        """
+        # Validate init_time
+        try:
+            parsed_time = pd.to_datetime(self.init_time)
+            logger.debug(f"Parsed init_time: {parsed_time}")
+        except Exception as e:
+            raise DateRangeError(f"Could not parse init_time '{self.init_time}': {e}") from e
+
+        if self.forecast_hours is not None and not all(
+            isinstance(h, int) and h > 0 for h in self.forecast_hours
+        ):
+            raise DateRangeError(
+                f"forecast_hours must be positive integers, got {self.forecast_hours}"
+            )
+
+        logger.debug(f"Validation passed for forecast_hours: {self.forecast_hours}")
 
     def __init__(
         self,
@@ -116,47 +150,19 @@ class NWPReaper:
         self._validate_params()
 
         # Check herbie availability
-        try:
-            from herbie import FastHerbie
-
-            self._herbie_available = True
-        except ImportError:
+        if not _HERBIE_AVAILABLE:
             logger.warning(
                 "herbie not installed; NWPReaper will not be able to fetch data. "
                 "Install with: pip install 'cosecha[nwp]'"
             )
             self._herbie_available = False
+        else:
+            self._herbie_available = True
 
         logger.debug(
             f"NWPReaper initialized: model={model}, init_time={init_time}, "
             f"forecast_hours={len(self.forecast_hours) if self.forecast_hours else 'None'}, search_str='{search_str}', product='{product}'"
         )
-
-    def _validate_params(self) -> None:
-        """Validate initialization parameters.
-
-        Raises
-        ------
-        DateRangeError
-            If init_time cannot be parsed or forecast_hours are invalid.
-        """
-        import pandas as pd
-
-        # Validate init_time
-        try:
-            parsed_time = pd.to_datetime(self.init_time)
-            logger.debug(f"Parsed init_time: {parsed_time}")
-        except Exception as e:
-            raise DateRangeError(f"Could not parse init_time '{self.init_time}': {e}") from e
-
-        if self.forecast_hours is not None and not all(
-            isinstance(h, int) and h > 0 for h in self.forecast_hours
-        ):
-            raise DateRangeError(
-                f"forecast_hours must be positive integers, got {self.forecast_hours}"
-            )
-
-        logger.debug(f"Validation passed for forecast_hours: {self.forecast_hours}")
 
     def _fetch_with_herbie(self) -> xr.Dataset:
         """Fetch raw HRRR data using FastHerbie.
@@ -175,8 +181,6 @@ class NWPReaper:
             raise APIError("herbie is not installed. Install with: pip install 'cosecha[nwp]'")
 
         try:
-            from herbie import FastHerbie
-
             logger.info(
                 f"Fetching HRRR data: model={self.model}, init_time={self.init_time}, "
                 f"forecast_hours={self.forecast_hours}"
@@ -202,8 +206,11 @@ class NWPReaper:
             return ds
 
         except Exception as e:
-            logger.exception(f"Failed to fetch NWP data: {e}")
+            logger.exception("Failed to fetch NWP data")
             raise APIError(f"NWP fetch failed: {e}") from e
+        else:
+            logger.info(f"Successfully fetched NWP data: {len(ds.data_vars)} variables")
+            return ds
 
     def reap(self) -> HarvestedData:
         """Fetch and return NWP forecast data.
@@ -264,17 +271,17 @@ class NWPReaper:
             if self.transformations:
                 harvested = apply_gridded_transformations(harvested, self.transformations)
 
+        except APIError:
+            raise
+        except Exception as e:
+            logger.exception("Failed to reap HRRR data")
+            raise ReaperError(f"HRRR reaping failed: {e}") from e
+        else:
             logger.info(
                 f"Successfully reaped HRRR data: {len(variable_names)} variables, "
                 f"{len(self.forecast_hours) if self.forecast_hours else 'None'} forecast hours"
             )
             return harvested
-
-        except APIError:
-            raise
-        except Exception as e:
-            logger.exception(f"Failed to reap HRRR data: {e}")
-            raise ReaperError(f"HRRR reaping failed: {e}") from e
 
 
 # Type hint: NWPReaper implements GriddedReaper protocol

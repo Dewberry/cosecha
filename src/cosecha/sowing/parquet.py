@@ -146,7 +146,7 @@ class ParquetSower:
         except SowerError:
             raise
         except Exception as e:
-            logger.exception(f"Failed to write Parquet: {e}")
+            logger.exception("Failed to write Parquet")
             raise WriteError(f"Parquet write failed: {e}") from e
 
 

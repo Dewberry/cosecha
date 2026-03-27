@@ -22,7 +22,6 @@ from cosecha import (
     HarvestedData,
     HarvestPipeline,
 )
-from cosecha.data_models import HarvestedData
 from cosecha.reaping.exceptions import APIError, ReaperError
 from cosecha.sowing.exceptions import SowerError, WriteError
 
@@ -58,7 +57,7 @@ class TestHarvestPipelineInitialization:
         pipeline = HarvestPipeline()
         invalid_reaper = MagicMock(spec=[])  # No reap method
 
-        with pytest.raises(TypeError, match="must implement.*protocol"):
+        with pytest.raises(TypeError, match=r"must implement.*protocol"):
             pipeline.add_reaper(invalid_reaper)
 
     def test_add_multiple_reapers(self) -> None:
@@ -88,7 +87,7 @@ class TestHarvestPipelineInitialization:
         pipeline = HarvestPipeline()
         invalid_sower = MagicMock(spec=[])  # No sow method
 
-        with pytest.raises(TypeError, match="must implement.*protocol"):
+        with pytest.raises(TypeError, match=r"must implement.*protocol"):
             pipeline.add_sower(invalid_sower)
 
     def test_add_multiple_sowers(self) -> None:

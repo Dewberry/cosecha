@@ -155,5 +155,5 @@ class NetCDFSower:
         except SowerError:
             raise
         except Exception as e:
-            logger.exception(f"NetCDF write failed: {e}")
+            logger.exception("NetCDF write failed")
             raise WriteError(f"NetCDF write failed: {e}") from e

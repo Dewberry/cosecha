@@ -8,11 +8,18 @@ NWP gridded data, etc.) with associated metadata.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
 import pandas as pd
 import xarray as xr
+
+from cosecha.sowing.iceberg import IcebergSower
+from cosecha.sowing.icechunk import IceChunkSower
+from cosecha.sowing.netcdf import NetCDFSower
+from cosecha.sowing.parquet import ParquetSower
+from cosecha.sowing.zarr import ZarrSower
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -42,7 +49,7 @@ def validate_data(data: pd.DataFrame | xr.Dataset) -> None:
         If data is not a DataFrame or Dataset, or if data is empty.
     """
     if not isinstance(data, (pd.DataFrame, xr.Dataset)):
-        raise ValueError(f"data must be pd.DataFrame or xr.Dataset, got {type(data).__name__}")
+        raise TypeError(f"data must be pd.DataFrame or xr.Dataset, got {type(data).__name__}")
 
     if isinstance(data, pd.DataFrame):
         if data.empty:
@@ -71,7 +78,7 @@ def validate_metadata(metadata: dict[str, Any]) -> None:
         raise ValueError(f"metadata missing required fields: {missing}")
 
     if not isinstance(metadata.get("variable_names"), (list, tuple)):
-        raise ValueError("metadata['variable_names'] must be a list or tuple")
+        raise TypeError("metadata['variable_names'] must be a list or tuple")
 
 
 def validate_date_range(start_date: str, end_date: str) -> None:
@@ -90,7 +97,6 @@ def validate_date_range(start_date: str, end_date: str) -> None:
         If date range is invalid.
     """
     # Strictly validate ISO 8601 format (YYYY-MM-DD)
-    import re
 
     iso_pattern = r"^\d{4}-\d{2}-\d{2}$"
 
@@ -103,7 +109,7 @@ def validate_date_range(start_date: str, end_date: str) -> None:
         start = pd.to_datetime(start_date)
         end = pd.to_datetime(end_date)
     except Exception as e:
-        raise ValueError(f"Invalid date format: {e}")
+        raise ValueError(f"Invalid date format: {e}") from e
 
     if start > end:
         raise ValueError(f"start_date ({start_date}) must be <= end_date ({end_date})")
@@ -277,8 +283,6 @@ class HarvestedData:
         Any
             The result of the sow operation.
         """
-        from cosecha.sowing.icechunk import IceChunkSower
-
         sower = IceChunkSower(storage_path=storage_path)
         return sower.sow(self, **kwargs)
 
@@ -307,8 +311,6 @@ class HarvestedData:
         Any
             The result of the sow operation.
         """
-        from cosecha.sowing.iceberg import IcebergSower
-
         sower = IcebergSower(
             warehouse_path=warehouse_path, namespace=namespace, catalog_name=catalog_name
         )
@@ -335,8 +337,6 @@ class HarvestedData:
         Any
             The result of the sow operation.
         """
-        from cosecha.sowing.netcdf import NetCDFSower
-
         sower = NetCDFSower(
             output_dir=output_dir, compression=compression, compression_level=compression_level
         )
@@ -357,8 +357,6 @@ class HarvestedData:
         Any
             The result of the sow operation.
         """
-        from cosecha.sowing.parquet import ParquetSower
-
         sower = ParquetSower(output_dir=output_dir)
         return sower.sow(self, **kwargs)
 
@@ -379,8 +377,6 @@ class HarvestedData:
         Any
             The result of the sow operation.
         """
-        from cosecha.sowing.zarr import ZarrSower
-
         sower = ZarrSower(output_dir=output_dir, consolidate=consolidate)
         return sower.sow(self, **kwargs)
 

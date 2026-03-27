@@ -50,6 +50,28 @@ class _USGSNWISReaper:
 
     """
 
+    def _validate_params(self) -> None:
+        """Validate initialization parameters.
+
+        Raises
+        ------
+        InvalidSiteError
+            If no site IDs provided.
+        DateRangeError
+            If dates are invalid.
+        """
+        if not self.site_ids:
+            raise InvalidSiteError("site_ids cannot be empty")
+
+        for site_id in self.site_ids:
+            if not isinstance(site_id, str) or not site_id.strip():
+                raise InvalidSiteError(f"Invalid site ID: {site_id}")
+
+        try:
+            validate_date_range(self.start_date, self.end_date)
+        except ValueError as e:
+            raise DateRangeError(str(e)) from e
+
     def __init__(
         self,
         site_ids: list[str],
@@ -72,27 +94,30 @@ class _USGSNWISReaper:
             f"sites={self.site_ids}, dates={self.start_date} to {self.end_date}"
         )
 
-    def _validate_params(self) -> None:
-        """Validate initialization parameters.
+    def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
+        """Fetch data from NWIS. To be implemented by subclasses.
 
-        Raises
-        ------
-        InvalidSiteError
-            If no site IDs provided.
-        DateRangeError
-            If dates are invalid.
+        Parameters
+        ----------
+        sites : str
+            Comma-separated site IDs.
+
+        Returns
+        -------
+        tuple[pd.DataFrame, Any]
+            DataFrame and metadata from dataretrieval.
         """
-        if not self.site_ids:
-            raise InvalidSiteError("site_ids cannot be empty")
+        raise NotImplementedError
 
-        for site_id in self.site_ids:
-            if not isinstance(site_id, str) or not site_id.strip():
-                raise InvalidSiteError(f"Invalid site ID: {site_id}")
+    def _get_data_type(self) -> str:
+        """Return data type name (e.g., 'streamflow', 'stage'). To be implemented by subclasses.
 
-        try:
-            validate_date_range(self.start_date, self.end_date)
-        except ValueError as e:
-            raise DateRangeError(str(e))
+        Returns
+        -------
+        str
+            Data type name.
+        """
+        raise NotImplementedError
 
     def _fetch_and_parse(self) -> pd.DataFrame:
         """Fetch data from NWIS using dataretrieval and parse into DataFrame.
@@ -118,7 +143,10 @@ class _USGSNWISReaper:
 
             # Use appropriate function based on data type
             df, _metadata = self._get_data(sites)
-
+        except Exception as e:
+            logger.exception("Failed to fetch NWIS data")
+            raise APIError(f"Failed to fetch NWIS data: {e}") from e
+        else:
             if df.empty:
                 logger.warning("NWIS returned no data")
                 return pd.DataFrame()
@@ -126,32 +154,13 @@ class _USGSNWISReaper:
             logger.debug(f"Fetched {len(df)} records from NWIS")
             return df
 
-        except Exception as e:
-            logger.exception(f"Failed to fetch NWIS data: {e}")
-            raise APIError(f"Failed to fetch NWIS data: {e}")
-
-    def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
-        """Fetch data from NWIS. To be implemented by subclasses.
-
-        Parameters
-        ----------
-        sites : str
-            Comma-separated site IDs.
-
-        Returns
-        -------
-        tuple[pd.DataFrame, Any]
-            DataFrame and metadata from dataretrieval.
-        """
-        raise NotImplementedError
-
-    def _get_data_type(self) -> str:
-        """Return data type name (e.g., 'streamflow', 'stage'). To be implemented by subclasses.
+    def _get_variable_name(self) -> str:
+        """Return variable name based on parameter code.
 
         Returns
         -------
         str
-            Data type name.
+            Human-readable variable name.
         """
         raise NotImplementedError
 
@@ -194,16 +203,6 @@ class _USGSNWISReaper:
 
         logger.info(f"Successfully reaped {len(df)} records from {len(self.site_ids)} site(s)")
         return harvested
-
-    def _get_variable_name(self) -> str:
-        """Return variable name based on parameter code.
-
-        Returns
-        -------
-        str
-            Human-readable variable name.
-        """
-        raise NotImplementedError
 
 
 class USGSStreamflowReaper(_USGSNWISReaper):
@@ -352,7 +351,7 @@ class USGSPrecipReaper(_USGSNWISReaper):
         site_ids: list[str],
         start_date: str,
         end_date: str,
-        transformations: Optional[dict[str, Any]] = None,
+        transformations: dict[str, Any] | None = None,
     ) -> None:
         """Harvests daily accumulated precipitation from NWIS.
 

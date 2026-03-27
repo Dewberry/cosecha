@@ -13,6 +13,12 @@ from typing import TYPE_CHECKING
 
 import pyarrow as pa
 
+try:
+    from pyiceberg.catalog.sql import SqlCatalog
+except ImportError:
+    SqlCatalog = None
+    from pyiceberg.catalog import load_catalog
+
 from cosecha.sowing.exceptions import SowerError, WriteError
 
 if TYPE_CHECKING:
@@ -93,7 +99,6 @@ class IcebergSower:
 
         try:
             # Create a file-based catalog
-            from pyiceberg.catalog.sql import SqlCatalog
 
             # Create metadata directory for catalog
             metadata_dir = self.warehouse_path / ".iceberg"
@@ -101,16 +106,14 @@ class IcebergSower:
 
             # Use SqlCatalog with filesystem backend (no external dependencies)
             # This requires sqlalchemy, so fall back to load_catalog approach if not available
-            try:
+            if SqlCatalog is not None:
                 self.catalog = SqlCatalog(
                     name=catalog_name,
                     uri=f"sqlite:///{metadata_dir / 'iceberg.db'}",
                     warehouse=str(self.warehouse_path),
                 )
-            except ModuleNotFoundError:
+            else:
                 # SqlAlchemy not available, use load_catalog
-                from pyiceberg.catalog import load_catalog
-
                 self.catalog = load_catalog(name=catalog_name, warehouse=str(self.warehouse_path))
 
             logger.debug(
@@ -118,7 +121,7 @@ class IcebergSower:
                 f"namespace: {namespace}, warehouse: {self.warehouse_path}"
             )
         except Exception as e:
-            logger.exception(f"Failed to initialize Iceberg catalog: {e}")
+            logger.exception("Failed to initialize Iceberg catalog")
             raise ValueError(f"Failed to initialize Iceberg catalog: {e}") from e
 
     def _validate_input(self, data: HarvestedData) -> None:
@@ -164,8 +167,6 @@ class IcebergSower:
         try:
             # Try to load existing table
             table = self.catalog.load_table(f"{self.namespace}.{table_name}")
-            logger.debug(f"Loaded existing Iceberg table: {self.namespace}.{table_name}")
-            return table
         except Exception:
             # Table doesn't exist, create it
             try:
@@ -173,9 +174,9 @@ class IcebergSower:
                 try:
                     self.catalog.create_namespace(self.namespace)
                     logger.debug(f"Created namespace: {self.namespace}")
-                except Exception:
+                except Exception as e:
                     # Namespace may already exist
-                    pass
+                    logger.debug(f"Namespace creation failed (might already exist): {e}")
 
                 # Convert DataFrame to PyArrow table to infer schema
                 pa_table = pa.Table.from_pandas(df)
@@ -184,10 +185,14 @@ class IcebergSower:
                 table = self.catalog.create_table(
                     name=f"{self.namespace}.{table_name}", schema=pa_table.schema
                 )
-                logger.info(f"Created new Iceberg table: {self.namespace}.{table_name}")
-                return table
             except Exception as e:
                 raise WriteError(f"Failed to create Iceberg table: {e}") from e
+            else:
+                logger.info(f"Created new Iceberg table: {self.namespace}.{table_name}")
+                return table
+        else:
+            logger.debug(f"Loaded existing Iceberg table: {self.namespace}.{table_name}")
+            return table
 
     def sow(self, data: HarvestedData) -> str:
         """Write HarvestedData to Iceberg table.
@@ -237,14 +242,14 @@ class IcebergSower:
             table.append(pa_table)
 
             full_name = f"{self.namespace}.{table_name}"
-            logger.info(f"Successfully appended data to Iceberg table: {full_name}")
-            return full_name
-
         except SowerError:
             raise
         except Exception as e:
-            logger.exception(f"Failed to write to Iceberg: {e}")
+            logger.exception("Failed to write to Iceberg")
             raise WriteError(f"Iceberg write failed: {e}") from e
+        else:
+            logger.info(f"Successfully appended data to Iceberg table: {full_name}")
+            return full_name
 
 
 # Type hint: IcebergSower implements DataSower protocol

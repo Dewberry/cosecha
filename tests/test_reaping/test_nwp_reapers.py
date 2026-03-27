@@ -57,9 +57,9 @@ class TestNWPReaper:
     def test_initialization_custom_model(self):
         """Test initialization with custom model."""
         reaper = NWPReaper(
-            init_time="2026-01-01 00:00", forecast_hours=[1, 6], model="nam", search_str="custom"
+            init_time="2026-01-01 00:00", forecast_hours=[1, 6], model="rrfs", search_str="custom"
         )
-        assert reaper.model == "nam"
+        assert reaper.model == "rrfs"
 
     def test_invalid_init_time(self):
         """Test initialization fails with invalid init_time."""
@@ -112,7 +112,7 @@ class TestNWPReaper:
         # Mock FastHerbie from herbie import
         mock_herbie = mocker.MagicMock()
         mock_herbie.return_value.xarray.return_value = mock_ds
-        mocker.patch("herbie.FastHerbie", mock_herbie)
+        mocker.patch("cosecha.reaping.nwp.FastHerbie", mock_herbie)
 
         reaper = NWPReaper(init_time="2026-01-01 00:00", forecast_hours=[1, 6])
 
@@ -138,7 +138,7 @@ class TestNWPReaper:
 
         mock_herbie = mocker.MagicMock()
         mock_herbie.return_value.xarray.return_value = mock_ds
-        mocker.patch("herbie.FastHerbie", mock_herbie)
+        mocker.patch("cosecha.reaping.nwp.FastHerbie", mock_herbie)
 
         reaper = NWPReaper(init_time="2026-01-01 00:00", forecast_hours=[1, 6, 12])
         reaper._herbie_available = True
@@ -156,7 +156,7 @@ class TestNWPReaper:
         pytest.importorskip("herbie")
         mock_herbie = mocker.MagicMock()
         mock_herbie.return_value.xarray.side_effect = Exception("Network error")
-        mocker.patch("herbie.FastHerbie", mock_herbie)
+        mocker.patch("cosecha.reaping.nwp.FastHerbie", mock_herbie)
 
         reaper = NWPReaper(init_time="2026-01-01 00:00", forecast_hours=[1, 6])
         reaper._herbie_available = True
@@ -178,7 +178,7 @@ class TestGetVariableNames:
 
         mock_herbie = mocker.MagicMock()
         mock_herbie.return_value.xarray.return_value = mock_ds
-        mocker.patch("herbie.FastHerbie", mock_herbie)
+        mocker.patch("cosecha.reaping.nwp.FastHerbie", mock_herbie)
 
         reaper = NWPReaper(init_time="2026-01-01 00:00", forecast_hours=[1])
         reaper._herbie_available = True
@@ -197,7 +197,7 @@ class TestGetVariableNames:
 
         mock_herbie = mocker.MagicMock()
         mock_herbie.return_value.xarray.return_value = mock_ds
-        mocker.patch("herbie.FastHerbie", mock_herbie)
+        mocker.patch("cosecha.reaping.nwp.FastHerbie", mock_herbie)
 
         reaper = NWPReaper(init_time="2026-01-01 00:00", forecast_hours=[1])
         reaper._herbie_available = True

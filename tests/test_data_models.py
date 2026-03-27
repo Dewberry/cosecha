@@ -44,7 +44,7 @@ class TestValidateData:
 
     def test_validate_invalid_type(self):
         """Test validation fails for invalid data type."""
-        with pytest.raises(ValueError, match="pd.DataFrame or xr.Dataset"):
+        with pytest.raises(TypeError, match=r"pd\.DataFrame or xr\.Dataset"):
             validate_data([1, 2, 3])
 
 
@@ -71,7 +71,7 @@ class TestValidateDateRange:
 
     def test_start_after_end(self):
         """Test validation fails when start > end."""
-        with pytest.raises(ValueError, match="start_date.*must be <= end_date"):
+        with pytest.raises(ValueError, match=r"start_date.*must be <= end_date"):
             validate_date_range("2026-01-31", "2026-01-01")
 
 
@@ -121,7 +121,7 @@ class TestValidateMetadata:
             "timestamp": datetime.now(UTC),
             "variable_names": "var1",  # Should be list
         }
-        with pytest.raises(ValueError, match="must be a list or tuple"):
+        with pytest.raises(TypeError, match="must be a list or tuple"):
             validate_metadata(metadata)
 
 
@@ -148,12 +148,12 @@ class TestValidateSpatialBounds:
 
     def test_inverted_longitude(self):
         """Test validation fails when lon_min > lon_max."""
-        with pytest.raises(ValueError, match="lon_min.*lon_max"):
+        with pytest.raises(ValueError, match=r"lon_min.*lon_max"):
             validate_spatial_bounds((-94.5, 31, -99.5, 34.5))
 
     def test_inverted_latitude(self):
         """Test validation fails when lat_min > lat_max."""
-        with pytest.raises(ValueError, match="lat_min.*lat_max"):
+        with pytest.raises(ValueError, match=r"lat_min.*lat_max"):
             validate_spatial_bounds((-99.5, 34.5, -94.5, 31))
 
 
@@ -188,7 +188,7 @@ class TestHarvestedData:
 
     def test_invalid_data_type(self):
         """Test creating HarvestedData with invalid data type."""
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError, match=r"pd\.DataFrame or xr\.Dataset"):
             HarvestedData(
                 data=[1, 2, 3],  # Invalid
                 source_name="TEST",
@@ -198,7 +198,7 @@ class TestHarvestedData:
 
     def test_empty_dataframe_fails(self):
         """Test creating HarvestedData with empty DataFrame fails."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="DataFrame cannot be empty"):
             HarvestedData(
                 data=pd.DataFrame(),
                 source_name="TEST",
