@@ -8,14 +8,16 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import Optional
-
-import xarray as xr
+from typing import TYPE_CHECKING
 
 from cosecha.data_models import HarvestedData
-from cosecha.reaping.base import GriddedReaper
 from cosecha.reaping.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.reaping.utils import apply_gridded_transformations
+
+if TYPE_CHECKING:
+    import xarray as xr
+
+    from cosecha.reaping.base import GriddedReaper
 
 __all__ = ["NWPReaper"]
 
@@ -34,9 +36,10 @@ NWP_SEARCH_STRINGS = {
     },
     "rtma": {
         "temp_2m": r"TMP:2 m above ground",
-    }
+    },
     # Add other models and variables as needed
 }
+
 
 class NWPReaper:
     """Fetch NOAA Numerical Weather Prediction (NWP) forecast data."""
@@ -46,10 +49,10 @@ class NWPReaper:
         init_time: str,
         forecast_hours: list[int] | range | None = None,
         model: str = "hrrr",
-        variable: Optional[str] = "hourly_precip",
-        search_str: Optional[str] = None,
-        product: Optional[str] = None,
-        transformations: Optional[dict[str, Any]] = None,
+        variable: str | None = "hourly_precip",
+        search_str: str | None = None,
+        product: str | None = None,
+        transformations: dict[str, Any] | None = None,
     ) -> None:
         """Initialize NWPReaper.
 
@@ -146,7 +149,9 @@ class NWPReaper:
         except Exception as e:
             raise DateRangeError(f"Could not parse init_time '{self.init_time}': {e}") from e
 
-        if self.forecast_hours is not None and not all(isinstance(h, int) and h > 0 for h in self.forecast_hours):
+        if self.forecast_hours is not None and not all(
+            isinstance(h, int) and h > 0 for h in self.forecast_hours
+        ):
             raise DateRangeError(
                 f"forecast_hours must be positive integers, got {self.forecast_hours}"
             )
@@ -171,7 +176,7 @@ class NWPReaper:
 
         try:
             from herbie import FastHerbie
-            
+
             logger.info(
                 f"Fetching HRRR data: model={self.model}, init_time={self.init_time}, "
                 f"forecast_hours={self.forecast_hours}"
@@ -180,7 +185,12 @@ class NWPReaper:
             # Use default filter (all variables) or a specific filter if desired
             # Users can customize via transformations in sowers
             if self.forecast_hours:
-                h = FastHerbie([self.init_time], model=self.model, fxx=self.forecast_hours, product=self.product)
+                h = FastHerbie(
+                    [self.init_time],
+                    model=self.model,
+                    fxx=self.forecast_hours,
+                    product=self.product,
+                )
             else:
                 h = FastHerbie([self.init_time], model=self.model, product=self.product)
 
@@ -192,12 +202,13 @@ class NWPReaper:
             return ds
 
         except Exception as e:
-            logger.error(f"Failed to fetch NWP data: {e}")
+            logger.exception(f"Failed to fetch NWP data: {e}")
             raise APIError(f"NWP fetch failed: {e}") from e
 
     def reap(self) -> HarvestedData:
         """Fetch and return NWP forecast data.
-        Returns
+
+        Returns.
         -------
         HarvestedData
             Container with xarray Dataset, source name, timestamp, variables,
@@ -249,7 +260,7 @@ class NWPReaper:
                 variable_names=variable_names,
                 metadata=metadata,
             )
-            
+
             if self.transformations:
                 harvested = apply_gridded_transformations(harvested, self.transformations)
 
@@ -262,9 +273,9 @@ class NWPReaper:
         except APIError:
             raise
         except Exception as e:
-            logger.error(f"Failed to reap HRRR data: {e}")
+            logger.exception(f"Failed to reap HRRR data: {e}")
             raise ReaperError(f"HRRR reaping failed: {e}") from e
 
 
 # Type hint: NWPReaper implements GriddedReaper protocol
-_: type[GriddedReaper] = NWPReaper  # noqa: F841
+_: type[GriddedReaper] = NWPReaper

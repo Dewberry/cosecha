@@ -8,13 +8,15 @@ transformations, and write to one or more sowers (storage backends).
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING
 
-from cosecha.data_models import HarvestedData
-from cosecha.reaping.base import GriddedReaper, TimeSeriesReaper
 from cosecha.reaping.exceptions import ReaperError
-from cosecha.sowing.base import DataSower
 from cosecha.sowing.exceptions import SowerError
+
+if TYPE_CHECKING:
+    from cosecha.data_models import HarvestedData
+    from cosecha.reaping.base import GriddedReaper, TimeSeriesReaper
+    from cosecha.sowing.base import DataSower
 
 __all__ = ["HarvestPipeline"]
 
@@ -139,7 +141,7 @@ class HarvestPipeline:
         pattern is recommended.
         """
         # Validate that reaper implements the required protocol
-        if not (hasattr(reaper, "reap") and callable(getattr(reaper, "reap"))):
+        if not (hasattr(reaper, "reap") and callable(reaper.reap)):
             raise TypeError(
                 f"reaper must implement TimeSeriesReaper or GriddedReaper protocol "
                 f"(must have callable `reap()` method), got {type(reaper).__name__}"
@@ -169,7 +171,7 @@ class HarvestPipeline:
         (for data warehouse) simultaneously.
         """
         # Validate that sower implements the required protocol
-        if not (hasattr(sower, "sow") and callable(getattr(sower, "sow"))):
+        if not (hasattr(sower, "sow") and callable(sower.sow)):
             raise TypeError(
                 f"sower must implement DataSower protocol "
                 f"(must have callable `sow()` method), got {type(sower).__name__}"
@@ -231,8 +233,7 @@ class HarvestPipeline:
 
         paths: list[str] = []
         logger.info(
-            f"Starting harvest pipeline: {len(self.reapers)} reaper(s), "
-            f"{len(self.sowers)} sower(s)"
+            f"Starting harvest pipeline: {len(self.reapers)} reaper(s), {len(self.sowers)} sower(s)"
         )
 
         # Execute all reapers
@@ -248,10 +249,10 @@ class HarvestPipeline:
                     f"data type={data._data_type()}"
                 )
             except ReaperError as e:
-                logger.error(f"Reaper {type(reaper).__name__} failed: {e}")
+                logger.exception(f"Reaper {type(reaper).__name__} failed: {e}")
                 raise
             except Exception as e:
-                logger.error(f"Unexpected error in reaper {type(reaper).__name__}: {e}")
+                logger.exception(f"Unexpected error in reaper {type(reaper).__name__}: {e}")
                 raise ReaperError(
                     f"Reaper {type(reaper).__name__} failed with unexpected error: {e}"
                 ) from e
@@ -269,15 +270,15 @@ class HarvestPipeline:
                     paths.append(path)
                     logger.info(f"Successfully sowed data to {type(sower).__name__}: {path}")
                 except SowerError as e:
-                    logger.error(f"Sower {type(sower).__name__} failed: {e}")
+                    logger.exception(f"Sower {type(sower).__name__} failed: {e}")
                     raise
                 except Exception as e:
-                    logger.error(f"Unexpected error in sower {type(sower).__name__}: {e}")
+                    logger.exception(f"Unexpected error in sower {type(sower).__name__}: {e}")
                     raise SowerError(
                         f"Sower {type(sower).__name__} failed with unexpected error: {e}"
                     ) from e
 
         logger.info(
-            f"Harvest pipeline completed successfully: " f"wrote data to {len(paths)} output(s)"
+            f"Harvest pipeline completed successfully: wrote data to {len(paths)} output(s)"
         )
         return paths

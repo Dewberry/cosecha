@@ -9,15 +9,17 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING
 
-import pandas as pd
 import pyarrow as pa
-from pyiceberg.catalog import Catalog
 
-from cosecha.data_models import HarvestedData
-from cosecha.sowing.base import DataSower
 from cosecha.sowing.exceptions import SowerError, WriteError
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+    from cosecha.data_models import HarvestedData
+    from cosecha.sowing.base import DataSower
 
 __all__ = ["IcebergSower"]
 
@@ -102,10 +104,8 @@ class IcebergSower:
             try:
                 self.catalog = SqlCatalog(
                     name=catalog_name,
-                    **{
-                        "uri": f"sqlite:///{metadata_dir / 'iceberg.db'}",
-                        "warehouse": str(self.warehouse_path),
-                    },
+                    uri=f"sqlite:///{metadata_dir / 'iceberg.db'}",
+                    warehouse=str(self.warehouse_path),
                 )
             except ModuleNotFoundError:
                 # SqlAlchemy not available, use load_catalog
@@ -118,7 +118,7 @@ class IcebergSower:
                 f"namespace: {namespace}, warehouse: {self.warehouse_path}"
             )
         except Exception as e:
-            logger.error(f"Failed to initialize Iceberg catalog: {e}")
+            logger.exception(f"Failed to initialize Iceberg catalog: {e}")
             raise ValueError(f"Failed to initialize Iceberg catalog: {e}") from e
 
     def _validate_input(self, data: HarvestedData) -> None:
@@ -217,7 +217,7 @@ class IcebergSower:
         ...     harvested
         ... )
         """
-        logger.info(f"Sowing {data.source_name} data to Iceberg: " f"{len(data.data)} rows")
+        logger.info(f"Sowing {data.source_name} data to Iceberg: {len(data.data)} rows")
 
         try:
             # Validate input
@@ -243,9 +243,9 @@ class IcebergSower:
         except SowerError:
             raise
         except Exception as e:
-            logger.error(f"Failed to write to Iceberg: {e}")
+            logger.exception(f"Failed to write to Iceberg: {e}")
             raise WriteError(f"Iceberg write failed: {e}") from e
 
 
 # Type hint: IcebergSower implements DataSower protocol
-_: type[DataSower] = IcebergSower  # noqa: F841
+_: type[DataSower] = IcebergSower

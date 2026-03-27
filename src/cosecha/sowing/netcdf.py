@@ -9,13 +9,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING
 
-import xarray as xr
-
-from cosecha.data_models import HarvestedData
-from cosecha.sowing.base import DataSower
 from cosecha.sowing.exceptions import SowerError, WriteError
+
+if TYPE_CHECKING:
+    from cosecha.data_models import HarvestedData
 
 __all__ = ["NetCDFSower"]
 
@@ -144,9 +143,7 @@ class NetCDFSower:
             ds = data.data
 
             # Construct filename from source name and timestamp
-            filename = (
-                f"{data.source_name.lower()}_" f"{data.timestamp.strftime('%Y%m%d_%H%M%S')}.nc"
-            )
+            filename = f"{data.source_name.lower()}_{data.timestamp.strftime('%Y%m%d_%H%M%S')}.nc"
             output_path = self.output_dir / filename
 
             # Write to NetCDF using xarray with h5netcdf engine
@@ -158,5 +155,5 @@ class NetCDFSower:
         except SowerError:
             raise
         except Exception as e:
-            logger.error(f"NetCDF write failed: {e}")
+            logger.exception(f"NetCDF write failed: {e}")
             raise WriteError(f"NetCDF write failed: {e}") from e

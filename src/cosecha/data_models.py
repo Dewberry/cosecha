@@ -9,24 +9,26 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
-from typing import Any, Literal, Union
+from typing import TYPE_CHECKING, Any, Literal
 
 import pandas as pd
 import xarray as xr
 
+if TYPE_CHECKING:
+    from datetime import datetime
+
 __all__ = [
     "HarvestedData",
     "validate_data",
-    "validate_metadata",
     "validate_date_range",
+    "validate_metadata",
     "validate_spatial_bounds",
 ]
 
 logger = logging.getLogger(__name__)
 
 
-def validate_data(data: Union[pd.DataFrame, xr.Dataset]) -> None:
+def validate_data(data: pd.DataFrame | xr.Dataset) -> None:
     """Validate that data is a DataFrame or xarray Dataset and not empty.
 
     Parameters
@@ -45,9 +47,8 @@ def validate_data(data: Union[pd.DataFrame, xr.Dataset]) -> None:
     if isinstance(data, pd.DataFrame):
         if data.empty:
             raise ValueError("DataFrame cannot be empty")
-    elif isinstance(data, xr.Dataset):
-        if not data.data_vars:
-            raise ValueError("xarray Dataset must contain at least one data variable")
+    elif isinstance(data, xr.Dataset) and not data.data_vars:
+        raise ValueError("xarray Dataset must contain at least one data variable")
 
 
 def validate_metadata(metadata: dict[str, Any]) -> None:
@@ -205,11 +206,21 @@ class HarvestedData:
     ... )
     """
 
-    data: Union[pd.DataFrame, xr.Dataset]
+    data: pd.DataFrame | xr.Dataset
     source_name: str
     timestamp: datetime
     variable_names: list[str]
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def _data_type(self) -> Literal["timeseries", "gridded"]:
+        """Return the type of data (timeseries or gridded).
+
+        Returns
+        -------
+        Literal["timeseries", "gridded"]
+            The data type.
+        """
+        return "timeseries" if isinstance(self.data, pd.DataFrame) else "gridded"
 
     def __post_init__(self) -> None:
         """Validate harvested data and metadata after initialization."""
@@ -231,16 +242,6 @@ class HarvestedData:
             f"type={self._data_type()}, variables={self.variable_names}"
         )
 
-    def _data_type(self) -> Literal["timeseries", "gridded"]:
-        """Return the type of data (timeseries or gridded).
-
-        Returns
-        -------
-        Literal["timeseries", "gridded"]
-            The data type.
-        """
-        return "timeseries" if isinstance(self.data, pd.DataFrame) else "gridded"
-
     def is_timeseries(self) -> bool:
         """Check if data is time-series (DataFrame).
 
@@ -260,18 +261,6 @@ class HarvestedData:
             True if data is an xr.Dataset.
         """
         return isinstance(self.data, xr.Dataset)
-
-    def __repr__(self) -> str:
-        """Return string representation of HarvestedData."""
-        size_info = (
-            f"shape={self.data.shape}"
-            if isinstance(self.data, pd.DataFrame)
-            else f"dims={list(self.data.dims)}"
-        )
-        return (
-            f"HarvestedData(source={self.source_name}, type={self._data_type()}, "
-            f"{size_info}, variables={self.variable_names})"
-        )
 
     def sow_to_icechunk(self, storage_path: str, **kwargs: Any) -> Any:
         """Write the harvested data to an IceChunk format.
@@ -293,7 +282,13 @@ class HarvestedData:
         sower = IceChunkSower(storage_path=storage_path)
         return sower.sow(self, **kwargs)
 
-    def sow_to_iceberg(self, warehouse_path: str, namespace: str = "default", catalog_name: str = "default", **kwargs: Any) -> Any:
+    def sow_to_iceberg(
+        self,
+        warehouse_path: str,
+        namespace: str = "default",
+        catalog_name: str = "default",
+        **kwargs: Any,
+    ) -> Any:
         """Write the harvested data to an Iceberg table.
 
         Parameters
@@ -314,10 +309,14 @@ class HarvestedData:
         """
         from cosecha.sowing.iceberg import IcebergSower
 
-        sower = IcebergSower(warehouse_path=warehouse_path, namespace=namespace, catalog_name=catalog_name)
+        sower = IcebergSower(
+            warehouse_path=warehouse_path, namespace=namespace, catalog_name=catalog_name
+        )
         return sower.sow(self, **kwargs)
 
-    def sow_to_netcdf(self, output_dir: str, compression: str = "zlib", compression_level: int = 4, **kwargs: Any) -> Any:
+    def sow_to_netcdf(
+        self, output_dir: str, compression: str = "zlib", compression_level: int = 4, **kwargs: Any
+    ) -> Any:
         """Write the harvested data to a NetCDF file.
 
         Parameters
@@ -338,7 +337,9 @@ class HarvestedData:
         """
         from cosecha.sowing.netcdf import NetCDFSower
 
-        sower = NetCDFSower(output_dir=output_dir, compression=compression, compression_level=compression_level)
+        sower = NetCDFSower(
+            output_dir=output_dir, compression=compression, compression_level=compression_level
+        )
         return sower.sow(self, **kwargs)
 
     def sow_to_parquet(self, output_dir: str, **kwargs: Any) -> Any:
@@ -382,3 +383,15 @@ class HarvestedData:
 
         sower = ZarrSower(output_dir=output_dir, consolidate=consolidate)
         return sower.sow(self, **kwargs)
+
+    def __repr__(self) -> str:
+        """Return string representation of HarvestedData."""
+        size_info = (
+            f"shape={self.data.shape}"
+            if isinstance(self.data, pd.DataFrame)
+            else f"dims={list(self.data.dims)}"
+        )
+        return (
+            f"HarvestedData(source={self.source_name}, type={self._data_type()}, "
+            f"{size_info}, variables={self.variable_names})"
+        )

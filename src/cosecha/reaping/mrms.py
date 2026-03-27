@@ -10,16 +10,17 @@ import logging
 import os
 import tempfile
 from datetime import UTC, datetime, timedelta
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
-import xarray as xr
 import s3fs
+import xarray as xr
 
 from cosecha.data_models import HarvestedData
-from cosecha.reaping.base import GriddedReaper
 from cosecha.reaping.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.reaping.utils import apply_gridded_transformations
 
+if TYPE_CHECKING:
+    from cosecha.reaping.base import GriddedReaper
 
 __all__ = ["MRMSReaper"]
 
@@ -29,13 +30,27 @@ logger = logging.getLogger(__name__)
 class MRMSReaper:
     """Reaper for NOAA MRMS gridded precipitation data."""
 
+    def _validate_params(self) -> None:
+        """Validate initialization parameters.
+
+        Raises
+        ------
+        DateRangeError
+            If time parameters are invalid.
+        """
+        if self.time is None and (self.start_time is None or self.end_time is None):
+            raise DateRangeError("Must provide either 'time' or both 'start_time' and 'end_time'.")
+
+        if self.start_time and self.end_time and self.start_time > self.end_time:
+            raise DateRangeError("start_time must be <= end_time.")
+
     def __init__(
         self,
         variable: str = "MultiSensor_QPE_01H_Pass2_00.00",
-        time: Optional[datetime] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        transformations: Optional[dict[str, Any]] = None,
+        time: datetime | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        transformations: dict[str, Any] | None = None,
         cache_data: bool = False,
     ) -> None:
         """Initialize MRMSReaper.
@@ -61,27 +76,15 @@ class MRMSReaper:
         self.end_time = end_time
         self.transformations = transformations
         self.cache_data = cache_data
-        
+
         # tempdir cache directory
         self.cache_dir = os.path.join(tempfile.gettempdir(), "mrms_cache")
 
         self._validate_params()
 
-        self.aws = s3fs.S3FileSystem(anon=True, config_kwargs={"connect_timeout": 30, "read_timeout": 60})
-
-    def _validate_params(self) -> None:
-        """Validate initialization parameters.
-
-        Raises
-        ------
-        DateRangeError
-            If time parameters are invalid.
-        """
-        if self.time is None and (self.start_time is None or self.end_time is None):
-            raise DateRangeError("Must provide either 'time' or both 'start_time' and 'end_time'.")
-
-        if self.start_time and self.end_time and self.start_time > self.end_time:
-            raise DateRangeError("start_time must be <= end_time.")
+        self.aws = s3fs.S3FileSystem(
+            anon=True, config_kwargs={"connect_timeout": 30, "read_timeout": 60}
+        )
 
     def _find_available_files(self, times: list[datetime]) -> list[str]:
         files_list = []
@@ -100,11 +103,11 @@ class MRMSReaper:
 
         if not files_list:
             raise APIError(f"No files found for {self.variable} for the requested times.")
-        
+
         return files_list
 
     def _to_180(self, ds: xr.DataArray) -> xr.DataArray:
-        """Convert longitude from 0-360 to -180 to 180"""
+        """Convert longitude from 0-360 to -180 to 180."""
         ds = ds.copy()
         ds["longitude"] = ((ds["longitude"] + 180) % 360) - 180
         return ds.sortby("longitude")
@@ -127,7 +130,7 @@ class MRMSReaper:
                 curr += timedelta(hours=1)
 
         files = self._find_available_files(times)
-        
+
         data_arrays = []
         if self.cache_data:
             os.makedirs(self.cache_dir, exist_ok=True)
@@ -139,10 +142,12 @@ class MRMSReaper:
 
             if self.cache_data and os.path.exists(cached_file_path):
                 logger.info(f"Loading cached MRMS file from {cached_file_path}")
-                data_in = xr.load_dataarray(cached_file_path, engine="cfgrib", decode_timedelta=True)
+                data_in = xr.load_dataarray(
+                    cached_file_path, engine="cfgrib", decode_timedelta=True
+                )
             else:
                 logger.info(f"Fetching MRMS data from S3: {file}")
-                
+
                 max_retries = 3
                 compressed_file = None
                 for attempt in range(max_retries):
@@ -153,19 +158,24 @@ class MRMSReaper:
                     except Exception as e:
                         logger.warning(f"Attempt {attempt + 1} failed: {e}")
                         if attempt == max_retries - 1:
-                            logger.error(f"Skipping {file} after {max_retries} failed attempts.")
+                            logger.exception(
+                                f"Skipping {file} after {max_retries} failed attempts."
+                            )
                         import time as time_mod
-                        time_mod.sleep(2 ** attempt)
-                
+
+                        time_mod.sleep(2**attempt)
+
                 if not compressed_file:
                     continue
 
                 decompressed_data = gzip.decompress(compressed_file)
-                
+
                 if self.cache_data:
                     with open(cached_file_path, "wb") as f:
                         f.write(decompressed_data)
-                    data_in = xr.load_dataarray(cached_file_path, engine="cfgrib", decode_timedelta=True)
+                    data_in = xr.load_dataarray(
+                        cached_file_path, engine="cfgrib", decode_timedelta=True
+                    )
                 else:
                     with tempfile.NamedTemporaryFile(suffix=".grib2") as f:
                         f.write(decompressed_data)
@@ -173,10 +183,10 @@ class MRMSReaper:
                         data_in = xr.load_dataarray(f.name, engine="cfgrib", decode_timedelta=True)
 
             mrms_da = self._to_180(data_in)
-            
+
             mrms_da = mrms_da.expand_dims("time")
             mrms_da = mrms_da.sortby("latitude")
-            
+
             mrms_ds = mrms_da.to_dataset(name=self.variable)
             if self.transformations:
                 mrms_ds = apply_gridded_transformations(mrms_ds, self.transformations)
@@ -188,7 +198,6 @@ class MRMSReaper:
             return data_arrays[0]
         else:
             return xr.concat(data_arrays, dim="time")
-
 
     def reap(self) -> HarvestedData:
         """Fetch and return MRMS gridded data.
@@ -235,7 +244,7 @@ class MRMSReaper:
             return harvested
 
         except Exception as e:
-            logger.error(f"Failed to reap MRMS data: {e}")
+            logger.exception(f"Failed to reap MRMS data: {e}")
             raise ReaperError(f"MRMS reaping failed: {e}") from e
 
 

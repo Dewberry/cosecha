@@ -126,9 +126,9 @@ class TestTimeSeriesWorkflow:
             metadata={"site_ids": ["01018035"]},
         )
         cfs_to_cms = 0.0283168
-        transformations={"unit_conversions": {"discharge_cfs": cfs_to_cms}}
+        transformations = {"unit_conversions": {"discharge_cfs": cfs_to_cms}}
         transformed_harvested = apply_ts_transformations(harvested, transformations)
-        
+
         reaper = MagicMock()
         reaper.reap = MagicMock(return_value=transformed_harvested)
 
@@ -156,9 +156,9 @@ class TestTimeSeriesWorkflow:
             variable_names=["discharge_cfs"],
             metadata={"site_ids": ["01018035"]},
         )
-        transformations={"filter_columns": ["time", "discharge_cfs"]}
+        transformations = {"filter_columns": ["time", "discharge_cfs"]}
         transformed_harvested = apply_ts_transformations(harvested, transformations)
-        
+
         reaper = MagicMock()
         reaper.reap = MagicMock(return_value=transformed_harvested)
 
@@ -280,11 +280,11 @@ class TestGriddedWorkflow:
             variable_names=["precip", "temp"],
             metadata={"model": "HRRR"},
         )
-        transformations={
+        transformations = {
             "unit_conversions": {"temp": 1.8}  # °C to °F scale conversion factor
         }
         transformed_harvested = apply_gridded_transformations(harvested, transformations)
-        
+
         reaper = MagicMock()
         reaper.reap = MagicMock(return_value=transformed_harvested)
 
@@ -311,9 +311,9 @@ class TestGriddedWorkflow:
             variable_names=["precip", "temp"],
             metadata={"model": "HRRR"},
         )
-        transformations={"keep_variables": ["precip"]}
+        transformations = {"keep_variables": ["precip"]}
         transformed_harvested = apply_gridded_transformations(harvested, transformations)
-        
+
         reaper = MagicMock()
         reaper.reap = MagicMock(return_value=transformed_harvested)
 

@@ -10,7 +10,7 @@ import logging
 import logging.handlers
 from pathlib import Path
 
-__all__ = ["get_logger", "configure_logging"]
+__all__ = ["configure_logging", "get_logger"]
 
 
 def get_logger(name: str) -> logging.Logger:

@@ -8,11 +8,12 @@ Defines abstract interfaces for harvesting data from different source types:
 from __future__ import annotations
 
 import logging
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
-from cosecha.data_models import HarvestedData
+if TYPE_CHECKING:
+    from cosecha.data_models import HarvestedData
 
-__all__ = ["TimeSeriesReaper", "GriddedReaper"]
+__all__ = ["GriddedReaper", "TimeSeriesReaper"]
 
 logger = logging.getLogger(__name__)
 

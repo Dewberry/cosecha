@@ -18,9 +18,9 @@ from cosecha.reaping.exceptions import APIError, DateRangeError, InvalidSiteErro
 from cosecha.reaping.utils import apply_ts_transformations
 
 __all__ = [
-    "USGSStreamflowReaper",
-    "USGSStageReaper",
     "USGSPrecipReaper",
+    "USGSStageReaper",
+    "USGSStreamflowReaper",
 ]
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ class _USGSNWISReaper:
             sites = ",".join(self.site_ids)
 
             # Use appropriate function based on data type
-            df, metadata = self._get_data(sites)
+            df, _metadata = self._get_data(sites)
 
             if df.empty:
                 logger.warning("NWIS returned no data")
@@ -127,7 +127,7 @@ class _USGSNWISReaper:
             return df
 
         except Exception as e:
-            logger.error(f"Failed to fetch NWIS data: {e}")
+            logger.exception(f"Failed to fetch NWIS data: {e}")
             raise APIError(f"Failed to fetch NWIS data: {e}")
 
     def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
@@ -191,7 +191,7 @@ class _USGSNWISReaper:
         )
         if self.transformations:
             harvested = apply_ts_transformations(harvested, self.transformations)
-            
+
         logger.info(f"Successfully reaped {len(df)} records from {len(self.site_ids)} site(s)")
         return harvested
 

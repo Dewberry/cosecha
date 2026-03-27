@@ -108,11 +108,11 @@ class TestParquetSower:
         """Test that transformations can be applied manually before sowing."""
         transformations = {"unit_conversions": {"value": 2.0}}
         transformed_data = apply_ts_transformations(harvested_data, transformations)
-        
+
         path = transformed_data.sow_to_parquet(output_dir=temp_output_dir)
-        
+
         assert Path(path).exists()
-        
+
         # Verify transformation (value should be multiplied by 2.0)
         df_result = pd.read_parquet(path)
         assert df_result["value"].iloc[0] == 100.0 * 2.0  # original was 100.0

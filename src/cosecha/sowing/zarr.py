@@ -9,13 +9,13 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
-import xarray as xr
-
-from cosecha.data_models import HarvestedData
-from cosecha.sowing.base import DataSower
 from cosecha.sowing.exceptions import SowerError, WriteError
+
+if TYPE_CHECKING:
+    from cosecha.data_models import HarvestedData
+    from cosecha.sowing.base import DataSower
 
 __all__ = ["ZarrSower"]
 
@@ -76,8 +76,7 @@ class ZarrSower:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         logger.debug(
-            f"ZarrSower initialized with output_dir: {self.output_dir}, "
-            f"consolidate: {consolidate}"
+            f"ZarrSower initialized with output_dir: {self.output_dir}, consolidate: {consolidate}"
         )
 
     def _validate_input(self, data: HarvestedData) -> None:
@@ -100,7 +99,7 @@ class ZarrSower:
             )
         logger.debug(f"Input validation passed for source: {data.source_name}")
 
-    def sow(self, data: HarvestedData, transformations: Optional[dict[str, Any]] = None) -> str:
+    def sow(self, data: HarvestedData, transformations: dict[str, Any] | None = None) -> str:
         """Write HarvestedData to Zarr store.
 
         Parameters
@@ -165,9 +164,9 @@ class ZarrSower:
         except SowerError:
             raise
         except Exception as e:
-            logger.error(f"Failed to write Zarr: {e}")
+            logger.exception(f"Failed to write Zarr: {e}")
             raise WriteError(f"Zarr write failed: {e}") from e
 
 
 # Type hint: ZarrSower implements DataSower protocol
-_: type[DataSower] = ZarrSower  # noqa: F841
+_: type[DataSower] = ZarrSower

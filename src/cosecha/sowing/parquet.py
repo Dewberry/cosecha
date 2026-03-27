@@ -8,15 +8,16 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING
 
-import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from cosecha.data_models import HarvestedData
-from cosecha.sowing.base import DataSower
 from cosecha.sowing.exceptions import SowerError, WriteError
+
+if TYPE_CHECKING:
+    from cosecha.data_models import HarvestedData
+    from cosecha.sowing.base import DataSower
 
 __all__ = ["ParquetSower"]
 
@@ -120,7 +121,7 @@ class ParquetSower:
         >>> path = sower.sow(harvested)
         >>> print(f"Data written to: {path}")
         """
-        logger.info(f"Sowing {data.source_name} data to Parquet: " f"{len(data.data)} rows")
+        logger.info(f"Sowing {data.source_name} data to Parquet: {len(data.data)} rows")
 
         try:
             # Validate input
@@ -145,9 +146,9 @@ class ParquetSower:
         except SowerError:
             raise
         except Exception as e:
-            logger.error(f"Failed to write Parquet: {e}")
+            logger.exception(f"Failed to write Parquet: {e}")
             raise WriteError(f"Parquet write failed: {e}") from e
 
 
 # Type hint: ParquetSower implements DataSower protocol
-_: type[DataSower] = ParquetSower  # noqa: F841
+_: type[DataSower] = ParquetSower

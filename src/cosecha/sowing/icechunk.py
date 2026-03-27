@@ -8,16 +8,18 @@ chunked array storage, similar to Zarr but with transaction support.
 from __future__ import annotations
 
 import logging
-from pathlib import Path
-from typing import Any, Optional
 import re
+from pathlib import Path
+from typing import TYPE_CHECKING
 
-import xarray as xr
 import icechunk
 
-from cosecha.data_models import HarvestedData
-from cosecha.sowing.base import DataSower
 from cosecha.sowing.exceptions import SowerError, WriteError
+
+if TYPE_CHECKING:
+    from cosecha.data_models import HarvestedData
+    from cosecha.sowing.base import DataSower
+
 __all__ = ["IceChunkSower"]
 
 logger = logging.getLogger(__name__)
@@ -70,7 +72,6 @@ class IceChunkSower:
 
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
-            
         storage = icechunk.local_filesystem_storage(str(self.storage_path))
         try:
             self.repo = icechunk.Repository.open(storage)
@@ -108,6 +109,7 @@ class IceChunkSower:
         ----------
         data : HarvestedData
             The harvested data to write.
+
         Returns
         -------
         str
@@ -139,33 +141,29 @@ class IceChunkSower:
             # Get Dataset
             ds = data.data
 
-            source_clean = re.sub(r'[^a-z0-9_]', '_', data.source_name.lower()).strip('_')
+            source_clean = re.sub(r"[^a-z0-9_]", "_", data.source_name.lower()).strip("_")
             timestamp_str = data.timestamp.strftime("%Y%m%d_%H%M%S")
             group_path = f"{source_clean}/{timestamp_str}"
 
             session = self.repo.writable_session("main")
-            
+
             # IceChunk exclusively uses Zarr v3 specification
             ds.to_zarr(
-                store=session.store,
-                group=group_path,
-                mode="w",
-                zarr_format=3,
-                consolidated=False
+                store=session.store, group=group_path, mode="w", zarr_format=3, consolidated=False
             )
-            
+
             commit_msg = f"Appended {data.source_name} data for {timestamp_str}"
             session.commit(commit_msg)
-            
+
             logger.info(f"Successfully committed to IceChunk repo at group: {group_path}")
             return str(self.storage_path / group_path)
 
         except SowerError:
             raise
         except Exception as e:
-            logger.error(f"Failed to write to IceChunk: {e}")
+            logger.exception(f"Failed to write to IceChunk: {e}")
             raise WriteError(f"IceChunk write failed: {e}") from e
 
 
 # Type hint: IceChunkSower implements DataSower protocol
-_: type[DataSower] = IceChunkSower  # noqa: F841
+_: type[DataSower] = IceChunkSower

@@ -3,20 +3,21 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
-import pandas as pd
-import xarray as xr
-
-from cosecha.sowing.exceptions import SowerError
 from cosecha.data_models import HarvestedData
+from cosecha.sowing.exceptions import SowerError
+
+if TYPE_CHECKING:
+    import pandas as pd
+    import xarray as xr
 
 logger = logging.getLogger(__name__)
 
 
 def apply_gridded_transformations(
-    data: Union[HarvestedData, xr.Dataset], transformations: Optional[dict[str, Any]] = None
-) -> Union[HarvestedData, xr.Dataset]:
+    data: HarvestedData | xr.Dataset, transformations: dict[str, Any] | None = None
+) -> HarvestedData | xr.Dataset:
     """Apply optional transformations to the xarray Dataset.
 
     Supported transformations:
@@ -60,7 +61,7 @@ def apply_gridded_transformations(
 
                 if result.coords[lat_coord.name].ndim > 1 or result.coords[lon_coord.name].ndim > 1:
                     mask = None
-        
+
                     if "lat_bounds" in subset:
                         lat_min, lat_max = subset["lat_bounds"]
                         lat_mask = (lat_coord >= lat_min) & (lat_coord <= lat_max)
@@ -74,7 +75,7 @@ def apply_gridded_transformations(
                     if mask is not None:
                         # Find the bounding box in y/x index space
                         y_idx, x_idx = mask.values.nonzero()
-                        
+
                         if len(y_idx) > 0 and len(x_idx) > 0:
                             y_slice = slice(y_idx.min(), y_idx.max() + 1)
                             x_slice = slice(x_idx.min(), x_idx.max() + 1)
@@ -84,7 +85,9 @@ def apply_gridded_transformations(
                                 f"lon={subset.get('lon_bounds')}"
                             )
                         else:
-                            logger.warning("Spatial subset resulted in an empty mask; skipping subset")
+                            logger.warning(
+                                "Spatial subset resulted in an empty mask; skipping subset"
+                            )
                 else:
                     result = result.sel(
                         {
@@ -93,12 +96,12 @@ def apply_gridded_transformations(
                         }
                     )
             else:
-                logger.warning("spatial_subset requires at least one of 'lon_bounds' or 'lat_bounds'")
+                logger.warning(
+                    "spatial_subset requires at least one of 'lon_bounds' or 'lat_bounds'"
+                )
 
         except Exception as e:
-            raise SowerError(
-                f"Spatial subset failed: {e}. Available dimensions: {list(ds.dims)}"
-            )
+            raise SowerError(f"Spatial subset failed: {e}. Available dimensions: {list(ds.dims)}")
 
     # Unit conversions
     if "unit_conversions" in transformations:
@@ -126,8 +129,7 @@ def apply_gridded_transformations(
         missing = set(vars_to_keep) - set(result.data_vars)
         if missing:
             raise SowerError(
-                f"Variables to keep not found: {missing}. "
-                f"Available: {list(result.data_vars)}"
+                f"Variables to keep not found: {missing}. Available: {list(result.data_vars)}"
             )
         result = result[list(vars_to_keep)]
         if is_harvested:
@@ -140,9 +142,10 @@ def apply_gridded_transformations(
 
     return result
 
+
 def apply_ts_transformations(
-    data: Union[HarvestedData, pd.DataFrame], transformations: Optional[dict[str, Any]] = None
-) -> Union[HarvestedData, pd.DataFrame]:
+    data: HarvestedData | pd.DataFrame, transformations: dict[str, Any] | None = None
+) -> HarvestedData | pd.DataFrame:
     """Apply optional transformations to the DataFrame.
 
     Supported transformations:
@@ -198,8 +201,7 @@ def apply_ts_transformations(
         missing = set(cols) - set(result.columns)
         if missing:
             raise SowerError(
-                f"Columns {missing} not found for filtering. "
-                f"Available: {list(result.columns)}"
+                f"Columns {missing} not found for filtering. Available: {list(result.columns)}"
             )
         result = result[cols]
         logger.debug(f"Filtered to columns: {cols}")

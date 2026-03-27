@@ -106,14 +106,15 @@ class TestZarrSower:
         """Test that transformations can be applied manually before sowing."""
         transformations = {"unit_conversions": {"temp": 1.8}}
         transformed_data = apply_gridded_transformations(harvested_data, transformations)
-        
+
         path = transformed_data.sow_to_zarr(output_dir=temp_output_dir)
-        
+
         assert Path(path).exists()
-        
+
         # Verify transformation (temp should be multiplied by 1.8)
         ds = xr.open_zarr(path)
         assert ds["temp"].values[0, 0] == 20.0 * 1.8  # original was 20.0
+
 
 class TestIceChunkSower:
     """Test IceChunkSower implementation."""
@@ -187,7 +188,6 @@ class TestIceChunkSower:
 
         with pytest.raises(SowerError, match="only supports gridded"):
             sower._validate_input(data)
-
 
     def test_sow_creates_icechunk_store(self, temp_storage_dir, harvested_data):
         """Test that sow creates an IceChunk store."""
@@ -305,11 +305,11 @@ class TestNetCDFSower:
         """Test that variable selection transformations can be applied before sowing."""
         transformations = {"keep_variables": ["precip"]}
         transformed_data = apply_gridded_transformations(harvested_data, transformations)
-        
+
         path = transformed_data.sow_to_netcdf(output_dir=temp_output_dir)
-        
+
         assert Path(path).exists()
-        
+
         # Verify transformation (temp should not exist)
         try:
             ds = xr.open_dataset(path, engine="h5netcdf")

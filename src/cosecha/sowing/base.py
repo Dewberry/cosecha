@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
-from cosecha.data_models import HarvestedData
+if TYPE_CHECKING:
+    from cosecha.data_models import HarvestedData
 
 __all__ = ["DataSower"]
 
