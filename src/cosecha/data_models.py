@@ -272,3 +272,113 @@ class HarvestedData:
             f"HarvestedData(source={self.source_name}, type={self._data_type()}, "
             f"{size_info}, variables={self.variable_names})"
         )
+
+    def sow_to_icechunk(self, storage_path: str, **kwargs: Any) -> Any:
+        """Write the harvested data to an IceChunk format.
+
+        Parameters
+        ----------
+        storage_path : str
+            The path to store the IceChunk data.
+        **kwargs : Any
+            Additional arguments passed to the sower's sow method.
+
+        Returns
+        -------
+        Any
+            The result of the sow operation.
+        """
+        from cosecha.sowing.icechunk import IceChunkSower
+
+        sower = IceChunkSower(storage_path=storage_path)
+        return sower.sow(self, **kwargs)
+
+    def sow_to_iceberg(self, warehouse_path: str, namespace: str = "default", catalog_name: str = "default", **kwargs: Any) -> Any:
+        """Write the harvested data to an Iceberg table.
+
+        Parameters
+        ----------
+        warehouse_path : str
+            The path to the Iceberg warehouse.
+        namespace : str, optional
+            The namespace for the table, by default "default".
+        catalog_name : str, optional
+            The catalog name, by default "default".
+        **kwargs : Any
+            Additional arguments passed to the sower's sow method.
+
+        Returns
+        -------
+        Any
+            The result of the sow operation.
+        """
+        from cosecha.sowing.iceberg import IcebergSower
+
+        sower = IcebergSower(warehouse_path=warehouse_path, namespace=namespace, catalog_name=catalog_name)
+        return sower.sow(self, **kwargs)
+
+    def sow_to_netcdf(self, output_dir: str, compression: str = "zlib", compression_level: int = 4, **kwargs: Any) -> Any:
+        """Write the harvested data to a NetCDF file.
+
+        Parameters
+        ----------
+        output_dir : str
+            The directory to save the NetCDF file.
+        compression : str, optional
+            The compression algorithm, by default "zlib".
+        compression_level : int, optional
+            The compression level, by default 4.
+        **kwargs : Any
+            Additional arguments passed to the sower's sow method.
+
+        Returns
+        -------
+        Any
+            The result of the sow operation.
+        """
+        from cosecha.sowing.netcdf import NetCDFSower
+
+        sower = NetCDFSower(output_dir=output_dir, compression=compression, compression_level=compression_level)
+        return sower.sow(self, **kwargs)
+
+    def sow_to_parquet(self, output_dir: str, **kwargs: Any) -> Any:
+        """Write the harvested data to Parquet files.
+
+        Parameters
+        ----------
+        output_dir : str
+            The directory to save the Parquet files.
+        **kwargs : Any
+            Additional arguments passed to the sower's sow method.
+
+        Returns
+        -------
+        Any
+            The result of the sow operation.
+        """
+        from cosecha.sowing.parquet import ParquetSower
+
+        sower = ParquetSower(output_dir=output_dir)
+        return sower.sow(self, **kwargs)
+
+    def sow_to_zarr(self, output_dir: str, consolidate: bool = True, **kwargs: Any) -> Any:
+        """Write the harvested data to Zarr format.
+
+        Parameters
+        ----------
+        output_dir : str
+            The directory to save the Zarr data.
+        consolidate : bool, optional
+            Whether to consolidate the Zarr metadata, by default True.
+        **kwargs : Any
+            Additional arguments passed to the sower's sow method.
+
+        Returns
+        -------
+        Any
+            The result of the sow operation.
+        """
+        from cosecha.sowing.zarr import ZarrSower
+
+        sower = ZarrSower(output_dir=output_dir, consolidate=consolidate)
+        return sower.sow(self, **kwargs)

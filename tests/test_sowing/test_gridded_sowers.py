@@ -92,25 +92,22 @@ class TestZarrSower:
 
     def test_sow_creates_zarr_store(self, temp_output_dir, harvested_data):
         """Test that sow creates a Zarr store."""
-        sower = ZarrSower(output_dir=temp_output_dir)
-        path = sower.sow(harvested_data)
+        path = harvested_data.sow_to_zarr(output_dir=temp_output_dir)
 
         assert Path(path).exists()
         assert path.endswith(".zarr")
 
     def test_sow_returns_path_string(self, temp_output_dir, harvested_data):
         """Test that sow returns a string path."""
-        sower = ZarrSower(output_dir=temp_output_dir)
-        path = sower.sow(harvested_data)
+        path = harvested_data.sow_to_zarr(output_dir=temp_output_dir)
         assert isinstance(path, str)
 
     def test_sow_with_transformations(self, temp_output_dir, harvested_data):
         """Test that transformations can be applied manually before sowing."""
-        sower = ZarrSower(output_dir=temp_output_dir)
         transformations = {"unit_conversions": {"temp": 1.8}}
         transformed_data = apply_gridded_transformations(harvested_data, transformations)
         
-        path = sower.sow(transformed_data)
+        path = transformed_data.sow_to_zarr(output_dir=temp_output_dir)
         
         assert Path(path).exists()
         
@@ -194,18 +191,16 @@ class TestIceChunkSower:
 
     def test_sow_creates_icechunk_store(self, temp_storage_dir, harvested_data):
         """Test that sow creates an IceChunk store."""
-        sower = IceChunkSower(storage_path=temp_storage_dir)
-        sower.sow(harvested_data)
+        harvested_data.sow_to_icechunk(storage_path=temp_storage_dir)
 
         # IceChunk manages its own internal layout, so we check if the storage root exists
         # and has populated data rather than assuming a Zarr v2 style literal directory path
-        assert sower.storage_path.exists()
-        assert any(sower.storage_path.iterdir())
+        assert temp_storage_dir.exists()
+        assert any(temp_storage_dir.iterdir())
 
     def test_sow_returns_path_string(self, temp_storage_dir, harvested_data):
         """Test that sow returns a string path."""
-        sower = IceChunkSower(storage_path=temp_storage_dir)
-        path = sower.sow(harvested_data)
+        path = harvested_data.sow_to_icechunk(storage_path=temp_storage_dir)
         assert isinstance(path, str)
 
 
@@ -296,25 +291,22 @@ class TestNetCDFSower:
 
     def test_sow_creates_netcdf_file(self, temp_output_dir, harvested_data):
         """Test that sow creates a NetCDF file."""
-        sower = NetCDFSower(output_dir=temp_output_dir)
-        path = sower.sow(harvested_data)
+        path = harvested_data.sow_to_netcdf(output_dir=temp_output_dir)
 
         assert Path(path).exists()
         assert path.endswith(".nc")
 
     def test_sow_returns_path_string(self, temp_output_dir, harvested_data):
         """Test that sow returns a string path."""
-        sower = NetCDFSower(output_dir=temp_output_dir)
-        path = sower.sow(harvested_data)
+        path = harvested_data.sow_to_netcdf(output_dir=temp_output_dir)
         assert isinstance(path, str)
 
     def test_sow_with_transformations_keep_variables(self, temp_output_dir, harvested_data):
         """Test that variable selection transformations can be applied before sowing."""
-        sower = NetCDFSower(output_dir=temp_output_dir)
         transformations = {"keep_variables": ["precip"]}
         transformed_data = apply_gridded_transformations(harvested_data, transformations)
         
-        path = sower.sow(transformed_data)
+        path = transformed_data.sow_to_netcdf(output_dir=temp_output_dir)
         
         assert Path(path).exists()
         

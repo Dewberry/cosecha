@@ -94,25 +94,22 @@ class TestParquetSower:
 
     def test_sow_creates_parquet_file(self, temp_output_dir, harvested_data):
         """Test that sow creates a Parquet file."""
-        sower = ParquetSower(output_dir=temp_output_dir)
-        path = sower.sow(harvested_data)
+        path = harvested_data.sow_to_parquet(output_dir=temp_output_dir)
 
         assert Path(path).exists()
         assert path.endswith(".parquet")
 
     def test_sow_returns_path_string(self, temp_output_dir, harvested_data):
         """Test that sow returns a string path."""
-        sower = ParquetSower(output_dir=temp_output_dir)
-        path = sower.sow(harvested_data)
+        path = harvested_data.sow_to_parquet(output_dir=temp_output_dir)
         assert isinstance(path, str)
 
     def test_sow_with_transformations(self, temp_output_dir, harvested_data):
         """Test that transformations can be applied manually before sowing."""
-        sower = ParquetSower(output_dir=temp_output_dir)
         transformations = {"unit_conversions": {"value": 2.0}}
         transformed_data = apply_ts_transformations(harvested_data, transformations)
         
-        path = sower.sow(transformed_data)
+        path = transformed_data.sow_to_parquet(output_dir=temp_output_dir)
         
         assert Path(path).exists()
         
