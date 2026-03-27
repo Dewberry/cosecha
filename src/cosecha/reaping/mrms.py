@@ -7,9 +7,10 @@ from __future__ import annotations
 
 import gzip
 import logging
+import os
 import tempfile
 from datetime import UTC, datetime, timedelta
-from typing import Optional
+from typing import Any, Optional
 
 import xarray as xr
 import s3fs
@@ -26,23 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class MRMSReaper:
-    """Fetch NOAA MRMS gridded data from S3.
-
-    This reaper fetches raw MRMS data for a specific variable and time range.
-
-    Attributes
-    ----------
-    variable : str
-        MRMS variable name (e.g., 'MultiSensor_QPE_01H_Pass2_00.00').
-    start_time : datetime | None
-        Start time for fetching.
-    end_time : datetime | None
-        End time for fetching.
-    time : datetime | None
-        Single time for fetching.
-    transformations : dict[str, Any] | None
-        Optional transformations to apply to the raw data before returning.
-    """
+    """Reaper for NOAA MRMS gridded precipitation data."""
 
     def __init__(
         self,
@@ -51,6 +36,7 @@ class MRMSReaper:
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         transformations: Optional[dict[str, Any]] = None,
+        cache_data: bool = False,
     ) -> None:
         """Initialize MRMSReaper.
 
@@ -64,12 +50,20 @@ class MRMSReaper:
             Start time for the fetch range.
         end_time : datetime, optional
             End time for the fetch range.
+        transformations : dict[str, Any], optional
+            Optional transformations to apply to the raw data before returning.
+        cache_data : bool, optional
+            Whether to cache decompressed MRMS files on disk.
         """
         self.variable = variable
         self.time = time
         self.start_time = start_time
         self.end_time = end_time
         self.transformations = transformations
+        self.cache_data = cache_data
+        
+        # tempdir cache directory
+        self.cache_dir = os.path.join(tempfile.gettempdir(), "rms_cache")
 
         self._validate_params()
 
@@ -135,39 +129,58 @@ class MRMSReaper:
         files = self._find_available_files(times)
         
         data_arrays = []
-        for file in files:
-            logger.info(f"Fetching MRMS data from S3: {file}")
-            
-            max_retries = 3
-            compressed_file = None
-            for attempt in range(max_retries):
-                try:
-                    with self.aws.open(file, "rb") as s3_file:
-                        compressed_file = s3_file.read()
-                    break
-                except Exception as e:
-                    logger.warning(f"Attempt {attempt + 1} failed: {e}")
-                    if attempt == max_retries - 1:
-                        logger.error(f"Skipping {file} after {max_retries} failed attempts.")
-                    import time as time_mod
-                    time_mod.sleep(2 ** attempt)
-            
-            if not compressed_file:
-                continue
+        if self.cache_data:
+            os.makedirs(self.cache_dir, exist_ok=True)
 
-            with tempfile.NamedTemporaryFile(suffix=".grib2") as f:
-                f.write(gzip.decompress(compressed_file))
-                f.flush()
-                data_in = xr.load_dataarray(f.name, engine="cfgrib", decode_timedelta=True)
-                mrms_da = self._to_180(data_in)
+        for file in files:
+            # Deterministic filename for cache based on the S3 file path name
+            filename = file.split("/")[-1].replace(".gz", ".grib2")
+            cached_file_path = os.path.join(self.cache_dir, filename)
+
+            if self.cache_data and os.path.exists(cached_file_path):
+                logger.info(f"Loading cached MRMS file from {cached_file_path}")
+                data_in = xr.load_dataarray(cached_file_path, engine="cfgrib", decode_timedelta=True)
+            else:
+                logger.info(f"Fetching MRMS data from S3: {file}")
                 
-                mrms_da = mrms_da.expand_dims("time")
-                mrms_da = mrms_da.sortby("latitude")
+                max_retries = 3
+                compressed_file = None
+                for attempt in range(max_retries):
+                    try:
+                        with self.aws.open(file, "rb") as s3_file:
+                            compressed_file = s3_file.read()
+                        break
+                    except Exception as e:
+                        logger.warning(f"Attempt {attempt + 1} failed: {e}")
+                        if attempt == max_retries - 1:
+                            logger.error(f"Skipping {file} after {max_retries} failed attempts.")
+                        import time as time_mod
+                        time_mod.sleep(2 ** attempt)
                 
-                mrms_ds = mrms_da.to_dataset(name=self.variable)
-                if self.transformations:
-                    mrms_ds = apply_gridded_transformations(mrms_ds, self.transformations)
-                data_arrays.append(mrms_ds)
+                if not compressed_file:
+                    continue
+
+                decompressed_data = gzip.decompress(compressed_file)
+                
+                if self.cache_data:
+                    with open(cached_file_path, "wb") as f:
+                        f.write(decompressed_data)
+                    data_in = xr.load_dataarray(cached_file_path, engine="cfgrib", decode_timedelta=True)
+                else:
+                    with tempfile.NamedTemporaryFile(suffix=".grib2") as f:
+                        f.write(decompressed_data)
+                        f.flush()
+                        data_in = xr.load_dataarray(f.name, engine="cfgrib", decode_timedelta=True)
+
+            mrms_da = self._to_180(data_in)
+            
+            mrms_da = mrms_da.expand_dims("time")
+            mrms_da = mrms_da.sortby("latitude")
+            
+            mrms_ds = mrms_da.to_dataset(name=self.variable)
+            if self.transformations:
+                mrms_ds = apply_gridded_transformations(mrms_ds, self.transformations)
+            data_arrays.append(mrms_ds)
 
         if not data_arrays:
             raise APIError("No data could be successfully fetched and processed.")
