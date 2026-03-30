@@ -34,12 +34,12 @@ from cosecha import USGSStreamflowReaper, ParquetSower
 # Fetch USGS streamflow data
 reaper = USGSStreamflowReaper(site_ids=["01650000"], start_date="2026-01-01", end_date="2026-01-31")
 
-# Write to Parquet
-sower = ParquetSower(output_dir="./data")
-
 # Execute
 data = reaper.reap()
-path = sower.sow(data)
+
+# Write to Parquet
+path = data.sow_to_parquet(output_dir="./data")
+
 ```
 
 ## Documentation

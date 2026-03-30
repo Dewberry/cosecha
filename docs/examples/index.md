@@ -14,7 +14,10 @@ pixi r nb-run
 
 <div class="grid cards" markdown>
 
-- [![Example Notebook](images/example.svg){ loading=lazy }](/home/sjanke/repos/cosecha/docs/examples/hrrr_example.ipynb "Example HRRR Notebook")
-    **Example Notebook**
+- [![HRRR Example Notebook](images/example.svg){ loading=lazy }](hrrr_example.ipynb "HRRR Example Notebook")
+    **HRRR Example Notebook**
+
+- [![NWIS Example Notebook](images/example.svg){ loading=lazy }](nwis_example.ipynb "NWIS Example Notebook")
+    **NWIS Example Notebook**
 
 </div>

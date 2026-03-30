@@ -99,7 +99,8 @@ nav:
 - Getting Started: README.md
 - Examples:
   - Overview: examples/index.md
-  - Example Notebook: examples/example.ipynb
+  - HRRR Example: examples/hrrr_example.ipynb
+  - NWIS Example: examples/nwis_example.ipynb
 - API Reference: reference.md
 - Release Notes: CHANGELOG.md
 - Contributing: CONTRIBUTING.md
