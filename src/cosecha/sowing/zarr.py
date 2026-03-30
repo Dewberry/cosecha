@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from cosecha.sowing.exceptions import SowerError, WriteError
+from cosecha.logging_config import get_logger
 
 if TYPE_CHECKING:
     from cosecha.data_models import HarvestedData
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
 
 __all__ = ["ZarrSower"]
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class ZarrSower:

@@ -20,6 +20,7 @@ except ImportError:
     from pyiceberg.catalog import load_catalog
 
 from cosecha.sowing.exceptions import SowerError, WriteError
+from cosecha.logging_config import get_logger
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -29,7 +30,7 @@ if TYPE_CHECKING:
 
 __all__ = ["IcebergSower"]
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class IcebergSower:

@@ -6,7 +6,6 @@ This module implements reapers for NOAA MRMS data.
 from __future__ import annotations
 
 import gzip
-import logging
 import tempfile
 import time as time_mod
 from datetime import UTC, datetime, timedelta
@@ -17,6 +16,7 @@ import s3fs
 import xarray as xr
 
 from cosecha.data_models import HarvestedData
+from cosecha.logging_config import get_logger
 from cosecha.reaping.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.reaping.utils import apply_gridded_transformations
 
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 __all__ = ["MRMSReaper"]
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class MRMSReaper:

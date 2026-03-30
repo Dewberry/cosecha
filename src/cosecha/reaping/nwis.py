@@ -6,7 +6,6 @@ from the USGS NWIS API, including streamflow, stage, and precipitation data.
 
 from __future__ import annotations
 
-import logging
 from datetime import UTC, datetime
 from typing import Any
 
@@ -14,6 +13,7 @@ import pandas as pd
 from dataretrieval import nwis as dr_nwis
 
 from cosecha.data_models import HarvestedData, validate_date_range
+from cosecha.logging_config import get_logger
 from cosecha.reaping.exceptions import APIError, DateRangeError, InvalidSiteError
 from cosecha.reaping.utils import apply_ts_transformations
 
@@ -23,7 +23,7 @@ __all__ = [
     "USGSStreamflowReaper",
 ]
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class _USGSNWISReaper:

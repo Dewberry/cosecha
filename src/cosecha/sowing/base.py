@@ -5,12 +5,14 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, Protocol
 
+from cosecha.logging_config import get_logger
+
 if TYPE_CHECKING:
     from cosecha.data_models import HarvestedData
 
 __all__ = ["DataSower"]
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class DataSower(Protocol):

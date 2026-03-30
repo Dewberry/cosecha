@@ -7,7 +7,6 @@ NWP gridded data, etc.) with associated metadata.
 
 from __future__ import annotations
 
-import logging
 import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
@@ -20,6 +19,7 @@ from cosecha.sowing.icechunk import IceChunkSower
 from cosecha.sowing.netcdf import NetCDFSower
 from cosecha.sowing.parquet import ParquetSower
 from cosecha.sowing.zarr import ZarrSower
+from cosecha.logging_config import get_logger
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -32,7 +32,7 @@ __all__ = [
     "validate_spatial_bounds",
 ]
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def validate_data(data: pd.DataFrame | xr.Dataset) -> None:

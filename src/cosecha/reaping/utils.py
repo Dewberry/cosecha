@@ -7,12 +7,14 @@ from typing import TYPE_CHECKING, Any
 
 from cosecha.data_models import HarvestedData
 from cosecha.sowing.exceptions import SowerError
+from cosecha.logging_config import get_logger
+
 
 if TYPE_CHECKING:
     import pandas as pd
     import xarray as xr
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def _apply_spatial_subset(result: xr.Dataset, subset: dict[str, Any]) -> xr.Dataset:

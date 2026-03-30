@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING
 
 from cosecha.reaping.exceptions import ReaperError
 from cosecha.sowing.exceptions import SowerError
+from cosecha.logging_config import get_logger
+
 
 if TYPE_CHECKING:
     from cosecha.data_models import HarvestedData
@@ -20,7 +22,7 @@ if TYPE_CHECKING:
 
 __all__ = ["HarvestPipeline"]
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class HarvestPipeline:

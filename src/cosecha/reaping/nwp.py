@@ -6,7 +6,6 @@ models (HRRR, RRFS, etc.) using the herbie library for data fetching.
 
 from __future__ import annotations
 
-import logging
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -22,6 +21,7 @@ except ImportError:
 
 from cosecha.data_models import HarvestedData
 from cosecha.reaping.exceptions import APIError, DateRangeError, ReaperError
+from cosecha.logging_config import get_logger
 from cosecha.reaping.utils import apply_gridded_transformations
 
 if TYPE_CHECKING:
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 __all__ = ["NWPReaper"]
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 NWP_SEARCH_STRINGS = {
     "hrrr": {
