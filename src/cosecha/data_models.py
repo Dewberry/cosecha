@@ -87,23 +87,23 @@ def validate_date_range(start_date: str, end_date: str) -> None:
     Parameters
     ----------
     start_date : str
-        Start date in ISO 8601 format (YYYY-MM-DD).
+        Start date in ISO 8601 format (e.g. YYYY-MM-DD or YYYY-MM-DDTHH:MMZ).
     end_date : str
-        End date in ISO 8601 format (YYYY-MM-DD).
+        End date in ISO 8601 format (e.g. YYYY-MM-DD or YYYY-MM-DDTHH:MMZ).
 
     Raises
     ------
     ValueError
         If date range is invalid.
     """
-    # Strictly validate ISO 8601 format (YYYY-MM-DD)
+    # Strictly validate ISO 8601 format (YYYY-MM-DD or extended formats with time/timezone)
 
-    iso_pattern = r"^\d{4}-\d{2}-\d{2}$"
+    iso_pattern = r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$"
 
     if not re.match(iso_pattern, str(start_date)):
-        raise ValueError(f"Invalid date format: start_date must be YYYY-MM-DD, got {start_date}")
+        raise ValueError(f"Invalid date format: start_date must be ISO 8601 (e.g., YYYY-MM-DD or YYYY-MM-DDTHH:MMZ), got {start_date}")
     if not re.match(iso_pattern, str(end_date)):
-        raise ValueError(f"Invalid date format: end_date must be YYYY-MM-DD, got {end_date}")
+        raise ValueError(f"Invalid date format: end_date must be ISO 8601 (e.g., YYYY-MM-DD or YYYY-MM-DDTHH:MMZ), got {end_date}")
 
     try:
         start = pd.to_datetime(start_date)
