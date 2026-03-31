@@ -14,7 +14,7 @@ from cosecha.reaping.exceptions import (
     ReaperError,
     SpatialBoundsError,
 )
-from cosecha.reaping.nwis import USGSPrecipReaper, USGSStageReaper, USGSStreamflowReaper
+from cosecha.reaping.nwis import USGSNWISReaper
 from cosecha.reaping.nwp import NWPReaper
 
 __all__ = [
@@ -26,7 +26,5 @@ __all__ = [
     "ReaperError",
     "SpatialBoundsError",
     "TimeSeriesReaper",
-    "USGSPrecipReaper",
-    "USGSStageReaper",
-    "USGSStreamflowReaper",
+    "USGSNWISReaper",
 ]

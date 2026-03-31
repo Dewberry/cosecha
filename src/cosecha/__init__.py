@@ -16,9 +16,7 @@ from cosecha.reaping import (
     ReaperError,
     SpatialBoundsError,
     TimeSeriesReaper,
-    USGSPrecipReaper,
-    USGSStageReaper,
-    USGSStreamflowReaper,
+    USGSNWISReaper,
 )
 from cosecha.sowing import (
     DataSower,
@@ -57,9 +55,7 @@ __all__ = [
     "SpatialBoundsError",
     "TimeSeriesReaper",
     "TransformationError",
-    "USGSPrecipReaper",
-    "USGSStageReaper",
-    "USGSStreamflowReaper",
+    "USGSNWISReaper",
     "WriteError",
     "ZarrSower",
     "__version__",

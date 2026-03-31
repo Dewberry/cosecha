@@ -18,37 +18,19 @@ from cosecha.reaping.exceptions import APIError, DateRangeError, InvalidSiteErro
 from cosecha.reaping.utils import apply_ts_transformations
 
 __all__ = [
-    "USGSPrecipReaper",
-    "USGSStageReaper",
-    "USGSStreamflowReaper",
+    "USGSNWISReaper",
 ]
 
 logger = get_logger(__name__)
 
+_PARAM_MAPPING = {
+    "00060": {"data_type": "instantaneous streamflow", "variable_name": "streamflow"},
+    "00065": {"data_type": "instantaneous stage", "variable_name": "stage"},
+    "00045": {"data_type": "instantaneous precipitation", "variable_name": "precipitation"},
+}
 
-class _USGSNWISReaper:
-    """Base class for USGS NWIS reapers.
-
-    This class should not be instantiated directly; use subclasses
-    (USGSStreamflowReaper, USGSStageReaper, USGSPrecipReaper) instead.
-
-    Uses the dataretrieval library to fetch data from USGS NWIS/Water Data APIs.
-
-    Parameters
-    ----------
-    site_ids : list[str]
-        List of USGS site IDs (e.g., ["01018035"]).
-    start_date : str
-        Start date in ISO 8601 format (YYYY-MM-DD).
-    end_date : str
-        End date in ISO 8601 format (YYYY-MM-DD).
-    parameter_code : str
-        USGS parameter code (e.g., "00060" for streamflow).
-    stat_code : str, optional
-        USGS statistic code. By default "00003" (mean daily value).
-        Not used for instantaneous data.
-
-    """
+class USGSNWISReaper:
+    """Reaper for USGS NWIS instantaneous data."""
 
     def _validate_params(self) -> None:
         """Validate initialization parameters.
@@ -77,10 +59,35 @@ class _USGSNWISReaper:
         site_ids: list[str],
         start_date: str,
         end_date: str,
-        parameter_code: str,
+        parameter_code: str | None = None,
         transformations: dict[str, Any] | None = None,
     ) -> None:
-        """Initialize USGS NWIS reaper."""
+        """ Uses the dataretrieval library to fetch data from USGS NWIS/Water Data APIs.
+
+        Parameters
+        ----------
+        site_ids : list[str]
+            List of USGS site IDs (e.g., ["01018035"]).
+        start_date : str
+            Start date in ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ).
+        end_date : str
+            End date in ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ).
+        parameter_code : str | None, optional
+            USGS parameter code (e.g., "00060" for streamflow or "00045" for precipitation). 
+            If None, fetches all available parameters.
+        transformations : dict[str, Any], optional
+            Optional transformations to apply to the data.
+
+        Examples
+        --------
+        >>> reaper = USGSNWISReaper(
+        ...     site_ids=["01018035"],
+        ...     start_date="2026-01-01",
+        ...     end_date="2026-01-31",
+        ...     parameter_code="00060",
+        ... )
+        >>> data = reaper.reap()
+        """
         self.site_ids = site_ids
         self.start_date = start_date
         self.end_date = end_date
@@ -89,33 +96,33 @@ class _USGSNWISReaper:
         self._validate_params()
         logger.debug(
             f"Initialized {self.__class__.__name__}: "
-            f"sites={self.site_ids}, dates={self.start_date} to {self.end_date}"
+            f"sites={self.site_ids}, dates={self.start_date} to {self.end_date}, "
+            f"parameter_code={self.parameter_code}"
         )
 
-    def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
-        """Fetch data from NWIS. To be implemented by subclasses.
-
-        Parameters
-        ----------
-        sites : str
-            Comma-separated site IDs.
-
-        Returns
-        -------
-        tuple[pd.DataFrame, Any]
-            DataFrame and metadata from dataretrieval.
-        """
-        raise NotImplementedError
-
     def _get_data_type(self) -> str:
-        """Return data type name (e.g., 'streamflow', 'stage'). To be implemented by subclasses.
+        """Return data type name (e.g., 'instantaneous streamflow', 'instantaneous stage').
 
         Returns
         -------
         str
             Data type name.
         """
-        raise NotImplementedError
+        if self.parameter_code is None:
+            return "all instantaneous data"
+        return _PARAM_MAPPING.get(self.parameter_code, {}).get("data_type", "instantaneous data")
+        
+    def _get_variable_name(self) -> str | list[str]:
+        """Return variable name based on parameter code.
+
+        Returns
+        -------
+        str | list[str]
+            Human-readable variable name or "multiple parameters" if requested all.
+        """
+        if self.parameter_code is None:
+            return "multiple parameters"
+        return _PARAM_MAPPING.get(self.parameter_code, {}).get("variable_name", f"parameter_{self.parameter_code}")
 
     def _fetch_and_parse(self) -> pd.DataFrame:
         """Fetch data from NWIS using dataretrieval and parse into DataFrame.
@@ -138,9 +145,20 @@ class _USGSNWISReaper:
 
             # Convert site IDs to comma-separated string
             sites = ",".join(self.site_ids)
-
-            # Use appropriate function based on data type
-            df, _metadata = self._get_data(sites)
+            
+            if self.parameter_code:
+                df, _metadata = dr_nwis.get_iv(
+                    sites=sites,
+                    start=self.start_date,
+                    end=self.end_date,
+                    parameterCd=self.parameter_code,
+                )
+            else:
+                df, _metadata = dr_nwis.get_iv(
+                    sites=sites,
+                    start=self.start_date,
+                    end=self.end_date,
+                )
         except Exception as e:
             logger.exception("Failed to fetch NWIS data")
             raise APIError(f"Failed to fetch NWIS data: {e}") from e
@@ -151,16 +169,6 @@ class _USGSNWISReaper:
 
             logger.debug(f"Fetched {len(df)} records from NWIS")
             return df
-
-    def _get_variable_name(self) -> str:
-        """Return variable name based on parameter code.
-
-        Returns
-        -------
-        str
-            Human-readable variable name.
-        """
-        raise NotImplementedError
 
     def reap(self) -> HarvestedData:
         """Fetch data from NWIS and return as HarvestedData.
@@ -185,15 +193,17 @@ class _USGSNWISReaper:
             "sites": self.site_ids,
             "start_date": self.start_date,
             "end_date": self.end_date,
-            "parameter_code": self.parameter_code,
+            "parameter_code": self.parameter_code if self.parameter_code else "all",
             "record_count": len(df),
         }
 
+        var_name = self._get_variable_name()
+        
         harvested = HarvestedData(
             data=df,
             source_name="USGS_NWIS",
             timestamp=datetime.now(UTC),
-            variable_names=[self._get_variable_name()],
+            variable_names=[var_name] if isinstance(var_name, str) else list(var_name),
             metadata=metadata,
         )
         if self.transformations:
@@ -201,212 +211,3 @@ class _USGSNWISReaper:
 
         logger.info(f"Successfully reaped {len(df)} records from {len(self.site_ids)} site(s)")
         return harvested
-
-
-class USGSStreamflowReaper(_USGSNWISReaper):
-    """Reaper for USGS streamflow data."""
-
-    def __init__(
-        self,
-        site_ids: list[str],
-        start_date: str,
-        end_date: str,
-        transformations: dict[str, Any] | None = None,
-    ) -> None:
-        """Harvests instantaneous streamflow measurements from NWIS.
-
-        Parameters
-        ----------
-        site_ids : list[str]
-            List of USGS site IDs.
-        start_date : str
-            Start date in ISO 8601 format (YYYY-MM-DD).
-        end_date : str
-            End date in ISO 8601 format (YYYY-MM-DD).
-        transformations : dict[str, Any], optional
-            Optional transformations to apply to the data (e.g., renaming columns).
-
-        Examples
-        --------
-        >>> reaper = USGSStreamflowReaper(
-        ...     site_ids=["01018035"],
-        ...     start_date="2026-01-01",
-        ...     end_date="2026-01-31",
-        ... )
-        >>> data = reaper.reap()
-        """
-        super().__init__(
-            site_ids=site_ids,
-            start_date=start_date,
-            end_date=end_date,
-            parameter_code="00060",  # Discharge, cubic feet per second
-            transformations=transformations,
-        )
-
-    def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
-        """Fetch instantaneous streamflow data from NWIS.
-
-        Parameters
-        ----------
-        sites : str
-            Comma-separated site IDs.
-
-        Returns
-        -------
-        tuple[pd.DataFrame, Any]
-            DataFrame and metadata from dataretrieval.
-        """
-        return dr_nwis.get_iv(
-            sites=sites,
-            start=self.start_date,
-            end=self.end_date,
-            parameterCd=self.parameter_code,
-        )
-
-    def _get_data_type(self) -> str:
-        """Return 'instantaneous streamflow' as data type."""
-        return "instantaneous streamflow"
-
-    def _get_variable_name(self) -> str:
-        """Return 'streamflow' as variable name."""
-        return "streamflow"
-
-
-class USGSStageReaper(_USGSNWISReaper):
-    """Reaper for USGS stage (water level) data."""
-
-    def __init__(
-        self,
-        site_ids: list[str],
-        start_date: str,
-        end_date: str,
-        transformations: dict[str, Any] | None = None,
-    ) -> None:
-        """Harvests stage measurements from NWIS.
-
-        Parameters
-        ----------
-        site_ids : list[str]
-            List of USGS site IDs.
-        start_date : str
-            Start date in ISO 8601 format (YYYY-MM-DD).
-        end_date : str
-            End date in ISO 8601 format (YYYY-MM-DD).
-        transformations : dict[str, Any], optional
-            Optional transformations to apply to the data (e.g., renaming columns).
-
-        Examples
-        --------
-        >>> reaper = USGSStageReaper(
-        ...     site_ids=["01018035"],
-        ...     start_date="2026-01-01",
-        ...     end_date="2026-01-31",
-        ...     transformations={"rename_columns": {"00065": "stage"}}
-        ... )
-        >>> data = reaper.reap()
-        """
-        super().__init__(
-            site_ids=site_ids,
-            start_date=start_date,
-            end_date=end_date,
-            parameter_code="00065",  # Gage height, feet
-            transformations=transformations,
-        )
-
-    def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
-        """Fetch instantaneous stage data from NWIS.
-
-        Parameters
-        ----------
-        sites : str
-            Comma-separated site IDs.
-
-        Returns
-        -------
-        tuple[pd.DataFrame, Any]
-            DataFrame and metadata from dataretrieval.
-        """
-        return dr_nwis.get_iv(
-            sites=sites,
-            start=self.start_date,
-            end=self.end_date,
-            parameterCd=self.parameter_code,
-        )
-
-    def _get_data_type(self) -> str:
-        """Return 'instantaneous stage' as data type."""
-        return "instantaneous stage"
-
-    def _get_variable_name(self) -> str:
-        """Return 'stage' as variable name."""
-        return "stage"
-
-
-class USGSPrecipReaper(_USGSNWISReaper):
-    """Reaper for USGS precipitation data."""
-
-    def __init__(
-        self,
-        site_ids: list[str],
-        start_date: str,
-        end_date: str,
-        transformations: dict[str, Any] | None = None,
-    ) -> None:
-        """Harvests accumulated precipitation from NWIS.
-
-        Parameters
-        ----------
-        site_ids : list[str]
-            List of USGS site IDs.
-        start_date : str
-            Start date in ISO 8601 format (YYYY-MM-DD).
-        end_date : str
-            End date in ISO 8601 format (YYYY-MM-DD).
-        transformations : dict[str, Any], optional
-            Optional transformations to apply to the data (e.g., renaming columns).
-
-        Examples
-        --------
-        >>> reaper = USGSPrecipReaper(
-        ...     site_ids=["01018035"],
-        ...     start_date="2026-01-01",
-        ...     end_date="2026-01-31",
-        ...     transformations={"rename_columns": {"00045": "precipitation"}}
-        ... )
-        >>> data = reaper.reap()
-        """
-        super().__init__(
-            site_ids=site_ids,
-            start_date=start_date,
-            end_date=end_date,
-            parameter_code="00045",  # Precipitation
-            transformations=transformations,
-        )
-
-    def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
-        """Fetch instantaneous precipitation data from NWIS.
-
-        Parameters
-        ----------
-        sites : str
-            Comma-separated site IDs.
-
-        Returns
-        -------
-        tuple[pd.DataFrame, Any]
-            DataFrame and metadata from dataretrieval.
-        """
-        return dr_nwis.get_iv(
-            sites=sites,
-            start=self.start_date,
-            end=self.end_date,
-            parameterCd=self.parameter_code,
-        )
-
-    def _get_data_type(self) -> str:
-        """Return 'instantaneous precipitation' as data type."""
-        return "instantaneous precipitation"
-
-    def _get_variable_name(self) -> str:
-        """Return 'precipitation' as variable name."""
-        return "precipitation"
