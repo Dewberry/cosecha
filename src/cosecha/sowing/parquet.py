@@ -6,15 +6,14 @@ This module implements Parquet-based data writing for time-series observations
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from cosecha.sowing.exceptions import SowerError, WriteError
 from cosecha.logging_config import get_logger
+from cosecha.sowing.exceptions import SowerError, WriteError
 
 if TYPE_CHECKING:
     from cosecha.data_models import HarvestedData

@@ -7,12 +7,11 @@ with efficient compression and support for on-demand data access.
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from cosecha.sowing.exceptions import SowerError, WriteError
 from cosecha.logging_config import get_logger
+from cosecha.sowing.exceptions import SowerError, WriteError
 
 if TYPE_CHECKING:
     from cosecha.data_models import HarvestedData

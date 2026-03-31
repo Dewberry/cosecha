@@ -14,12 +14,12 @@ from typing import TYPE_CHECKING, Any, Literal
 import pandas as pd
 import xarray as xr
 
+from cosecha.logging_config import get_logger
 from cosecha.sowing.iceberg import IcebergSower
 from cosecha.sowing.icechunk import IceChunkSower
 from cosecha.sowing.netcdf import NetCDFSower
 from cosecha.sowing.parquet import ParquetSower
 from cosecha.sowing.zarr import ZarrSower
-from cosecha.logging_config import get_logger
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -101,9 +101,13 @@ def validate_date_range(start_date: str, end_date: str) -> None:
     iso_pattern = r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$"
 
     if not re.match(iso_pattern, str(start_date)):
-        raise ValueError(f"Invalid date format: start_date must be ISO 8601 (e.g., YYYY-MM-DD or YYYY-MM-DDTHH:MMZ), got {start_date}")
+        raise ValueError(
+            f"Invalid date format: start_date must be ISO 8601 (e.g., YYYY-MM-DD or YYYY-MM-DDTHH:MMZ), got {start_date}"
+        )
     if not re.match(iso_pattern, str(end_date)):
-        raise ValueError(f"Invalid date format: end_date must be ISO 8601 (e.g., YYYY-MM-DD or YYYY-MM-DDTHH:MMZ), got {end_date}")
+        raise ValueError(
+            f"Invalid date format: end_date must be ISO 8601 (e.g., YYYY-MM-DD or YYYY-MM-DDTHH:MMZ), got {end_date}"
+        )
 
     try:
         start = pd.to_datetime(start_date)

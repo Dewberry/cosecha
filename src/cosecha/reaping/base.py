@@ -7,11 +7,9 @@ Defines abstract interfaces for harvesting data from different source types:
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Protocol
+
 from cosecha.logging_config import get_logger
-
-
 
 if TYPE_CHECKING:
     from cosecha.data_models import HarvestedData

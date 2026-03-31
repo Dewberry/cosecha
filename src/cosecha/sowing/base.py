@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any, Protocol
 
 from cosecha.logging_config import get_logger

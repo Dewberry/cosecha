@@ -7,7 +7,6 @@ hidden partitioning—ideal for maintaining versioned historical data.
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -19,8 +18,8 @@ except ImportError:
     SqlCatalog = None
     from pyiceberg.catalog import load_catalog
 
-from cosecha.sowing.exceptions import SowerError, WriteError
 from cosecha.logging_config import get_logger
+from cosecha.sowing.exceptions import SowerError, WriteError
 
 if TYPE_CHECKING:
     import pandas as pd

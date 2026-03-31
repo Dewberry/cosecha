@@ -7,13 +7,11 @@ transformations, and write to one or more sowers (storage backends).
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 
+from cosecha.logging_config import get_logger
 from cosecha.reaping.exceptions import ReaperError
 from cosecha.sowing.exceptions import SowerError
-from cosecha.logging_config import get_logger
-
 
 if TYPE_CHECKING:
     from cosecha.data_models import HarvestedData

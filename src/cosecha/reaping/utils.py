@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 from cosecha.data_models import HarvestedData
-from cosecha.sowing.exceptions import SowerError
 from cosecha.logging_config import get_logger
-
+from cosecha.sowing.exceptions import SowerError
 
 if TYPE_CHECKING:
     import pandas as pd
