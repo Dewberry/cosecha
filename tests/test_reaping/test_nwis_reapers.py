@@ -25,7 +25,6 @@ class TestUSGSStreamflowReaper:
         assert reaper.start_date == "2026-01-01"
         assert reaper.end_date == "2026-01-31"
         assert reaper.parameter_code == "00060"
-        assert reaper.stat_code == "00003"
 
     def test_initialization_multiple_sites(self):
         """Test initialization with multiple sites."""
@@ -194,7 +193,6 @@ class TestUSGSPrecipReaper:
             end_date="2026-01-31",
         )
         assert reaper.parameter_code == "00045"
-        assert reaper.stat_code == "00006"  # Sum for precip
 
     def test_get_variable_name(self):
         """Test variable name for precipitation."""

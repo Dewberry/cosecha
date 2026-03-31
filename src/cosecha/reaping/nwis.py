@@ -78,7 +78,6 @@ class _USGSNWISReaper:
         start_date: str,
         end_date: str,
         parameter_code: str,
-        stat_code: str = "00003",
         transformations: dict[str, Any] | None = None,
     ) -> None:
         """Initialize USGS NWIS reaper."""
@@ -87,7 +86,6 @@ class _USGSNWISReaper:
         self.end_date = end_date
         self.transformations = transformations
         self.parameter_code = parameter_code
-        self.stat_code = stat_code
         self._validate_params()
         logger.debug(
             f"Initialized {self.__class__.__name__}: "
@@ -206,44 +204,43 @@ class _USGSNWISReaper:
 
 
 class USGSStreamflowReaper(_USGSNWISReaper):
-    """Reaper for USGS streamflow data.
-
-    Harvests instantaneous streamflow measurements from NWIS.
-
-    Parameters
-    ----------
-    site_ids : list[str]
-        List of USGS site IDs.
-    start_date : str
-        Start date in ISO 8601 format (YYYY-MM-DD).
-    end_date : str
-        End date in ISO 8601 format (YYYY-MM-DD).
-
-    Examples
-    --------
-    >>> reaper = USGSStreamflowReaper(
-    ...     site_ids=["01018035"],
-    ...     start_date="2026-01-01",
-    ...     end_date="2026-01-31",
-    ... )
-    >>> data = reaper.reap()
-    >>> data.is_timeseries()
-    True
-    """
+    """Reaper for USGS streamflow data."""
 
     def __init__(
         self,
         site_ids: list[str],
         start_date: str,
         end_date: str,
+        transformations: dict[str, Any] | None = None,
     ) -> None:
-        """Initialize streamflow reaper with parameter code 00060."""
+        """Harvests instantaneous streamflow measurements from NWIS.
+
+        Parameters
+        ----------
+        site_ids : list[str]
+            List of USGS site IDs.
+        start_date : str
+            Start date in ISO 8601 format (YYYY-MM-DD).
+        end_date : str
+            End date in ISO 8601 format (YYYY-MM-DD).
+        transformations : dict[str, Any], optional
+            Optional transformations to apply to the data (e.g., renaming columns).
+
+        Examples
+        --------
+        >>> reaper = USGSStreamflowReaper(
+        ...     site_ids=["01018035"],
+        ...     start_date="2026-01-01",
+        ...     end_date="2026-01-31",
+        ... )
+        >>> data = reaper.reap()
+        """
         super().__init__(
             site_ids=site_ids,
             start_date=start_date,
             end_date=end_date,
             parameter_code="00060",  # Discharge, cubic feet per second
-            stat_code="00003",  # Mean (not used for instantaneous data)
+            transformations=transformations,
         )
 
     def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
@@ -276,42 +273,44 @@ class USGSStreamflowReaper(_USGSNWISReaper):
 
 
 class USGSStageReaper(_USGSNWISReaper):
-    """Reaper for USGS stage (water level) data.
-
-    Harvests daily mean stage measurements from NWIS.
-
-    Parameters
-    ----------
-    site_ids : list[str]
-        List of USGS site IDs.
-    start_date : str
-        Start date in ISO 8601 format (YYYY-MM-DD).
-    end_date : str
-        End date in ISO 8601 format (YYYY-MM-DD).
-
-    Examples
-    --------
-    >>> reaper = USGSStageReaper(
-    ...     site_ids=["01018035"],
-    ...     start_date="2026-01-01",
-    ...     end_date="2026-01-31",
-    ... )
-    >>> data = reaper.reap()
-    """
+    """Reaper for USGS stage (water level) data."""
 
     def __init__(
         self,
         site_ids: list[str],
         start_date: str,
         end_date: str,
+        transformations: dict[str, Any] | None = None,
     ) -> None:
-        """Initialize stage reaper with parameter code 00065."""
+        """Harvests stage measurements from NWIS.
+
+        Parameters
+        ----------
+        site_ids : list[str]
+            List of USGS site IDs.
+        start_date : str
+            Start date in ISO 8601 format (YYYY-MM-DD).
+        end_date : str
+            End date in ISO 8601 format (YYYY-MM-DD).
+        transformations : dict[str, Any], optional
+            Optional transformations to apply to the data (e.g., renaming columns).
+
+        Examples
+        --------
+        >>> reaper = USGSStageReaper(
+        ...     site_ids=["01018035"],
+        ...     start_date="2026-01-01",
+        ...     end_date="2026-01-31",
+        ...     transformations={"rename_columns": {"00065": "stage"}}
+        ... )
+        >>> data = reaper.reap()
+        """
         super().__init__(
             site_ids=site_ids,
             start_date=start_date,
             end_date=end_date,
             parameter_code="00065",  # Gage height, feet
-            stat_code="00003",  # Mean
+            transformations=transformations,
         )
 
     def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
@@ -353,7 +352,7 @@ class USGSPrecipReaper(_USGSNWISReaper):
         end_date: str,
         transformations: dict[str, Any] | None = None,
     ) -> None:
-        """Harvests daily accumulated precipitation from NWIS.
+        """Harvests accumulated precipitation from NWIS.
 
         Parameters
         ----------
@@ -380,10 +379,9 @@ class USGSPrecipReaper(_USGSNWISReaper):
             site_ids=site_ids,
             start_date=start_date,
             end_date=end_date,
-            parameter_code="00045",  # Precipitation, inches
-            stat_code="00006",  # Sum
+            parameter_code="00045",  # Precipitation
+            transformations=transformations,
         )
-        self.transformations = transformations
 
     def _get_data(self, sites: str) -> tuple[pd.DataFrame, Any]:
         """Fetch instantaneous precipitation data from NWIS.
