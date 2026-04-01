@@ -8,6 +8,7 @@ __all__ = [
     "InvalidSiteError",
     "ReaperError",
     "SpatialBoundsError",
+    "TransformationError",
 ]
 
 
@@ -29,3 +30,7 @@ class APIError(ReaperError):
 
 class SpatialBoundsError(ReaperError):
     """Raised when invalid spatial bounds are provided."""
+
+
+class TransformationError(ReaperError):
+    """Raised when data transformation fails."""

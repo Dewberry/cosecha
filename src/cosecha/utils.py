@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from cosecha.data_models import HarvestedData
+from cosecha.exceptions import TransformationError
 from cosecha.logging_config import get_logger
-from cosecha.sowing.exceptions import SowerError
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -60,15 +59,15 @@ def _apply_spatial_subset(result: xr.Dataset, subset: dict[str, Any]) -> xr.Data
             logger.warning("spatial_subset requires at least one of 'lon_bounds' or 'lat_bounds'")
 
     except Exception as e:
-        raise SowerError(
+        raise TransformationError(
             f"Spatial subset failed: {e}. Available dimensions: {list(result.dims)}"
         ) from e
     return result
 
 
 def apply_gridded_transformations(
-    data: HarvestedData | xr.Dataset, transformations: dict[str, Any] | None = None
-) -> HarvestedData | xr.Dataset:
+    data: xr.Dataset, transformations: dict[str, Any] | None = None
+) -> xr.Dataset:
     """Apply optional transformations to the xarray Dataset.
 
     Supported transformations:
@@ -79,27 +78,25 @@ def apply_gridded_transformations(
 
     Parameters
     ----------
-    data : Union[HarvestedData, xr.Dataset]
-        The harvested data or Dataset to transform.
+    data : xr.Dataset
+        The Dataset to transform.
     transformations : dict[str, Any], optional
         Dictionary of transformations to apply. If None, no transformations.
 
     Returns
     -------
-    Union[HarvestedData, xr.Dataset]
-        Harvested data or Dataset with transformations applied.
+    xr.Dataset
+        Dataset with transformations applied.
 
     Raises
     ------
-    SowerError
+    TransformationError
         If transformations reference non-existent variables or coordinates.
     """
     if not transformations:
         return data
 
-    is_harvested = isinstance(data, HarvestedData)
-    dataset = data.data if is_harvested else data
-    result = dataset.copy()
+    result = data.copy()
 
     # Spatial subset
     if "spatial_subset" in transformations:
@@ -110,7 +107,7 @@ def apply_gridded_transformations(
         conversions = transformations["unit_conversions"]
         for var, factor in conversions.items():
             if var not in result.data_vars:
-                raise SowerError(
+                raise TransformationError(
                     f"Variable '{var}' not found for unit conversion. "
                     f"Available: {list(result.data_vars)}"
                 )
@@ -121,8 +118,6 @@ def apply_gridded_transformations(
     if "variable_rename" in transformations:
         renames = transformations["variable_rename"]
         result = result.rename(renames)
-        if is_harvested:
-            data.variable_names = [renames.get(var, var) for var in data.variable_names]
         logger.debug(f"Renamed variables: {renames}")
 
     # Keep specific variables
@@ -130,24 +125,18 @@ def apply_gridded_transformations(
         vars_to_keep = transformations["keep_variables"]
         missing = set(vars_to_keep) - set(result.data_vars)
         if missing:
-            raise SowerError(
+            raise TransformationError(
                 f"Variables to keep not found: {missing}. Available: {list(result.data_vars)}"
             )
         result = result[list(vars_to_keep)]
-        if is_harvested:
-            data.variable_names = [var for var in data.variable_names if var in vars_to_keep]
         logger.debug(f"Kept variables: {vars_to_keep}")
-
-    if is_harvested:
-        data.data = result
-        return data
 
     return result
 
 
 def apply_ts_transformations(
-    data: HarvestedData | pd.DataFrame, transformations: dict[str, Any] | None = None
-) -> HarvestedData | pd.DataFrame:
+    data: pd.DataFrame, transformations: dict[str, Any] | None = None
+) -> pd.DataFrame:
     """Apply optional transformations to the DataFrame.
 
     Supported transformations:
@@ -157,34 +146,32 @@ def apply_ts_transformations(
 
     Parameters
     ----------
-    data : Union[HarvestedData, pd.DataFrame]
-        The harvested data or DataFrame to transform.
+    data : pd.DataFrame
+        The DataFrame to transform.
     transformations : dict[str, Any], optional
         Dictionary of transformations to apply. If None, no transformations.
 
     Returns
     -------
-    Union[HarvestedData, pd.DataFrame]
-        Transformed harvested data or DataFrame.
+    pd.DataFrame
+        Transformed DataFrame.
 
     Raises
     ------
-    SowerError
+    TransformationError
         If transformations reference non-existent columns.
     """
     if not transformations:
         return data
 
-    is_harvested = isinstance(data, HarvestedData)
-    df = data.data if is_harvested else data
-    result = df.copy()
+    result = data.copy()
 
     # Apply unit conversions
     if "unit_conversions" in transformations:
         conversions = transformations["unit_conversions"]
         for col, factor in conversions.items():
             if col not in result.columns:
-                raise SowerError(
+                raise TransformationError(
                     f"Column '{col}' not found for unit conversion. "
                     f"Available: {list(result.columns)}"
                 )
@@ -202,13 +189,10 @@ def apply_ts_transformations(
         cols = transformations["filter_columns"]
         missing = set(cols) - set(result.columns)
         if missing:
-            raise SowerError(
+            raise TransformationError(
                 f"Columns {missing} not found for filtering. Available: {list(result.columns)}"
             )
         result = result[cols]
         logger.debug(f"Filtered to columns: {cols}")
 
-    if is_harvested:
-        data.data = result
-        return data
     return result

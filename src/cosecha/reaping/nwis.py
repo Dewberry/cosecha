@@ -6,16 +6,16 @@ from the USGS NWIS API, including streamflow, stage, and precipitation data.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import Any
 
 import pandas as pd
 from dataretrieval import nwis as dr_nwis
 
-from cosecha.data_models import HarvestedData, validate_date_range
+from cosecha.data_models import validate_date_range
+from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
 from cosecha.logging_config import get_logger
-from cosecha.reaping.exceptions import APIError, DateRangeError, InvalidSiteError
-from cosecha.reaping.utils import apply_ts_transformations
+from cosecha.reaping.base import TimeSeriesReaper
+from cosecha.utils import apply_ts_transformations
 
 __all__ = [
     "USGSNWISReaper",
@@ -29,7 +29,8 @@ _PARAM_MAPPING = {
     "00045": {"data_type": "instantaneous precipitation", "variable_name": "precipitation"},
 }
 
-class USGSNWISReaper:
+
+class USGSNWISReaper(TimeSeriesReaper):
     """Reaper for USGS NWIS instantaneous data."""
 
     def _validate_params(self) -> None:
@@ -62,7 +63,7 @@ class USGSNWISReaper:
         parameter_code: str | None = None,
         transformations: dict[str, Any] | None = None,
     ) -> None:
-        """ Uses the dataretrieval library to fetch data from USGS NWIS/Water Data APIs.
+        """Use the dataretrieval library to fetch data from USGS NWIS/Water Data APIs.
 
         Parameters
         ----------
@@ -73,7 +74,7 @@ class USGSNWISReaper:
         end_date : str
             End date in ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ).
         parameter_code : str | None, optional
-            USGS parameter code (e.g., "00060" for streamflow or "00045" for precipitation). 
+            USGS parameter code (e.g., "00060" for streamflow or "00045" for precipitation).
             If None, fetches all available parameters.
         transformations : dict[str, Any], optional
             Optional transformations to apply to the data.
@@ -88,6 +89,7 @@ class USGSNWISReaper:
         ... )
         >>> data = reaper.reap()
         """
+        super().__init__()
         self.site_ids = site_ids
         self.start_date = start_date
         self.end_date = end_date
@@ -111,7 +113,7 @@ class USGSNWISReaper:
         if self.parameter_code is None:
             return "all instantaneous data"
         return _PARAM_MAPPING.get(self.parameter_code, {}).get("data_type", "instantaneous data")
-        
+
     def _get_variable_name(self) -> str | list[str]:
         """Return variable name based on parameter code.
 
@@ -122,7 +124,9 @@ class USGSNWISReaper:
         """
         if self.parameter_code is None:
             return "multiple parameters"
-        return _PARAM_MAPPING.get(self.parameter_code, {}).get("variable_name", f"parameter_{self.parameter_code}")
+        return _PARAM_MAPPING.get(self.parameter_code, {}).get(
+            "variable_name", f"parameter_{self.parameter_code}"
+        )
 
     def _fetch_and_parse(self) -> pd.DataFrame:
         """Fetch data from NWIS using dataretrieval and parse into DataFrame.
@@ -145,7 +149,7 @@ class USGSNWISReaper:
 
             # Convert site IDs to comma-separated string
             sites = ",".join(self.site_ids)
-            
+
             if self.parameter_code:
                 df, _metadata = dr_nwis.get_iv(
                     sites=sites,
@@ -170,13 +174,13 @@ class USGSNWISReaper:
             logger.debug(f"Fetched {len(df)} records from NWIS")
             return df
 
-    def reap(self) -> HarvestedData:
-        """Fetch data from NWIS and return as HarvestedData.
+    def _reap(self) -> pd.DataFrame:
+        """Fetch data from NWIS and return as a pandas DataFrame.
 
         Returns
         -------
-        HarvestedData
-            Harvested data with DataFrame and metadata.
+        pd.DataFrame
+            DataFrame with site_no, datetime index, parameter columns.
 
         Raises
         ------
@@ -189,25 +193,8 @@ class USGSNWISReaper:
 
         df = self._fetch_and_parse()
 
-        metadata = {
-            "sites": self.site_ids,
-            "start_date": self.start_date,
-            "end_date": self.end_date,
-            "parameter_code": self.parameter_code if self.parameter_code else "all",
-            "record_count": len(df),
-        }
-
-        var_name = self._get_variable_name()
-        
-        harvested = HarvestedData(
-            data=df,
-            source_name="USGS_NWIS",
-            timestamp=datetime.now(UTC),
-            variable_names=[var_name] if isinstance(var_name, str) else list(var_name),
-            metadata=metadata,
-        )
         if self.transformations:
-            harvested = apply_ts_transformations(harvested, self.transformations)
+            df = apply_ts_transformations(df, self.transformations)
 
         logger.info(f"Successfully reaped {len(df)} records from {len(self.site_ids)} site(s)")
-        return harvested
+        return df

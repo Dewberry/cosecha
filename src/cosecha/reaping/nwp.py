@@ -6,7 +6,6 @@ models (HRRR, RRFS, etc.) using the herbie library for data fetching.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
@@ -19,15 +18,14 @@ except ImportError:
     FastHerbie = None
     _HERBIE_AVAILABLE = False
 
-from cosecha.data_models import HarvestedData
+from cosecha.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.logging_config import get_logger
-from cosecha.reaping.exceptions import APIError, DateRangeError, ReaperError
-from cosecha.reaping.utils import apply_gridded_transformations
+from cosecha.reaping.base import GriddedReaper
+from cosecha.utils import apply_gridded_transformations
 
 if TYPE_CHECKING:
     import xarray as xr
 
-    from cosecha.reaping.base import GriddedReaper
 
 __all__ = ["NWPReaper"]
 
@@ -51,7 +49,7 @@ NWP_SEARCH_STRINGS = {
 }
 
 
-class NWPReaper:
+class NWPReaper(GriddedReaper):
     """Fetch NOAA Numerical Weather Prediction (NWP) forecast data."""
 
     def _validate_params(self) -> None:
@@ -128,6 +126,7 @@ class NWPReaper:
         ...     }
         ... )
         """
+        super().__init__()
         self.model = model
         self.init_time = init_time
         self.forecast_hours = (
@@ -212,14 +211,13 @@ class NWPReaper:
             logger.info(f"Successfully fetched NWP data: {len(ds.data_vars)} variables")
             return ds
 
-    def reap(self) -> HarvestedData:
+    def _reap(self) -> xr.Dataset:
         """Fetch and return NWP forecast data.
 
-        Returns.
+        Returns
         -------
-        HarvestedData
-            Container with xarray Dataset, source name, timestamp, variables,
-            and metadata including init_time, forecast_hours, model.
+        xr.Dataset
+            Dataset container.
 
         Raises
         ------
@@ -232,9 +230,7 @@ class NWPReaper:
         ...     init_time="2026-01-01 00:00",
         ...     forecast_hours=range(1, 7)
         ... )
-        >>> harvested = reaper.reap()
-        >>> print(harvested.data)  # xarray Dataset
-        >>> print(harvested.metadata)  # dict with init_time, forecast_hours, etc.
+        >>> ds = reaper.reap()
         """
         logger.info(f"Reaping HRRR data for {self.model} model")
 
@@ -248,28 +244,8 @@ class NWPReaper:
             # Get variable names
             variable_names = list(ds.data_vars)
 
-            # Create metadata
-            metadata = {
-                "source_name": f"{self.model} Forecast",
-                "timestamp": datetime.now(UTC),
-                "variable_names": variable_names,
-                "model": self.model,
-                "init_time": self.init_time,
-                "forecast_hours": self.forecast_hours,
-                "nwp_grid_points": ds.sizes.get("x", 0) * ds.sizes.get("y", 0),
-            }
-
-            # Create HarvestedData
-            harvested = HarvestedData(
-                data=ds,
-                source_name=self.model,
-                timestamp=metadata["timestamp"],
-                variable_names=variable_names,
-                metadata=metadata,
-            )
-
             if self.transformations:
-                harvested = apply_gridded_transformations(harvested, self.transformations)
+                ds = apply_gridded_transformations(ds, self.transformations)
 
         except APIError:
             raise
@@ -281,7 +257,7 @@ class NWPReaper:
                 f"Successfully reaped HRRR data: {len(variable_names)} variables, "
                 f"{len(self.forecast_hours) if self.forecast_hours else 'None'} forecast hours"
             )
-            return harvested
+            return ds
 
 
 # Type hint: NWPReaper implements GriddedReaper protocol

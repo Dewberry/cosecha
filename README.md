@@ -29,17 +29,16 @@ pixi add cosecha
 ## Quick Start
 
 ```python
-from cosecha import USGSStreamflowReaper, ParquetSower
+from cosecha import USGSNWISReaper
 
 # Fetch USGS streamflow data
-reaper = USGSStreamflowReaper(site_ids=["01650000"], start_date="2026-01-01", end_date="2026-01-31")
+reaper = USGSNWISReaper(site_ids=["01650000"], start_date="2026-01-01", end_date="2026-01-31", parameter_code="00060" )
 
 # Execute
 data = reaper.reap()
 
 # Write to Parquet
-path = data.sow_to_parquet(output_dir="./data")
-
+path = reaper.sow_to_parquet(file_path="./data/streamflow.pq")
 ```
 
 ## Documentation

@@ -8,27 +8,24 @@ from __future__ import annotations
 import gzip
 import tempfile
 import time as time_mod
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import s3fs
 import xarray as xr
 
-from cosecha.data_models import HarvestedData
+from cosecha.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.logging_config import get_logger
-from cosecha.reaping.exceptions import APIError, DateRangeError, ReaperError
-from cosecha.reaping.utils import apply_gridded_transformations
-
-if TYPE_CHECKING:
-    from cosecha.reaping.base import GriddedReaper
+from cosecha.reaping.base import GriddedReaper
+from cosecha.utils import apply_gridded_transformations
 
 __all__ = ["MRMSReaper"]
 
 logger = get_logger(__name__)
 
 
-class MRMSReaper:
+class MRMSReaper(GriddedReaper):
     """Reaper for NOAA MRMS gridded precipitation data."""
 
     def _validate_params(self) -> None:
@@ -71,6 +68,7 @@ class MRMSReaper:
         cache_data : bool, optional
             Whether to cache decompressed MRMS files on disk.
         """
+        super().__init__()
         self.variable = variable
         self.time = time
         self.start_time = start_time
@@ -200,14 +198,13 @@ class MRMSReaper:
         else:
             return xr.concat(data_arrays, dim="time")
 
-    def reap(self) -> HarvestedData:
+    def _reap(self) -> xr.Dataset:
         """Fetch and return MRMS gridded data.
 
         Returns
         -------
-        HarvestedData
-            Container with xarray Dataset, source name, timestamp, variables,
-            and metadata.
+        xr.Dataset
+            Dataset.
 
         Raises
         ------
@@ -224,29 +221,9 @@ class MRMSReaper:
 
             variable_names = list(ds.data_vars)
 
-            metadata = {
-                "source_name": "MRMS",
-                "timestamp": datetime.now(UTC),
-                "variable_names": variable_names,
-                "variable": self.variable,
-                "start_time": self.start_time.isoformat() if self.start_time else None,
-                "end_time": self.end_time.isoformat() if self.end_time else None,
-            }
-
-            harvested = HarvestedData(
-                data=ds,
-                source_name="MRMS",
-                timestamp=metadata["timestamp"],
-                variable_names=variable_names,
-                metadata=metadata,
-            )
-
         except Exception as e:
             logger.exception("Failed to reap MRMS data")
             raise ReaperError(f"MRMS reaping failed: {e}") from e
         else:
             logger.info(f"Successfully reaped MRMS data: {len(variable_names)} variables")
-            return harvested
-
-
-_: type[GriddedReaper] = MRMSReaper
+            return ds

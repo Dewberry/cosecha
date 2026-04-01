@@ -9,7 +9,6 @@ import pytest
 import xarray as xr
 
 from cosecha.data_models import (
-    HarvestedData,
     validate_data,
     validate_date_range,
     validate_metadata,
@@ -155,83 +154,3 @@ class TestValidateSpatialBounds:
         """Test validation fails when lat_min > lat_max."""
         with pytest.raises(ValueError, match=r"lat_min.*lat_max"):
             validate_spatial_bounds((-99.5, 34.5, -94.5, 31))
-
-
-class TestHarvestedData:
-    """Tests for HarvestedData dataclass."""
-
-    def test_create_with_dataframe(self):
-        """Test creating HarvestedData with DataFrame."""
-        df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
-        data = HarvestedData(
-            data=df,
-            source_name="TEST",
-            timestamp=datetime.now(UTC),
-            variable_names=["a", "b"],
-        )
-        assert data.is_timeseries()
-        assert not data.is_gridded()
-        assert data._data_type() == "timeseries"
-
-    def test_create_with_dataset(self):
-        """Test creating HarvestedData with xarray Dataset."""
-        ds = xr.Dataset({"var": (["x", "y"], [[1, 2], [3, 4]])})
-        data = HarvestedData(
-            data=ds,
-            source_name="TEST",
-            timestamp=datetime.now(UTC),
-            variable_names=["var"],
-        )
-        assert not data.is_timeseries()
-        assert data.is_gridded()
-        assert data._data_type() == "gridded"
-
-    def test_invalid_data_type(self):
-        """Test creating HarvestedData with invalid data type."""
-        with pytest.raises(TypeError, match=r"pd\.DataFrame or xr\.Dataset"):
-            HarvestedData(
-                data=[1, 2, 3],  # Invalid
-                source_name="TEST",
-                timestamp=datetime.now(UTC),
-                variable_names=["var"],
-            )
-
-    def test_empty_dataframe_fails(self):
-        """Test creating HarvestedData with empty DataFrame fails."""
-        with pytest.raises(ValueError, match="DataFrame cannot be empty"):
-            HarvestedData(
-                data=pd.DataFrame(),
-                source_name="TEST",
-                timestamp=datetime.now(UTC),
-                variable_names=["var"],
-            )
-
-    def test_metadata_enrichment(self):
-        """Test that metadata is enriched with required fields."""
-        df = pd.DataFrame({"a": [1, 2]})
-        ts = datetime.now(UTC)
-        data = HarvestedData(
-            data=df,
-            source_name="TEST",
-            timestamp=ts,
-            variable_names=["a"],
-            metadata={"extra": "value"},
-        )
-        assert data.metadata["source_name"] == "TEST"
-        assert data.metadata["timestamp"] is ts
-        assert data.metadata["variable_names"] == ["a"]
-        assert data.metadata["extra"] == "value"
-
-    def test_repr(self):
-        """Test string representation."""
-        df = pd.DataFrame({"a": [1, 2]})
-        data = HarvestedData(
-            data=df,
-            source_name="TEST",
-            timestamp=datetime.now(UTC),
-            variable_names=["a"],
-        )
-        repr_str = repr(data)
-        assert "TEST" in repr_str
-        assert "timeseries" in repr_str
-        assert "shape=" in repr_str

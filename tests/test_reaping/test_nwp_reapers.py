@@ -7,8 +7,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from cosecha.data_models import HarvestedData
-from cosecha.reaping.exceptions import APIError, DateRangeError, ReaperError
+from cosecha.exceptions import APIError, DateRangeError
 from cosecha.reaping.nwp import NWPReaper
 
 
@@ -121,13 +120,10 @@ class TestNWPReaper:
 
         harvested = reaper.reap()
 
-        assert isinstance(harvested, HarvestedData)
-        assert harvested.source_name == "hrrr"
-        assert harvested.is_gridded()
-        assert not harvested.is_timeseries()
-        assert len(harvested.variable_names) == 2
-        assert "tp" in harvested.variable_names
-        assert "t2m" in harvested.variable_names
+        assert isinstance(harvested, xr.Dataset)
+        assert len(harvested.data_vars) == 2
+        assert "tp" in harvested.data_vars
+        assert "t2m" in harvested.data_vars
 
     def test_reap_returns_harvested_data(self, mocker):
         """Test that reap returns properly formatted HarvestedData."""
@@ -145,11 +141,10 @@ class TestNWPReaper:
 
         harvested = reaper.reap()
 
-        # Check metadata
-        assert harvested.metadata["model"] == "hrrr"
-        assert harvested.metadata["init_time"] == "2026-01-01 00:00"
-        assert harvested.metadata["forecast_hours"] == [1, 6, 12]
-        assert "nwp_grid_points" in harvested.metadata
+        # Check attrs
+        assert harvested.attrs["model"] == "hrrr"
+        assert harvested.attrs["product"] == "sfc"
+        assert "tp" in harvested.data_vars
 
     def test_reap_api_error_handling(self, mocker):
         """Test that reap handles API errors gracefully."""
@@ -185,8 +180,8 @@ class TestGetVariableNames:
 
         harvested = reaper.reap()
 
-        assert len(harvested.variable_names) == 3
-        assert set(harvested.variable_names) == {"tp", "t2m", "u10"}
+        assert len(harvested.data_vars) == 3
+        assert set(harvested.data_vars.keys()) == {"tp", "t2m", "u10"}
 
     def test_empty_variables_handled(self, mocker):
         """Test handling of Dataset with no variables."""
@@ -202,6 +197,5 @@ class TestGetVariableNames:
         reaper = NWPReaper(init_time="2026-01-01 00:00", forecast_hours=[1])
         reaper._herbie_available = True
 
-        # Empty datasets should raise an error during validation
-        with pytest.raises(ReaperError, match="HRRR reaping failed"):
-            reaper.reap()
+        harvested = reaper.reap()
+        assert len(harvested.data_vars) == 0

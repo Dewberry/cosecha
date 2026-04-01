@@ -7,8 +7,7 @@ from datetime import datetime
 import pytest
 import xarray as xr
 
-from cosecha.data_models import HarvestedData
-from cosecha.reaping.exceptions import APIError, DateRangeError, ReaperError
+from cosecha.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.reaping.mrms import MRMSReaper
 
 
@@ -78,12 +77,9 @@ class TestMRMSReaper:
 
         harvested = reaper.reap()
 
-        assert isinstance(harvested, HarvestedData)
-        assert harvested.source_name == "MRMS"
-        assert len(harvested.variable_names) == 1
-        assert "test_var" in harvested.variable_names
-        assert harvested.metadata["source_name"] == "MRMS"
-        assert harvested.metadata["variable"] == "MultiSensor_QPE_01H_Pass2_00.00"
+        assert isinstance(harvested, xr.Dataset)
+        assert len(harvested.data_vars) == 1
+        assert "test_var" in harvested.data_vars
 
     def test_reap_api_error_handling(self, mocker):
         """Test that reap handles errors from fetch_data gracefully."""

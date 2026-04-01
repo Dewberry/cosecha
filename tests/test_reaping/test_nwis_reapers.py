@@ -7,8 +7,8 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from cosecha.reaping.exceptions import APIError, DateRangeError, InvalidSiteError
-from cosecha.reaping.nwis import USGSPrecipReaper, USGSStageReaper, USGSStreamflowReaper
+from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
+from cosecha.reaping.nwis import USGSNWISReaper
 
 
 class TestUSGSStreamflowReaper:
@@ -16,7 +16,8 @@ class TestUSGSStreamflowReaper:
 
     def test_initialization_valid(self):
         """Test valid initialization."""
-        reaper = USGSStreamflowReaper(
+        reaper = USGSNWISReaper(
+            parameter_code="00060",
             site_ids=["01018035"],
             start_date="2026-01-01",
             end_date="2026-01-31",
@@ -28,7 +29,8 @@ class TestUSGSStreamflowReaper:
 
     def test_initialization_multiple_sites(self):
         """Test initialization with multiple sites."""
-        reaper = USGSStreamflowReaper(
+        reaper = USGSNWISReaper(
+            parameter_code="00060",
             site_ids=["01018035", "01040000"],
             start_date="2026-01-01",
             end_date="2026-01-31",
@@ -38,7 +40,8 @@ class TestUSGSStreamflowReaper:
     def test_empty_site_ids(self):
         """Test initialization fails with empty site IDs."""
         with pytest.raises(InvalidSiteError):
-            USGSStreamflowReaper(
+            USGSNWISReaper(
+                parameter_code="00060",
                 site_ids=[],
                 start_date="2026-01-01",
                 end_date="2026-01-31",
@@ -47,7 +50,8 @@ class TestUSGSStreamflowReaper:
     def test_invalid_site_id(self):
         """Test initialization fails with invalid site ID."""
         with pytest.raises(InvalidSiteError):
-            USGSStreamflowReaper(
+            USGSNWISReaper(
+                parameter_code="00060",
                 site_ids=[""],
                 start_date="2026-01-01",
                 end_date="2026-01-31",
@@ -56,7 +60,8 @@ class TestUSGSStreamflowReaper:
     def test_invalid_date_range(self):
         """Test initialization fails with invalid date range."""
         with pytest.raises(DateRangeError):
-            USGSStreamflowReaper(
+            USGSNWISReaper(
+                parameter_code="00060",
                 site_ids=["01018035"],
                 start_date="2026-01-31",
                 end_date="2026-01-01",
@@ -65,7 +70,8 @@ class TestUSGSStreamflowReaper:
     def test_invalid_start_date(self):
         """Test initialization fails with invalid start date format."""
         with pytest.raises(DateRangeError):
-            USGSStreamflowReaper(
+            USGSNWISReaper(
+                parameter_code="00060",
                 site_ids=["01018035"],
                 start_date="2026/01/01",
                 end_date="2026-01-31",
@@ -73,7 +79,8 @@ class TestUSGSStreamflowReaper:
 
     def test_get_variable_name(self):
         """Test variable name for streamflow."""
-        reaper = USGSStreamflowReaper(
+        reaper = USGSNWISReaper(
+            parameter_code="00060",
             site_ids=["01018035"],
             start_date="2026-01-01",
             end_date="2026-01-31",
@@ -82,12 +89,27 @@ class TestUSGSStreamflowReaper:
 
     def test_get_data_type(self):
         """Test data type for streamflow."""
-        reaper = USGSStreamflowReaper(
+        reaper = USGSNWISReaper(
+            parameter_code="00060",
             site_ids=["01018035"],
             start_date="2026-01-01",
             end_date="2026-01-31",
         )
         assert reaper._get_data_type() == "instantaneous streamflow"
+
+    @pytest.mark.network
+    def test_reap_network(self):
+        """Test live network retrieval from NWIS."""
+        reaper = USGSNWISReaper(
+            parameter_code="00060",
+            site_ids=["01018035"],
+            start_date="2022-01-01",
+            end_date="2022-01-02",
+        )
+        harvested = reaper.reap()
+        assert len(harvested) > 0
+        assert "00060" in harvested.columns
+        assert isinstance(harvested, pd.DataFrame)
 
     @patch("cosecha.reaping.nwis.dr_nwis.get_iv")
     def test_reap_success(self, mock_get_iv):
@@ -106,7 +128,8 @@ class TestUSGSStreamflowReaper:
 
         mock_get_iv.return_value = (mock_df, mock_metadata)
 
-        reaper = USGSStreamflowReaper(
+        reaper = USGSNWISReaper(
+            parameter_code="00060",
             site_ids=["01018035"],
             start_date="2022-01-01",
             end_date="2022-01-31",
@@ -114,9 +137,10 @@ class TestUSGSStreamflowReaper:
 
         harvested = reaper.reap()
 
-        assert len(harvested.data) == 2
-        assert harvested.source_name == "USGS_NWIS"
-        assert harvested.variable_names == ["streamflow"]
+        assert len(harvested) == 2
+        assert isinstance(harvested, pd.DataFrame)
+        assert "00060" in harvested.columns
+        assert "site_no" in harvested.columns
         mock_get_iv.assert_called_once()
 
     @patch("cosecha.reaping.nwis.dr_nwis.get_iv")
@@ -134,7 +158,8 @@ class TestUSGSStreamflowReaper:
 
         mock_get_iv.return_value = (mock_df, {})
 
-        reaper = USGSStreamflowReaper(
+        reaper = USGSNWISReaper(
+            parameter_code="00060",
             site_ids=["01018035", "01040000"],
             start_date="2022-01-01",
             end_date="2022-01-31",
@@ -142,15 +167,16 @@ class TestUSGSStreamflowReaper:
 
         harvested = reaper.reap()
 
-        assert len(harvested.data) == 2
-        assert harvested.metadata["sites"] == ["01018035", "01040000"]
+        assert len(harvested) == 2
+        assert list(harvested["site_no"].unique()) == ["01018035", "01040000"]
 
     @patch("cosecha.reaping.nwis.dr_nwis.get_iv")
     def test_reap_api_error(self, mock_get_iv):
         """Test error handling when dataretrieval fails."""
         mock_get_iv.side_effect = Exception("API connection failed")
 
-        reaper = USGSStreamflowReaper(
+        reaper = USGSNWISReaper(
+            parameter_code="00060",
             site_ids=["01018035"],
             start_date="2022-01-01",
             end_date="2022-01-31",
@@ -165,7 +191,8 @@ class TestUSGSStageReaper:
 
     def test_initialization(self):
         """Test valid initialization."""
-        reaper = USGSStageReaper(
+        reaper = USGSNWISReaper(
+            parameter_code="00065",
             site_ids=["01018035"],
             start_date="2026-01-01",
             end_date="2026-01-31",
@@ -174,7 +201,8 @@ class TestUSGSStageReaper:
 
     def test_get_variable_name(self):
         """Test variable name for stage."""
-        reaper = USGSStageReaper(
+        reaper = USGSNWISReaper(
+            parameter_code="00065",
             site_ids=["01018035"],
             start_date="2026-01-01",
             end_date="2026-01-31",
@@ -187,7 +215,8 @@ class TestUSGSPrecipReaper:
 
     def test_initialization(self):
         """Test valid initialization."""
-        reaper = USGSPrecipReaper(
+        reaper = USGSNWISReaper(
+            parameter_code="00045",
             site_ids=["01018035"],
             start_date="2026-01-01",
             end_date="2026-01-31",
@@ -196,7 +225,8 @@ class TestUSGSPrecipReaper:
 
     def test_get_variable_name(self):
         """Test variable name for precipitation."""
-        reaper = USGSPrecipReaper(
+        reaper = USGSNWISReaper(
+            parameter_code="00045",
             site_ids=["01018035"],
             start_date="2026-01-01",
             end_date="2026-01-31",
