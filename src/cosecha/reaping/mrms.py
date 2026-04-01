@@ -113,7 +113,7 @@ class MRMSReaper(GriddedReaper):
 
     def _process_single_file(self, file: str) -> xr.Dataset | None:
         # Deterministic filename for cache based on the S3 file path name
-        filename = file.rsplit("/", maxsplit=1)[-1].replace(".gz", ".grib2")
+        filename = file.rsplit("/", maxsplit=1)[-1].replace(".gz", "")
         cached_file_path = self.cache_dir / filename
 
         if self.cache_data and cached_file_path.exists():
@@ -204,7 +204,7 @@ class MRMSReaper(GriddedReaper):
         Returns
         -------
         xr.Dataset
-            Dataset.
+            MRMS gridded dataset.
 
         Raises
         ------
