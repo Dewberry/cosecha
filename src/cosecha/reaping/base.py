@@ -207,7 +207,8 @@ class GriddedReaper(ReaperBase):
             raise ReaperError(f"Zarr write failed: {e}") from e
 
     def sow_to_netcdf(
-        self, file_path: str | Path, compression: str = "zlib", compression_level: int = 4
+        self,
+        file_path: str | Path,
     ) -> str:
         """Write Dataset to NetCDF format.
 
@@ -217,8 +218,6 @@ class GriddedReaper(ReaperBase):
             Path where the NetCDF file will be written. Parent directories will be created if needed.
         compression : str, optional
             Compression algorithm ('zlib', 'lzf', or None). Default: 'zlib'.
-        compression_level : int, optional
-            Compression level for zlib (0-9). Default: 4.
 
         Returns
         -------
@@ -229,9 +228,6 @@ class GriddedReaper(ReaperBase):
             raise ReaperError("No data to sow. Call reap() first.")
         if not isinstance(self.data, xr.Dataset):
             raise ReaperError("Data is not an xarray Dataset.")
-
-        if compression not in ("zlib", "lzf", None):
-            raise ValueError(f"compression must be 'zlib', 'lzf', or None, got {compression}")
 
         out_path = Path(file_path)
 
