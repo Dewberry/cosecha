@@ -6,9 +6,10 @@ models (HRRR, RRFS, etc.) using the herbie library for data fetching.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pandas as pd
+import xarray as xr
 
 try:
     from herbie import FastHerbie
@@ -22,9 +23,6 @@ from cosecha.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.logging_config import get_logger
 from cosecha.reaping.base import GriddedReaper
 from cosecha.utils import apply_gridded_transformations
-
-if TYPE_CHECKING:
-    import xarray as xr
 
 
 __all__ = ["NWPReaper"]
@@ -45,7 +43,6 @@ NWP_SEARCH_STRINGS = {
     "rtma": {
         "temp_2m": r"TMP:2 m above ground",
     },
-    # Add other models and variables as needed
 }
 
 
@@ -217,7 +214,7 @@ class NWPReaper(GriddedReaper):
         Returns
         -------
         xr.Dataset
-            Dataset container.
+            Xarray dataset containing the NWP data.
 
         Raises
         ------
@@ -258,7 +255,3 @@ class NWPReaper(GriddedReaper):
                 f"{len(self.forecast_hours) if self.forecast_hours else 'None'} forecast hours"
             )
             return ds
-
-
-# Type hint: NWPReaper implements GriddedReaper protocol
-_: type[GriddedReaper] = NWPReaper
