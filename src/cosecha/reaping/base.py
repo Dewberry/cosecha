@@ -46,7 +46,7 @@ class ReaperBase(ABC):
         Returns
         -------
         pd.DataFrame | xr.Dataset
-            Harvested data with metadata in attrs.
+            Harvested data from the source.
         """
         self.data = self._reap()
         return self.data
@@ -67,7 +67,6 @@ class TimeSeriesReaper(ReaperBase):
         ------
         ReaperError
             If `reap()` has not been called, or if data is not time-series.
-            If writing to Parquet fails.
 
         Returns
         -------
@@ -216,8 +215,6 @@ class GriddedReaper(ReaperBase):
         ----------
         file_path : str | Path
             Path where the NetCDF file will be written. Parent directories will be created if needed.
-        compression : str, optional
-            Compression algorithm ('zlib', 'lzf', or None). Default: 'zlib'.
 
         Returns
         -------
@@ -252,6 +249,8 @@ class GriddedReaper(ReaperBase):
         ----------
         storage_path : str | Path
             Path to the IceChunk storage directory. Will be created if needed.
+        group_path : str
+            Path to the IceChunk group within the repository.
 
         Returns
         -------
