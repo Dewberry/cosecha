@@ -2,16 +2,37 @@
 
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING, Any
 
 from cosecha.exceptions import TransformationError
-from cosecha.logging_config import get_logger
+from cosecha.logging import logger
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     import pandas as pd
     import xarray as xr
 
-logger = get_logger(__name__)
+
+@contextlib.contextmanager
+def wrap_errors(
+    exc_type: type[Exception],
+    message: str,
+    *passthrough: type[Exception],
+) -> Generator[None, None, None]:
+    """Context manager that logs and re-wraps unexpected exceptions.
+
+    Exceptions listed in *passthrough are re-raised as-is; everything else
+    is logged and re-raised as exc_type.
+    """
+    try:
+        yield
+    except BaseException as e:
+        if passthrough and isinstance(e, passthrough):
+            raise
+        logger.exception(message)
+        raise exc_type(f"{message}: {e}") from e
 
 
 def _apply_spatial_subset(result: xr.Dataset, subset: dict[str, Any]) -> xr.Dataset:

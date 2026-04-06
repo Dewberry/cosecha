@@ -11,23 +11,13 @@ from typing import Any
 import pandas as pd
 import xarray as xr
 
-try:
-    from herbie import FastHerbie
-
-    _HERBIE_AVAILABLE = True
-except ImportError:
-    FastHerbie = None
-    _HERBIE_AVAILABLE = False
-
 from cosecha.exceptions import APIError, DateRangeError, ReaperError
-from cosecha.logging_config import get_logger
+from cosecha.logging import logger
 from cosecha.reaping.base import GriddedReaper
-from cosecha.utils import apply_gridded_transformations
-
+from cosecha.utils import apply_gridded_transformations, wrap_errors
 
 __all__ = ["NWPReaper"]
 
-logger = get_logger(__name__)
 
 NWP_SEARCH_STRINGS = {
     "hrrr": {
@@ -73,6 +63,14 @@ class NWPReaper(GriddedReaper):
 
         logger.debug(f"Validation passed for forecast_hours: {self.forecast_hours}")
 
+    def _check_herbie(self) -> None:
+        try:
+            import herbie  # noqa: F401,PLC0415
+        except ImportError:
+            raise ImportError(
+                "herbie is not installed. Install with: pip install 'cosecha[nwp]'"
+            ) from None
+
     def __init__(
         self,
         init_time: str,
@@ -107,7 +105,7 @@ class NWPReaper(GriddedReaper):
         ------
         DateRangeError
             If init_time is invalid or forecast_hours are malformed.
-        ValueError
+        ImportError
             If herbie is not installed.
 
         Examples
@@ -144,16 +142,7 @@ class NWPReaper(GriddedReaper):
 
         # Validate parameters
         self._validate_params()
-
-        # Check herbie availability
-        if not _HERBIE_AVAILABLE:
-            logger.warning(
-                "herbie not installed; NWPReaper will not be able to fetch data. "
-                "Install with: pip install 'cosecha[nwp]'"
-            )
-            self._herbie_available = False
-        else:
-            self._herbie_available = True
+        self._check_herbie()
 
         logger.debug(
             f"NWPReaper initialized: model={model}, init_time={init_time}, "
@@ -173,17 +162,14 @@ class NWPReaper(GriddedReaper):
         APIError
             If herbie fails to fetch data.
         """
-        if not self._herbie_available:
-            raise APIError("herbie is not installed. Install with: pip install 'cosecha[nwp]'")
+        from herbie.fast import FastHerbie  # noqa: PLC0415
 
-        try:
-            logger.info(
-                f"Fetching HRRR data: model={self.model}, init_time={self.init_time}, "
-                f"forecast_hours={self.forecast_hours}"
-            )
+        logger.info(
+            f"Fetching HRRR data: model={self.model}, init_time={self.init_time}, "
+            f"forecast_hours={self.forecast_hours}"
+        )
 
-            # Use default filter (all variables) or a specific filter if desired
-            # Users can customize via transformations in sowers
+        with wrap_errors(APIError, "NWP fetch failed"):
             if self.forecast_hours:
                 h = FastHerbie(
                     [self.init_time],
@@ -195,16 +181,10 @@ class NWPReaper(GriddedReaper):
                 h = FastHerbie([self.init_time], model=self.model, product=self.product)
 
             ds = h.xarray(search=self.search_str)
+            if not isinstance(ds, xr.Dataset):
+                raise APIError("Herbie did not return an xarray Dataset")
 
-            ds.herbie.to_180()  # Convert longitudes to -180 to 180 for easier donwnstream processing
-
-            logger.info(f"Successfully fetched NWP data: {len(ds.data_vars)} variables")
-            return ds
-
-        except Exception as e:
-            logger.exception("Failed to fetch NWP data")
-            raise APIError(f"NWP fetch failed: {e}") from e
-        else:
+            ds.herbie.to_180()
             logger.info(f"Successfully fetched NWP data: {len(ds.data_vars)} variables")
             return ds
 
@@ -231,27 +211,15 @@ class NWPReaper(GriddedReaper):
         """
         logger.info(f"Reaping HRRR data for {self.model} model")
 
-        try:
-            # Fetch raw data
+        with wrap_errors(ReaperError, "HRRR reaping failed", APIError):
             ds = self._fetch_with_herbie()
-
-            # Ensure all dimension names are lowercase (xarray convention)
-            ds = ds.rename({k: k.lower() for k in ds.dims if k != k.lower()})
-
-            # Get variable names
-            variable_names = list(ds.data_vars)
+            ds = ds.rename({k: k.lower() for k in map(str, ds.dims) if k != k.lower()})
 
             if self.transformations:
                 ds = apply_gridded_transformations(ds, self.transformations)
 
-        except APIError:
-            raise
-        except Exception as e:
-            logger.exception("Failed to reap HRRR data")
-            raise ReaperError(f"HRRR reaping failed: {e}") from e
-        else:
             logger.info(
-                f"Successfully reaped HRRR data: {len(variable_names)} variables, "
+                f"Successfully reaped HRRR data: {len(ds.data_vars)} variables, "
                 f"{len(self.forecast_hours) if self.forecast_hours else 'None'} forecast hours"
             )
             return ds

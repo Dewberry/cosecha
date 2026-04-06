@@ -13,15 +13,14 @@ from dataretrieval import nwis as dr_nwis
 
 from cosecha.data_models import validate_date_range
 from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
-from cosecha.logging_config import get_logger
+from cosecha.logging import logger
 from cosecha.reaping.base import TimeSeriesReaper
-from cosecha.utils import apply_ts_transformations
+from cosecha.utils import apply_ts_transformations, wrap_errors
 
 __all__ = [
     "USGSNWISReaper",
 ]
 
-logger = get_logger(__name__)
 
 _PARAM_MAPPING = {
     "00060": {"data_type": "instantaneous streamflow", "variable_name": "streamflow"},
@@ -141,15 +140,14 @@ class USGSNWISReaper(TimeSeriesReaper):
         APIError
             If fetching fails.
         """
-        try:
-            logger.debug(
-                f"Fetching {self._get_data_type()} data for "
-                f"{len(self.site_ids)} site(s) from {self.start_date} to {self.end_date}"
-            )
+        logger.debug(
+            f"Fetching {self._get_data_type()} data for "
+            f"{len(self.site_ids)} site(s) from {self.start_date} to {self.end_date}"
+        )
 
-            # Convert site IDs to comma-separated string
-            sites = ",".join(self.site_ids)
+        sites = ",".join(self.site_ids)
 
+        with wrap_errors(APIError, "Failed to fetch NWIS data"):
             if self.parameter_code:
                 df, _metadata = dr_nwis.get_iv(
                     sites=sites,
@@ -163,10 +161,7 @@ class USGSNWISReaper(TimeSeriesReaper):
                     start=self.start_date,
                     end=self.end_date,
                 )
-        except Exception as e:
-            logger.exception("Failed to fetch NWIS data")
-            raise APIError(f"Failed to fetch NWIS data: {e}") from e
-        else:
+
             if df.empty:
                 logger.warning("NWIS returned no data")
                 return pd.DataFrame()

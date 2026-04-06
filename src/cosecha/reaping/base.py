@@ -19,11 +19,10 @@ import xarray as xr
 from pyiceberg.catalog import load_catalog
 
 from cosecha.exceptions import ReaperError
-from cosecha.logging_config import get_logger
+from cosecha.logging import logger
+from cosecha.utils import wrap_errors
 
 __all__ = ["GriddedReaper", "TimeSeriesReaper"]
-
-logger = get_logger(__name__)
 
 
 class ReaperBase(ABC):
@@ -75,28 +74,17 @@ class TimeSeriesReaper(ReaperBase):
         """
         if self.data is None:
             raise ReaperError("No data to sow. Call reap() first.")
-
         if not isinstance(self.data, pd.DataFrame):
             raise ReaperError("Data is not time-series (DataFrame).")
 
         out_path = Path(file_path)
-
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
-        try:
-            df = self.data
-
-            output_path = out_path
-
-            table = pa.Table.from_pandas(df)
-
-            pq.write_table(table, str(output_path), compression="snappy")
-
-            logger.info(f"Successfully wrote Parquet file: {output_path}")
-            return str(output_path)
-        except Exception as e:
-            logger.exception("Failed to write Parquet")
-            raise ReaperError(f"Parquet write failed: {e}") from e
+        with wrap_errors(ReaperError, "Parquet write failed"):
+            table = pa.Table.from_pandas(self.data)
+            pq.write_table(table, str(out_path), compression="snappy")
+            logger.info(f"Successfully wrote Parquet file: {out_path}")
+            return str(out_path)
 
     def sow_to_iceberg(
         self,
@@ -141,29 +129,22 @@ class TimeSeriesReaper(ReaperBase):
             warehouse=str(wh_path),
         )
 
-        try:
-            df = self.data
-
+        with wrap_errors(ReaperError, "Iceberg write failed"):
             try:
                 table = catalog.load_table(f"{namespace}.{table_name}")
             except Exception:
                 with contextlib.suppress(Exception):
                     catalog.create_namespace(namespace)
-
-                pa_table = pa.Table.from_pandas(df)
+                pa_table = pa.Table.from_pandas(self.data)
                 table = catalog.create_table(
-                    name=f"{namespace}.{table_name}", schema=pa_table.schema
+                    identifier=f"{namespace}.{table_name}", schema=pa_table.schema
                 )
 
-            pa_table = pa.Table.from_pandas(df)
+            pa_table = pa.Table.from_pandas(self.data)
             table.append(pa_table)
 
             full_name = f"{namespace}.{table_name}"
             logger.info(f"Successfully appended data to Iceberg table: {full_name}")
-        except Exception as e:
-            logger.exception("Failed to write to Iceberg")
-            raise ReaperError(f"Iceberg write failed: {e}") from e
-        else:
             return full_name
 
 
@@ -193,17 +174,10 @@ class GriddedReaper(ReaperBase):
         out_path = Path(file_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
-        try:
-            ds = self.data
-            output_path = out_path
-
-            ds.to_zarr(str(output_path), mode="w", consolidated=consolidate)
-
-            logger.info(f"Successfully wrote Zarr store: {output_path}")
-            return str(output_path)
-        except Exception as e:
-            logger.exception("Failed to write Zarr")
-            raise ReaperError(f"Zarr write failed: {e}") from e
+        with wrap_errors(ReaperError, "Zarr write failed"):
+            self.data.to_zarr(str(out_path), mode="w", consolidated=consolidate)
+            logger.info(f"Successfully wrote Zarr store: {out_path}")
+            return str(out_path)
 
     def sow_to_netcdf(
         self,
@@ -227,20 +201,12 @@ class GriddedReaper(ReaperBase):
             raise ReaperError("Data is not an xarray Dataset.")
 
         out_path = Path(file_path)
-
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
-        try:
-            ds = self.data
-            output_path = out_path
-
-            ds.to_netcdf(output_path, mode="w", engine="h5netcdf")
-
-            logger.info(f"Written NetCDF file to {output_path}")
-            return str(output_path)
-        except Exception as e:
-            logger.exception("NetCDF write failed")
-            raise ReaperError(f"NetCDF write failed: {e}") from e
+        with wrap_errors(ReaperError, "NetCDF write failed"):
+            self.data.to_netcdf(out_path, mode="w", engine="h5netcdf")
+            logger.info(f"Written NetCDF file to {out_path}")
+            return str(out_path)
 
     def sow_to_icechunk(self, storage_path: str | Path, group_path: str) -> str:
         """Write Dataset to IceChunk format.
@@ -275,19 +241,11 @@ class GriddedReaper(ReaperBase):
             repo = icechunk.Repository.create(storage)
             logger.debug("Created new IceChunk repository")
 
-        try:
-            ds = self.data
-            commit_msg = f"Appended data to {group_path}"
-
+        with wrap_errors(ReaperError, "IceChunk write failed"):
             session = repo.writable_session("main")
-            ds.to_zarr(
+            self.data.to_zarr(
                 store=session.store, group=group_path, mode="w", zarr_format=3, consolidated=False
             )
-
-            session.commit(commit_msg)
-
+            session.commit(f"Appended data to {group_path}")
             logger.info(f"Successfully committed to IceChunk repo at group: {group_path}")
             return str(st_path / group_path)
-        except Exception as e:
-            logger.exception("Failed to write to IceChunk")
-            raise ReaperError(f"IceChunk write failed: {e}") from e

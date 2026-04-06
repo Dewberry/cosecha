@@ -10,19 +10,17 @@ import tempfile
 import time as time_mod
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import s3fs
 import xarray as xr
 
 from cosecha.exceptions import APIError, DateRangeError, ReaperError
-from cosecha.logging_config import get_logger
+from cosecha.logging import logger
 from cosecha.reaping.base import GriddedReaper
-from cosecha.utils import apply_gridded_transformations
+from cosecha.utils import apply_gridded_transformations, wrap_errors
 
 __all__ = ["MRMSReaper"]
-
-logger = get_logger(__name__)
 
 
 class MRMSReaper(GriddedReaper):
@@ -123,11 +121,11 @@ class MRMSReaper(GriddedReaper):
             logger.info(f"Fetching MRMS data from S3: {file}")
 
             max_retries = 3
-            compressed_file = None
+            compressed_file: bytes | None = None
             for attempt in range(max_retries):
                 try:
                     with self.aws.open(file, "rb") as s3_file:
-                        compressed_file = s3_file.read()
+                        compressed_file = cast("bytes", s3_file.read())
                     break
                 except Exception as e:
                     logger.warning(f"Attempt {attempt + 1} failed: {e}")
@@ -195,8 +193,7 @@ class MRMSReaper(GriddedReaper):
             raise APIError("No data could be successfully fetched and processed.")
         elif len(data_arrays) == 1:
             return data_arrays[0]
-        else:
-            return xr.concat(data_arrays, dim="time")
+        return cast("xr.Dataset", xr.concat(data_arrays, dim="time"))
 
     def _reap(self) -> xr.Dataset:
         """Fetch and return MRMS gridded data.
@@ -213,17 +210,8 @@ class MRMSReaper(GriddedReaper):
         """
         logger.info(f"Reaping MRMS data for {self.variable}")
 
-        try:
+        with wrap_errors(ReaperError, "MRMS reaping failed"):
             ds = self.fetch_data()
-
-            # Ensure all dimension names are lowercase
-            ds = ds.rename({k: k.lower() for k in ds.dims if k != k.lower()})
-
-            variable_names = list(ds.data_vars)
-
-        except Exception as e:
-            logger.exception("Failed to reap MRMS data")
-            raise ReaperError(f"MRMS reaping failed: {e}") from e
-        else:
-            logger.info(f"Successfully reaped MRMS data: {len(variable_names)} variables")
+            ds = ds.rename({k: k.lower() for k in map(str, ds.dims) if k != k.lower()})
+            logger.info(f"Successfully reaped MRMS data: {len(ds.data_vars)} variables")
             return ds
