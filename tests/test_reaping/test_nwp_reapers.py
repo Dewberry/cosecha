@@ -90,13 +90,14 @@ class TestNWPReaper:
         reaper = NWPReaper(init_time="2026-01-01T00:00:00Z", forecast_hours=[1, 6])
         reaper._validate_params()  # Should not raise
 
-    def test_reap_requires_herbie(self):
+    def test_reap_requires_herbie(self, mocker):
         """Test that reap raises APIError if herbie not available."""
         reaper = NWPReaper(init_time="2026-01-01 00:00", forecast_hours=[1, 6])
-
-        # Simulate herbie not available
-        reaper._herbie_available = False
-
+        mocker.patch.object(
+            reaper,
+            "_fetch_with_herbie",
+            side_effect=APIError("herbie is not installed"),
+        )
         with pytest.raises(APIError, match="herbie is not installed"):
             reaper.reap()
 
@@ -111,12 +112,9 @@ class TestNWPReaper:
         # Mock FastHerbie from herbie import
         mock_herbie = mocker.MagicMock()
         mock_herbie.return_value.xarray.return_value = mock_ds
-        mocker.patch("cosecha.reaping.nwp.FastHerbie", mock_herbie)
+        mocker.patch("herbie.fast.FastHerbie", mock_herbie)
 
         reaper = NWPReaper(init_time="2026-01-01 00:00", forecast_hours=[1, 6])
-
-        # Ensure herbie is marked as available
-        reaper._herbie_available = True
 
         harvested = reaper.reap()
 
@@ -134,10 +132,9 @@ class TestNWPReaper:
 
         mock_herbie = mocker.MagicMock()
         mock_herbie.return_value.xarray.return_value = mock_ds
-        mocker.patch("cosecha.reaping.nwp.FastHerbie", mock_herbie)
+        mocker.patch("herbie.fast.FastHerbie", mock_herbie)
 
         reaper = NWPReaper(init_time="2026-01-01 00:00", forecast_hours=[1, 6, 12])
-        reaper._herbie_available = True
 
         harvested = reaper.reap()
 
@@ -151,10 +148,9 @@ class TestNWPReaper:
         pytest.importorskip("herbie")
         mock_herbie = mocker.MagicMock()
         mock_herbie.return_value.xarray.side_effect = Exception("Network error")
-        mocker.patch("cosecha.reaping.nwp.FastHerbie", mock_herbie)
+        mocker.patch("herbie.fast.FastHerbie", mock_herbie)
 
         reaper = NWPReaper(init_time="2026-01-01 00:00", forecast_hours=[1, 6])
-        reaper._herbie_available = True
 
         with pytest.raises(APIError, match="NWP fetch failed"):
             reaper.reap()
@@ -173,10 +169,9 @@ class TestGetVariableNames:
 
         mock_herbie = mocker.MagicMock()
         mock_herbie.return_value.xarray.return_value = mock_ds
-        mocker.patch("cosecha.reaping.nwp.FastHerbie", mock_herbie)
+        mocker.patch("herbie.fast.FastHerbie", mock_herbie)
 
         reaper = NWPReaper(init_time="2026-01-01 00:00", forecast_hours=[1])
-        reaper._herbie_available = True
 
         harvested = reaper.reap()
 
@@ -192,10 +187,9 @@ class TestGetVariableNames:
 
         mock_herbie = mocker.MagicMock()
         mock_herbie.return_value.xarray.return_value = mock_ds
-        mocker.patch("cosecha.reaping.nwp.FastHerbie", mock_herbie)
+        mocker.patch("herbie.fast.FastHerbie", mock_herbie)
 
         reaper = NWPReaper(init_time="2026-01-01 00:00", forecast_hours=[1])
-        reaper._herbie_available = True
 
         harvested = reaper.reap()
         assert len(harvested.data_vars) == 0
