@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
 
-from cosecha.logging_config import configure_logging, get_logger
+from cosecha import exceptions
+from cosecha.logging import configure_logger
 from cosecha.reaping import (
-    APIError,
     DateRangeError,
     GriddedReaper,
     InvalidSiteError,
@@ -23,7 +23,6 @@ except PackageNotFoundError:
     __version__ = "999"
 
 __all__ = [
-    "APIError",
     "DateRangeError",
     "GriddedReaper",
     "InvalidSiteError",
@@ -33,6 +32,6 @@ __all__ = [
     "TimeSeriesReaper",
     "USGSNWISReaper",
     "__version__",
-    "configure_logging",
-    "get_logger",
+    "configure_logger",
+    "exceptions",
 ]

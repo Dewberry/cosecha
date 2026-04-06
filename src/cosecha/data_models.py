@@ -13,16 +13,12 @@ from typing import Any
 import pandas as pd
 import xarray as xr
 
-from cosecha.logging_config import get_logger
-
 __all__ = [
     "validate_data",
     "validate_date_range",
     "validate_metadata",
     "validate_spatial_bounds",
 ]
-
-logger = get_logger(__name__)
 
 
 def validate_data(data: pd.DataFrame | xr.Dataset) -> None:
