@@ -77,26 +77,6 @@ class TestUSGSStreamflowReaper:
                 end_date="2026-01-31",
             )
 
-    def test_get_variable_name(self):
-        """Test variable name for streamflow."""
-        reaper = USGSNWISReaper(
-            parameter_code="00060",
-            site_ids=["01018035"],
-            start_date="2026-01-01",
-            end_date="2026-01-31",
-        )
-        assert reaper._get_variable_name() == "streamflow"
-
-    def test_get_data_type(self):
-        """Test data type for streamflow."""
-        reaper = USGSNWISReaper(
-            parameter_code="00060",
-            site_ids=["01018035"],
-            start_date="2026-01-01",
-            end_date="2026-01-31",
-        )
-        assert reaper._get_data_type() == "instantaneous streamflow"
-
     @pytest.mark.network
     def test_reap_network(self):
         """Test live network retrieval from NWIS."""
@@ -108,25 +88,24 @@ class TestUSGSStreamflowReaper:
         )
         harvested = reaper.reap()
         assert len(harvested) > 0
-        assert "00060" in harvested.columns
+        assert "value" in harvested.columns
         assert isinstance(harvested, pd.DataFrame)
 
-    @patch("cosecha.reaping.nwis.dr_nwis.get_iv")
-    def test_reap_success(self, mock_get_iv):
+    @patch("cosecha.reaping.nwis.dr_waterdata.get_continuous")
+    def test_reap_success(self, mock_get_continuous):
         """Test successful data retrieval using dataretrieval."""
         # Mock dataretrieval response
         mock_df = pd.DataFrame(
             {
-                "site_no": ["01018035", "01018035"],
-                "00060": [198.0, 195.0],
-                "00060_cd": ["A, e", "A, e"],
+                "monitoring_location_id": ["USGS-01018035", "USGS-01018035"],
+                "value": [198.0, 195.0],
+                "qualifier": ["A, e", "A, e"],
+                "time": ["2022-01-01 15:00:00+00:00", "2022-01-02 03:00:00+00:00"],
             }
         )
-        mock_df.index = pd.to_datetime(["2022-01-01 15:00:00+00:00", "2022-01-02 03:00:00+00:00"])
-        mock_df.index.name = "datetime"
         mock_metadata = {}
 
-        mock_get_iv.return_value = (mock_df, mock_metadata)
+        mock_get_continuous.return_value = (mock_df, mock_metadata)
 
         reaper = USGSNWISReaper(
             parameter_code="00060",
@@ -139,24 +118,23 @@ class TestUSGSStreamflowReaper:
 
         assert len(harvested) == 2
         assert isinstance(harvested, pd.DataFrame)
-        assert "00060" in harvested.columns
-        assert "site_no" in harvested.columns
-        mock_get_iv.assert_called_once()
+        assert "value" in harvested.columns
+        assert "monitoring_location_id" in harvested.columns
+        mock_get_continuous.assert_called_once()
 
-    @patch("cosecha.reaping.nwis.dr_nwis.get_iv")
-    def test_reap_multiple_sites(self, mock_get_iv):
+    @patch("cosecha.reaping.nwis.dr_waterdata.get_continuous")
+    def test_reap_multiple_sites(self, mock_get_continuous):
         """Test retrieval for multiple sites."""
         mock_df = pd.DataFrame(
             {
-                "site_no": ["01018035", "01040000"],
-                "00060": [198.0, 150.0],
-                "00060_cd": ["A, e", "A, e"],
+                "monitoring_location_id": ["USGS-01018035", "USGS-01040000"],
+                "value": [198.0, 150.0],
+                "qualifier": ["A, e", "A, e"],
+                "time": ["2022-01-01 15:00:00+00:00", "2022-01-01 15:00:00+00:00"],
             }
         )
-        mock_df.index = pd.to_datetime(["2022-01-01 15:00:00+00:00", "2022-01-01 15:00:00+00:00"])
-        mock_df.index.name = "datetime"
 
-        mock_get_iv.return_value = (mock_df, {})
+        mock_get_continuous.return_value = (mock_df, {})
 
         reaper = USGSNWISReaper(
             parameter_code="00060",
@@ -168,12 +146,15 @@ class TestUSGSStreamflowReaper:
         harvested = reaper.reap()
 
         assert len(harvested) == 2
-        assert list(harvested["site_no"].unique()) == ["01018035", "01040000"]
+        assert list(harvested["monitoring_location_id"].unique()) == [
+            "USGS-01018035",
+            "USGS-01040000",
+        ]
 
-    @patch("cosecha.reaping.nwis.dr_nwis.get_iv")
-    def test_reap_api_error(self, mock_get_iv):
+    @patch("cosecha.reaping.nwis.dr_waterdata.get_continuous")
+    def test_reap_api_error(self, mock_get_continuous):
         """Test error handling when dataretrieval fails."""
-        mock_get_iv.side_effect = Exception("API connection failed")
+        mock_get_continuous.side_effect = Exception("API connection failed")
 
         reaper = USGSNWISReaper(
             parameter_code="00060",
@@ -199,16 +180,6 @@ class TestUSGSStageReaper:
         )
         assert reaper.parameter_code == "00065"
 
-    def test_get_variable_name(self):
-        """Test variable name for stage."""
-        reaper = USGSNWISReaper(
-            parameter_code="00065",
-            site_ids=["01018035"],
-            start_date="2026-01-01",
-            end_date="2026-01-31",
-        )
-        assert reaper._get_variable_name() == "stage"
-
 
 class TestUSGSPrecipReaper:
     """Tests for USGSPrecipReaper."""
@@ -222,13 +193,3 @@ class TestUSGSPrecipReaper:
             end_date="2026-01-31",
         )
         assert reaper.parameter_code == "00045"
-
-    def test_get_variable_name(self):
-        """Test variable name for precipitation."""
-        reaper = USGSNWISReaper(
-            parameter_code="00045",
-            site_ids=["01018035"],
-            start_date="2026-01-01",
-            end_date="2026-01-31",
-        )
-        assert reaper._get_variable_name() == "precipitation"

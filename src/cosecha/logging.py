@@ -50,7 +50,7 @@ def generate_log_path(work_dir: Path, prefix: str = "swmmanywhere") -> Path:
     prefix : str, optional
         Prefix for the log file name. Defaults to ``"swmmanywhere"``.
 
-    Returns:
+    Returns
     -------
     Path
         Path to the log file (e.g., ``<work_dir>/swmmanywhere-20260206-140112.log``).

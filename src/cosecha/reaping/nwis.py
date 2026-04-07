@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
-from dataretrieval import nwis as dr_nwis
+from dataretrieval import waterdata as dr_waterdata
 
 from cosecha.data_models import validate_date_range
 from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
@@ -59,7 +59,7 @@ class USGSNWISReaper(TimeSeriesReaper):
         site_ids: list[str],
         start_date: str,
         end_date: str,
-        parameter_code: str | None = None,
+        parameter_code: str | list[str] | None = None,
         transformations: dict[str, Any] | None = None,
     ) -> None:
         """Use the dataretrieval library to fetch data from USGS NWIS/Water Data APIs.
@@ -72,8 +72,9 @@ class USGSNWISReaper(TimeSeriesReaper):
             Start date in ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ).
         end_date : str
             End date in ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ).
-        parameter_code : str | None, optional
+        parameter_code : str | list[str] | None, optional
             USGS parameter code (e.g., "00060" for streamflow or "00045" for precipitation).
+            If a list is provided, fetches data for all specified parameters.
             If None, fetches all available parameters.
         transformations : dict[str, Any], optional
             Optional transformations to apply to the data.
@@ -84,7 +85,7 @@ class USGSNWISReaper(TimeSeriesReaper):
         ...     site_ids=["01018035"],
         ...     start_date="2026-01-01",
         ...     end_date="2026-01-31",
-        ...     parameter_code="00060",
+        ...     parameter_code=["00060", "00045"],
         ... )
         >>> data = reaper.reap()
         """
@@ -101,32 +102,6 @@ class USGSNWISReaper(TimeSeriesReaper):
             f"parameter_code={self.parameter_code}"
         )
 
-    def _get_data_type(self) -> str:
-        """Return data type name (e.g., 'instantaneous streamflow', 'instantaneous stage').
-
-        Returns
-        -------
-        str
-            Data type name.
-        """
-        if self.parameter_code is None:
-            return "all instantaneous data"
-        return _PARAM_MAPPING.get(self.parameter_code, {}).get("data_type", "instantaneous data")
-
-    def _get_variable_name(self) -> str | list[str]:
-        """Return variable name based on parameter code.
-
-        Returns
-        -------
-        str | list[str]
-            Human-readable variable name or "multiple parameters" if requested all.
-        """
-        if self.parameter_code is None:
-            return "multiple parameters"
-        return _PARAM_MAPPING.get(self.parameter_code, {}).get(
-            "variable_name", f"parameter_{self.parameter_code}"
-        )
-
     def _fetch_and_parse(self) -> pd.DataFrame:
         """Fetch data from NWIS using dataretrieval and parse into DataFrame.
 
@@ -141,26 +116,19 @@ class USGSNWISReaper(TimeSeriesReaper):
             If fetching fails.
         """
         logger.debug(
-            f"Fetching {self._get_data_type()} data for "
+            f"Fetching data for "
             f"{len(self.site_ids)} site(s) from {self.start_date} to {self.end_date}"
         )
 
-        sites = ",".join(self.site_ids)
+        sites = [f"USGS-{s}" if not s.startswith("USGS-") else s for s in self.site_ids]
+        time_range = f"{self.start_date}/{self.end_date}"
 
         with wrap_errors(APIError, "Failed to fetch NWIS data"):
-            if self.parameter_code:
-                df, _metadata = dr_nwis.get_iv(
-                    sites=sites,
-                    start=self.start_date,
-                    end=self.end_date,
-                    parameterCd=self.parameter_code,
-                )
-            else:
-                df, _metadata = dr_nwis.get_iv(
-                    sites=sites,
-                    start=self.start_date,
-                    end=self.end_date,
-                )
+            df, _metadata = dr_waterdata.get_continuous(
+                monitoring_location_id=sites,
+                time=time_range,
+                parameter_code=self.parameter_code,
+            )
 
             if df.empty:
                 logger.warning("NWIS returned no data")
@@ -182,9 +150,7 @@ class USGSNWISReaper(TimeSeriesReaper):
         APIError
             If fetching fails.
         """
-        logger.info(
-            f"Reaping {self._get_data_type()} data from NWIS for {len(self.site_ids)} site(s)"
-        )
+        logger.info(f"Reaping data from NWIS for {len(self.site_ids)} site(s)")
 
         df = self._fetch_and_parse()
 
