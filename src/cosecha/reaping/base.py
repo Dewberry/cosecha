@@ -77,14 +77,11 @@ class TimeSeriesReaper(ReaperBase):
         if not isinstance(self.data, pd.DataFrame):
             raise ReaperError("Data is not time-series (DataFrame).")
 
-        out_path = Path(file_path)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-
         with wrap_errors(ReaperError, "Parquet write failed"):
             table = pa.Table.from_pandas(self.data)
-            pq.write_table(table, str(out_path), compression="snappy")
-            logger.info(f"Successfully wrote Parquet file: {out_path}")
-            return str(out_path)
+            pq.write_table(table, str(file_path), compression="snappy")
+            logger.info(f"Successfully wrote Parquet file: {file_path}")
+            return str(file_path)
 
     def sow_to_iceberg(
         self,
