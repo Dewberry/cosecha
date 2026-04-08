@@ -7,7 +7,6 @@ __all__ = [
     "DateRangeError",
     "InvalidSiteError",
     "ReaperError",
-    "SpatialBoundsError",
     "TransformationError",
 ]
 
@@ -26,10 +25,6 @@ class DateRangeError(ReaperError):
 
 class APIError(ReaperError):
     """Raised when an API call fails."""
-
-
-class SpatialBoundsError(ReaperError):
-    """Raised when invalid spatial bounds are provided."""
 
 
 class TransformationError(ReaperError):
