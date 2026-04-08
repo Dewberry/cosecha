@@ -1,14 +1,20 @@
-"""Logging utilities for cosecha."""
+"""Logging utilities for cosecha.
+
+Example:
+-------
+>>> from cosecha import configure_logger, logger
+>>> configure_logger(verbose=True)          # console shows DEBUG+
+>>> configure_logger(file="run.log")        # also log to file
+>>> logger.info("Starting pipeline")
+"""
 
 from __future__ import annotations
 
 import logging
+import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
-
-from rich.console import Console
-from rich.logging import RichHandler
+from typing import IO, Literal
 
 __all__ = [
     "configure_logger",
@@ -22,25 +28,18 @@ logger.setLevel(logging.DEBUG)
 logger.propagate = False
 
 _file_handler: logging.FileHandler | None = None
-_console_handler: logging.Handler | None = None
+_console_handler: logging.StreamHandler[IO[str]] | None = None
 
-if not logger.handlers:
-    _console_handler = RichHandler(
-        console=Console(stderr=True, force_jupyter=False, soft_wrap=True),
-        show_time=False,
-        show_level=False,
-        show_path=False,
-        rich_tracebacks=True,
-        tracebacks_show_locals=True,
-        log_time_format="[%Y/%m/%d %H:%M:%S]",
-        omit_repeated_times=False,
-    )
-    _console_handler.setFormatter(logging.Formatter("%(message)s"))
-    _console_handler.setLevel(logging.WARNING)
-    logger.addHandler(_console_handler)
+_handlers = logger.handlers
+if not _handlers:
+    _sh: logging.StreamHandler[IO[str]] = logging.StreamHandler(sys.stderr)
+    _sh.setFormatter(logging.Formatter("%(levelname)-8s %(message)s"))
+    _sh.setLevel(logging.WARNING)
+    logger.addHandler(_sh)
+    _console_handler = _sh
 
 
-def generate_log_path(work_dir: Path, prefix: str = "swmmanywhere") -> Path:
+def generate_log_path(work_dir: Path, prefix: str = "cosecha") -> Path:
     """Generate a timestamped log file path.
 
     Parameters
@@ -48,14 +47,14 @@ def generate_log_path(work_dir: Path, prefix: str = "swmmanywhere") -> Path:
     work_dir : Path
         Directory where the log file will be created.
     prefix : str, optional
-        Prefix for the log file name. Defaults to ``"swmmanywhere"``.
+        Prefix for the log file name. Defaults to ``"cosecha"``.
 
     Returns
     -------
     Path
-        Path to the log file (e.g., ``<work_dir>/swmmanywhere-20260206-140112.log``).
+        Path to the log file (e.g., ``<work_dir>/cosecha-20260206-140112.log``).
     """
-    timestamp = datetime.now(tz=datetime.now().astimezone().tzinfo).strftime("%Y%m%d-%H%M%S")
+    timestamp = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
     return work_dir / f"{prefix}-{timestamp}.log"
 
 
@@ -70,24 +69,20 @@ def _validate_level(level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICA
     if isinstance(level, str):
         level_upper = level.upper()
         if level_upper not in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
-            msg = f"Invalid log level: {level}. Must be DEBUG, INFO, WARNING, ERROR, or CRITICAL"
+            msg = f"Invalid log level: {level!r}. Must be DEBUG, INFO, WARNING, ERROR, or CRITICAL."
             raise ValueError(msg)
         return getattr(logging, level_upper)
 
-    if isinstance(level, int):
-        if level not in (
-            logging.DEBUG,
-            logging.INFO,
-            logging.WARNING,
-            logging.ERROR,
-            logging.CRITICAL,
-        ):
-            msg = f"Invalid log level: {level}. Must be a valid logging level constant."
-            raise ValueError(msg)
-        return level
-
-    msg = f"Level must be str or int, got {type(level).__name__}"
-    raise TypeError(msg)
+    if level not in (
+        logging.DEBUG,
+        logging.INFO,
+        logging.WARNING,
+        logging.ERROR,
+        logging.CRITICAL,
+    ):
+        msg = f"Invalid log level: {level!r}. Must be a valid logging level constant."
+        raise ValueError(msg)
+    return level
 
 
 def configure_logger(
@@ -107,15 +102,15 @@ def configure_logger(
         Shortcut: ``True`` sets console to DEBUG, ``False`` to WARNING.
         If both ``level`` and ``verbose`` are given, ``level`` wins.
     level : str or int, optional
-        Console logging level.
+        Console logging level (``"DEBUG"``, ``"INFO"``, ``"WARNING"``, etc.).
     file : str or Path, optional
-        Enable file logging at this path. Pass ``None`` to disable.
+        Enable file logging at this path. Pass ``None`` to disable file logging.
     file_level : str or int, optional
-        File handler level. Defaults to DEBUG.
+        File handler level. Defaults to ``DEBUG``.
     file_mode : {'a', 'w'}, optional
-        Append or overwrite. Defaults to ``'a'``.
+        Append or overwrite the log file. Defaults to ``'a'``.
     file_only : bool, optional
-        If ``True``, disable console logging (requires ``file``).
+        If ``True``, disable console logging. Requires ``file`` to be set.
     """
     global _file_handler  # noqa: PLW0603
 
@@ -140,13 +135,15 @@ def configure_logger(
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
         if file_mode not in ("a", "w"):
-            msg = f"Invalid file_mode: {file_mode}. Must be 'a' or 'w'."
+            msg = f"Invalid file_mode: {file_mode!r}. Must be 'a' or 'w'."
             raise ValueError(msg)
+
         _file_handler = logging.FileHandler(filepath, mode=file_mode)
         _file_handler.setLevel(file_level_int)
         _file_handler.setFormatter(
             logging.Formatter(
-                fmt="[%(asctime)s] %(levelname)-8s %(message)s", datefmt="%Y/%m/%d %H:%M:%S"
+                fmt="[%(asctime)s] %(levelname)-8s %(message)s",
+                datefmt="%Y/%m/%d %H:%M:%S",
             )
         )
         logger.addHandler(_file_handler)
@@ -156,7 +153,8 @@ def configure_logger(
 
         if file_only and _console_handler is not None:
             logger.removeHandler(_console_handler)
-    elif file is None and _file_handler is not None:
+
+    elif _file_handler is not None:
         logger.removeHandler(_file_handler)
         _file_handler.close()
         _file_handler = None
