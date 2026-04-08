@@ -145,6 +145,7 @@ libgdal-core = "*"
 proj = "*"
 libnetcdf = "*"
 hdf5 = "*"
+eccodes = "*"
 
 [tool.pixi.feature.py314.dependencies]
 python = "~=3.14.0"
@@ -152,6 +153,7 @@ libgdal-core = "*"
 proj = "*"
 libnetcdf = "*"
 hdf5 = "*"
+eccodes = "*"
 
 [tool.pixi.feature.test.tasks]
 test = "pytest -m 'not network'"

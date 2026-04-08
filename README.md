@@ -7,12 +7,11 @@ sources and writing to various formats with optional transformations.
 
 ## Features
 
-- Time-series data collection (NWIS, USGS)
-- Gridded data support (HRRR, HRRRv3)
-- Multiple output formats: Parquet, NetCDF, Zarr, Iceberg
-- Data transformations: unit conversion, spatial subsetting, variable selection
-- Full test coverage with zero external service dependencies
-- Cross-platform support
+- Time-series data collection (USGS NWIS streamflow, stage, precipitation)
+- Gridded data support (HRRR, RRFS, RTMA via herbie; MRMS via S3)
+- Multiple output formats: Parquet, NetCDF, Zarr, Iceberg, IceChunk
+- Data transformations: unit conversion, spatial subsetting, variable selection/rename
+- Cross-platform support (ecCodes C library required for GRIB2/MRMS)
 
 ## Installation
 
@@ -20,7 +19,23 @@ sources and writing to various formats with optional transformations.
 pip install cosecha
 ```
 
-Or with pixi:
+With optional dependencies for NWP (HRRR, RRFS) support:
+
+```console
+pip install 'cosecha[nwp]'
+```
+
+**Note:** Cosecha depends on the [ecCodes](https://confluence.ecmwf.int/display/ECC)
+C library for reading GRIB2 data (used by MRMS). When installing with pip,
+you must have ecCodes available on your system. The easiest cross-platform
+approach is to install it via conda-forge:
+
+```console
+conda install -c conda-forge eccodes
+pip install cosecha
+```
+
+Or use [pixi](https://pixi.sh) which handles this automatically:
 
 ```console
 pixi add cosecha

@@ -29,7 +29,7 @@ except (ImportError, OSError):
         import h5netcdf  # noqa: F401
 
         netcdf_available = True
-    except ImportError:
+    except Exception:
         netcdf_available = False
 
 herbie_available = False
@@ -37,7 +37,7 @@ try:
     import herbie  # noqa: F401
 
     herbie_available = True
-except ImportError:
+except Exception:
     herbie_available = False
 
 iceberg_available = False
