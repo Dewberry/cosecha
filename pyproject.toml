@@ -35,6 +35,7 @@ dynamic = [
 dependencies = [
   "cfgrib",
   "dataretrieval",
+  "eccodes",
   "h5netcdf>=1.2",
   "h5py>=3",
   "httpx>=0.24",
@@ -48,15 +49,18 @@ dependencies = [
   "zarr>=3",
 ]
 optional-dependencies.dev = [
+  "geopandas>=1",
+  "git-cliff",
   "ipykernel",
   "ipywidgets",
   "jupytext",
   "matplotlib",
   "nbconvert",
-  "pytest",
-  "pytest-cov",
-  "pytest-mock",
-  "ruff",
+  "pandas-stubs",
+  "scipy-stubs",
+  "types-geopandas",
+  "types-pyyaml",
+  "types-shapely",
 ]
 optional-dependencies.docs = [
   "jupytext",
@@ -83,7 +87,10 @@ optional-dependencies.test = [
 optional-dependencies.typecheck = [
   "pandas-stubs",
   "pyright",
+  "scipy-stubs",
+  "types-geopandas",
   "types-pyyaml",
+  "types-shapely",
 ]
 urls.Changelog = "https://github.com/dewberry/cosecha/blob/main/CHANGELOG.md"
 urls.CI = "https://github.com/dewberry/cosecha/actions"
@@ -96,6 +103,78 @@ build.targets.wheel.packages = [
   "src/cosecha",
 ]
 version.source = "vcs"
+
+[tool.pixi.environments]
+dev = { features = [ "dev", "nwp", "py314" ] }
+test311 = { features = [ "test", "nwp", "py311" ] }
+test314 = { features = [ "test", "nwp", "py314" ] }
+typecheck = { features = [ "typecheck", "nwp", "py314" ] }
+lint = { features = [ "lint", "py314" ], no-default-feature = true }
+docs = { features = [ "docs", "py314" ] }
+
+[tool.pixi.feature.dev.tasks]
+# Preview unreleased changes without writing to CHANGELOG.md
+changelog = "git cliff -c pyproject.toml --unreleased"
+# Update CHANGELOG.md with all unreleased commits
+changelog-update = "git cliff -c pyproject.toml -o CHANGELOG.md"
+# Sync all percent-format .py scripts → paired .ipynb files
+nb-sync = "jupytext --sync docs/examples/*.py"
+# Execute all notebooks in-place (requires .ipynb to exist; run nb-sync first)
+nb-execute = "jupyter nbconvert --to notebook --execute --inplace docs/examples/*.ipynb"
+# Full workflow: sync .py → .ipynb, then execute — use before building docs or committing
+nb-run = { depends-on = [ "nb-sync", "nb-execute" ] }
+# Pair an existing .ipynb with a .py counterpart (one-time setup for imported notebooks)
+nb-pair = "jupytext --set-formats 'ipynb,py:percent' docs/examples/*.ipynb"
+# Strip all cell outputs from .ipynb files (keeps repo diff clean)
+nb-clear = "jupyter nbconvert --ClearOutputPreprocessor.enabled=True --to notebook --inplace docs/examples/*.ipynb"
+
+[tool.pixi.feature.docs.tasks]
+docs-build = "mkdocs build --strict"
+docs-serve = { cmd = "mkdocs serve", depends-on = [ "docs-build" ] }
+docs-deploy = "mike deploy --push latest"
+docs-release = "mike deploy --push --update-aliases $(git describe --tags --abbrev=0) stable"
+
+[tool.pixi.feature.lint.tasks]
+lint = "pre-commit run --all-files"
+pcupdate = "pre-commit autoupdate"
+spell = "codespell -w"
+
+[tool.pixi.feature.py311.dependencies]
+python = "~=3.11.0"
+libgdal-core = "*"
+proj = "*"
+libnetcdf = "*"
+hdf5 = "*"
+
+[tool.pixi.feature.py314.dependencies]
+python = "~=3.14.0"
+libgdal-core = "*"
+proj = "*"
+libnetcdf = "*"
+hdf5 = "*"
+
+[tool.pixi.feature.test.tasks]
+test = "pytest -m 'not network'"
+test-network = "pytest -m network"
+test-all = "pytest"
+report = { cmd = [ "coverage", "report" ], depends-on = [ "test-all" ] }
+html = { cmd = [ "coverage", "html" ], depends-on = [ "report" ] }
+
+[tool.pixi.feature.typecheck.tasks]
+typecheck = "pyright"
+
+[tool.pixi.pypi-dependencies]
+cosecha = { path = ".", editable = true }
+
+[tool.pixi.tasks]
+# Usage: pixi r release --version v0.1.0
+release = { cmd = "git tag -a {{ version }} -m {{ version }} && git push && git push --tags", args = [
+  { arg = "version" }
+] }
+
+[tool.pixi.workspace]
+channels = [ "conda-forge" ]
+platforms = [ "linux-64", "osx-64", "osx-arm64", "win-64" ]
 
 [tool.ruff]
 target-version = "py311"
@@ -219,14 +298,31 @@ skip = "__pycache__,_build,.mypy_cache,.git,./htmlcov,.pixi,pixi.lock,**.ipynb"
 ignore-words-list = "gage,gages"
 
 [tool.pyproject-fmt]
-expand_tables = [ "tool.pixi" ]
+expand_tables = [ "tool.pixi", "tool.git-cliff" ]
+
+[tool.pyright]
+pythonVersion = "3.11"
+include = [ "src" ]
+ignore = [
+  "docs/examples/*.ipynb",
+]
+typeCheckingMode = "strict"
+reportMissingSuperCall = false
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+reportUnknownParameterType = false
+reportMissingTypeArgument = false
+reportUnnecessaryIsInstance = false
+reportUnnecessaryTypeIgnoreComment = true
+reportUnusedImport = false
 
 [tool.pytest]
 ini_options.addopts = [
   "--import-mode=importlib",
   "-v",
   "--cov",
-  "--cov-append",
   "--cov-branch",
   "--cov-report=xml",
   "--junitxml=junit.xml",
@@ -234,6 +330,11 @@ ini_options.addopts = [
   "--basetemp=.pytest_tmp",
 ]
 ini_options.doctest_optionflags = "NORMALIZE_WHITESPACE IGNORE_EXCEPTION_DETAIL NUMBER"
+ini_options.filterwarnings = [
+  "ignore:Herbie.*Custom model templates:DeprecationWarning",
+  "ignore:The 'nwis' services are deprecated:DeprecationWarning",
+  "ignore:Consolidated metadata is currently not part:zarr.errors.ZarrUserWarning",
+]
 ini_options.markers = [
   "network: tests that make requests to external services",
 ]
@@ -243,7 +344,6 @@ ini_options.testpaths = [
 
 [tool.coverage]
 run.branch = true
-run.parallel = true
 run.source_pkgs = [
   "cosecha",
 ]
@@ -257,112 +357,20 @@ report.omit = [
   "**/__init__.py",
 ]
 
-[tool.pyright]
-pythonVersion = "3.11"
-include = [ "src" ]
-typeCheckingMode = "strict"
-reportMissingSuperCall = false
-reportMissingTypeStubs = false
-reportUnknownMemberType = false
-reportUnknownVariableType = false
-reportUnknownArgumentType = false
-reportUnknownParameterType = false
-reportMissingTypeArgument = false
-reportUnnecessaryIsInstance = false
-reportUnnecessaryTypeIgnoreComment = true
-reportUnusedImport = false
-
 [tool.jupytext]
 formats = "ipynb,py:percent"
 notebook_metadata_filter = "kernelspec,jupytext"
 cell_metadata_filter = "-all"
 
-[tool.pixi.environments]
-dev = { features = [ "dev", "nwp", "py314" ] }
-test311 = { features = [ "test", "nwp", "py311" ] }
-test314 = { features = [ "test", "nwp", "py314" ] }
-typecheck = { features = [ "typecheck", "nwp", "py314" ] }
-lint = { features = [ "lint", "py314" ], no-default-feature = true }
-docs = { features = [ "docs", "py314" ] }
-
-[tool.pixi.feature.dev.dependencies]
-git-cliff = "*"
-
-[tool.pixi.feature.dev.tasks]
-# Preview unreleased changes without writing to CHANGELOG.md
-changelog = "git cliff --unreleased"
-# Update CHANGELOG.md with all unreleased commits
-changelog-update = "git cliff -o CHANGELOG.md"
-# Sync all percent-format .py scripts → paired .ipynb files
-nb-sync = "jupytext --sync docs/examples/*.py"
-# Execute all notebooks in-place (requires .ipynb to exist; run nb-sync first)
-nb-execute = "jupyter nbconvert --to notebook --execute --inplace docs/examples/*.ipynb"
-# Full workflow: sync .py → .ipynb, then execute — use before building docs or committing
-nb-run = { depends-on = [ "nb-sync", "nb-execute" ] }
-# Pair an existing .ipynb with a .py counterpart (one-time setup for imported notebooks)
-nb-pair = "jupytext --set-formats 'ipynb,py:percent' docs/examples/*.ipynb"
-# Strip all cell outputs from .ipynb files (keeps repo diff clean)
-nb-clear = "jupyter nbconvert --ClearOutputPreprocessor.enabled=True --to notebook --inplace docs/examples/*.ipynb"
-
-[tool.pixi.feature.docs.tasks]
-docs-build = "mkdocs build --strict"
-docs-serve = { cmd = "mkdocs serve", depends-on = [ "docs-build" ] }
-docs-deploy = "mike deploy --push latest"
-docs-release = "mike deploy --push --update-aliases $(git describe --tags --abbrev=0) stable"
-
-[tool.pixi.feature.lint.tasks]
-lint = "pre-commit run --all-files"
-pcupdate = "pre-commit autoupdate"
-spell = "codespell -w"
-
-[tool.pixi.feature.py311.dependencies]
-python = "~=3.11.0"
-libgdal-core = "*"
-proj = "*"
-libnetcdf = "*"
-hdf5 = "*"
-eccodes = "*"
-
-[tool.pixi.feature.py314.dependencies]
-python = "~=3.14.0"
-libgdal-core = "*"
-proj = "*"
-libnetcdf = "*"
-hdf5 = "*"
-eccodes = "*"
-
-[tool.pixi.feature.test.tasks]
-test = "pytest -m 'not network'"
-# test-network = "pytest -m network"
-test-all = "pytest"
-report = { cmd = [ "coverage", "report" ], depends-on = [ "test-all" ] }
-html = { cmd = [ "coverage", "html" ], depends-on = [ "report" ] }
-
-[tool.pixi.feature.typecheck.tasks]
-typecheck = "pyright"
-
-[tool.pixi.pypi-dependencies]
-cosecha = { path = ".", editable = true }
-
-[tool.pixi.tasks]
-# Usage: pixi r release --version v0.1.0
-release = { cmd = "git tag -a {{ version }} -m {{ version }} && git push && git push --tags", args = [
-  { arg = "version" }
-] }
-
-[tool.pixi.workspace]
-channels = [ "conda-forge" ]
-platforms = [ "linux-64", "osx-64", "osx-arm64", "win-64" ]
-
-[tool.git-cliff]
-changelog.header = """
+[tool.git-cliff.changelog]
+header = """
 # Changelog
 
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 """
-changelog.body = """
+body = """
 {%- macro remote_url() -%}
   https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
 {%- endmacro -%}
@@ -396,7 +404,7 @@ changelog.body = """
 {%- endfor %}
 {% endif %}\n
 """
-changelog.footer = """
+footer = """
 {%- macro remote_url() -%}
   https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
 {%- endmacro -%}
@@ -413,11 +421,13 @@ changelog.footer = """
 {% endif -%}
 {% endif -%}
 {% endfor %}"""
-changelog.trim = true
-git.conventional_commits = true
-git.filter_unconventional = true
-git.split_commits = false
-git.commit_parsers = [
+trim = true
+
+[tool.git-cliff.git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+commit_parsers = [
   { message = "^feat", group = "Added" },
   { message = "^fix", group = "Fixed" },
   { message = "^perf", group = "Changed" },
@@ -430,8 +440,8 @@ git.commit_parsers = [
   { message = "^ci", skip = true },
   { message = "^build", skip = true },
 ]
-git.protect_breaking_commits = true
-git.filter_commits = false
-git.tag_pattern = "v[0-9].*"
-git.topo_order = false
-git.sort_commits = "oldest"
+protect_breaking_commits = true
+filter_commits = false
+tag_pattern = "v[0-9].*"
+topo_order = false
+sort_commits = "oldest"

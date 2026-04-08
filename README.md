@@ -45,7 +45,7 @@ path = reaper.sow_to_parquet(file_path="./data/streamflow.pq")
 
 ## Documentation
 
-Full documentation at https://dewberry.github.io/cosecha/
+Full documentation at <https://dewberry.github.io/cosecha/>
 
 ## Contributing
 
