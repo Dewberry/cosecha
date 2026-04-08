@@ -5,6 +5,8 @@ from __future__ import annotations
 import contextlib
 from typing import TYPE_CHECKING, Any, overload
 
+from pathlib import Path
+
 from cosecha._logging import logger
 from cosecha.exceptions import TransformationError
 
@@ -13,6 +15,17 @@ if TYPE_CHECKING:
 
     import pandas as pd
     import xarray as xr
+
+
+def is_remote(path: str | Path) -> bool:
+    """Check if *path* is a remote URI (e.g. ``s3://``, ``gs://``)."""
+    return isinstance(path, str) and "://" in path
+
+
+def ensure_local_parent(path: str | Path) -> None:
+    """Create parent directories when *path* is local; no-op for remote URIs."""
+    if not is_remote(path):
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
 
 
 @contextlib.contextmanager

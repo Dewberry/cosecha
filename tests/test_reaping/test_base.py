@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import boto3
+import fsspec
+import moto
 import pandas as pd
 import pytest
+import s3fs
 import xarray as xr
 
 from cosecha.exceptions import ReaperError
@@ -108,6 +112,46 @@ class TestSowToZarr:
         reaper = _GridReaper()
         with pytest.raises(ReaperError, match="No data to sow"):
             reaper.sow_to_zarr(tmp_path / "output.zarr")
+
+
+class TestSowToS3:
+    """Test S3 write support for parquet and zarr."""
+
+    @pytest.fixture()
+    def _mock_s3(self, monkeypatch):
+        monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+        monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+        monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+        s3fs.S3FileSystem.clear_instance_cache()
+        with moto.mock_aws():
+            boto3.client("s3", region_name="us-east-1").create_bucket(Bucket="test-bucket")
+            yield
+        s3fs.S3FileSystem.clear_instance_cache()
+
+    def test_parquet_s3(self, _mock_s3):
+        """sow_to_parquet round-trips data through a mock S3 bucket."""
+        reaper = _TSReaper()
+        reaper.reap()
+
+        result = reaper.sow_to_parquet("s3://test-bucket/data.parquet")
+
+        assert result == "s3://test-bucket/data.parquet"
+        with fsspec.open("s3://test-bucket/data.parquet", "rb") as f:
+            df = pd.read_parquet(f)
+        pd.testing.assert_frame_equal(df, reaper.data)
+
+    def test_zarr_s3(self, mocker):
+        """sow_to_zarr passes S3 URI through to xarray without wrapping in Path."""
+        reaper = _GridReaper()
+        reaper.reap()
+        mock_to_zarr = mocker.patch.object(type(reaper.data), "to_zarr")
+
+        result = reaper.sow_to_zarr("s3://test-bucket/output.zarr")
+
+        assert result == "s3://test-bucket/output.zarr"
+        mock_to_zarr.assert_called_once_with(
+            "s3://test-bucket/output.zarr", mode="w", consolidated=True
+        )
 
 
 class TestSowToNetcdf:

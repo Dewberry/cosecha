@@ -79,7 +79,9 @@ optional-dependencies.nwp = [
   "herbie-data>=2026.3",
 ]
 optional-dependencies.test = [
+  "boto3",
   "coverage[toml]",
+  "moto[s3]",
   "pytest-cov",
   "pytest-mock",
   "pytest-sugar",

@@ -11,7 +11,9 @@ import contextlib
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import overload
+from urllib.parse import urlparse
 
+import fsspec
 import icechunk
 import pandas as pd
 import pyarrow as pa
@@ -20,7 +22,7 @@ import xarray as xr
 from pyiceberg.catalog import load_catalog
 
 from cosecha._logging import logger
-from cosecha._utils import wrap_errors
+from cosecha._utils import ensure_local_parent, is_remote, wrap_errors
 from cosecha.exceptions import ReaperError
 
 __all__ = ["GriddedReaper", "TimeSeriesReaper"]
@@ -97,7 +99,9 @@ class TimeSeriesReaper(ReaperBase):
         Parameters
         ----------
         file_path : str | Path
-            The file path where the Parquet file will be written. Parent directories will be created if needed.
+            Local path or remote URI (e.g. ``s3://bucket/key.parquet``)
+            where the Parquet file will be written.
+            Parent directories are created automatically for local paths.
 
         Raises
         ------
@@ -107,17 +111,18 @@ class TimeSeriesReaper(ReaperBase):
         Returns
         -------
         str
-            The absolute path to the written Parquet file.
+            The path or URI of the written Parquet file.
         """
         data = self._ensure_data(pd.DataFrame, "time-series (DataFrame)")
 
+        path_str = str(file_path)
         with wrap_errors(ReaperError, "Parquet write failed"):
-            out_path = Path(file_path)
-            out_path.parent.mkdir(parents=True, exist_ok=True)
+            ensure_local_parent(path_str)
             table = pa.Table.from_pandas(data)
-            pq.write_table(table, str(out_path), compression="snappy")
-            logger.info(f"Successfully wrote Parquet file: {out_path}")
-            return str(out_path)
+            with fsspec.open(path_str, "wb") as f:
+                pq.write_table(table, f, compression="snappy")
+            logger.info(f"Successfully wrote Parquet file: {path_str}")
+            return path_str
 
     def sow_to_iceberg(
         self,
@@ -191,24 +196,26 @@ class GriddedReaper(ReaperBase):
         Parameters
         ----------
         file_path : str | Path
-            Path where the Zarr store will be written. Parent directories will be created if needed.
+            Local path or remote URI (e.g. ``s3://bucket/store.zarr``)
+            where the Zarr store will be written.
+            Parent directories are created automatically for local paths.
         consolidate : bool, optional
             Whether to consolidate metadata after writing (default: True).
 
         Returns
         -------
         str
-            The absolute path to the written Zarr store.
+            The path or URI of the written Zarr store.
         """
         data = self._ensure_data(xr.Dataset, "an xarray Dataset")
 
-        out_path = Path(file_path)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
+        path_str = str(file_path)
+        ensure_local_parent(path_str)
 
         with wrap_errors(ReaperError, "Zarr write failed"):
-            data.to_zarr(str(out_path), mode="w", consolidated=consolidate)
-            logger.info(f"Successfully wrote Zarr store: {out_path}")
-            return str(out_path)
+            data.to_zarr(path_str, mode="w", consolidated=consolidate)
+            logger.info(f"Successfully wrote Zarr store: {path_str}")
+            return path_str
 
     def sow_to_netcdf(
         self,
@@ -242,23 +249,34 @@ class GriddedReaper(ReaperBase):
         Parameters
         ----------
         storage_path : str | Path
-            Path to the IceChunk storage directory. Will be created if needed.
+            Local path or S3 URI (e.g. ``s3://bucket/prefix``) for the
+            IceChunk storage.  Local directories are created if needed;
+            S3 credentials are read from the environment.
         group_path : str
             Path to the IceChunk group within the repository.
 
         Returns
         -------
         str
-            The absolute path to the written IceChunk grouping.
+            The path or URI of the written IceChunk grouping.
         """
         data = self._ensure_data(xr.Dataset, "an xarray Dataset")
 
-        st_path = Path(storage_path)
-        if st_path.exists() and st_path.is_file():
-            raise ReaperError(f"storage_path must be a directory, got file: {st_path}")
-        st_path.mkdir(parents=True, exist_ok=True)
+        path_str = str(storage_path)
+        if is_remote(path_str):
+            parsed = urlparse(path_str)
+            storage = icechunk.s3_storage(
+                bucket=parsed.netloc,
+                prefix=parsed.path.lstrip("/") or None,
+                from_env=True,
+            )
+        else:
+            st_path = Path(path_str)
+            if st_path.exists() and st_path.is_file():
+                raise ReaperError(f"storage_path must be a directory, got file: {st_path}")
+            st_path.mkdir(parents=True, exist_ok=True)
+            storage = icechunk.local_filesystem_storage(str(st_path))
 
-        storage = icechunk.local_filesystem_storage(str(st_path))
         try:
             repo = icechunk.Repository.open(storage)
             logger.debug("Opened existing IceChunk repository")
@@ -273,4 +291,4 @@ class GriddedReaper(ReaperBase):
             )
             session.commit(f"Appended data to {group_path}")
             logger.info(f"Successfully committed to IceChunk repo at group: {group_path}")
-            return str(st_path / group_path)
+            return f"{path_str.rstrip('/')}/{group_path}"
