@@ -5,8 +5,8 @@ from __future__ import annotations
 import contextlib
 from typing import TYPE_CHECKING, Any, overload
 
-from cosecha.exceptions import TransformationError
 from cosecha._logging import logger
+from cosecha.exceptions import TransformationError
 
 if TYPE_CHECKING:
     from collections.abc import Generator
