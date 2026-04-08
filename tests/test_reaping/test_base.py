@@ -39,7 +39,7 @@ class TestEnsureData:
         """Calling _ensure_data when data is None raises ReaperError."""
         reaper = _TSReaper()
         assert reaper.data is None
-        with pytest.raises(ReaperError, match="No data to sow. Call reap\\(\\) first."):
+        with pytest.raises(ReaperError, match=r"No data to sow. Call reap\(\) first."):
             reaper._ensure_data(pd.DataFrame, "time-series (DataFrame)")
 
     def test_data_wrong_type_raises(self):

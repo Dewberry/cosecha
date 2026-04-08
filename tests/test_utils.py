@@ -27,28 +27,36 @@ class TestWrapErrors:
 
     def test_exception_wrapped(self):
         """Test that a raised exception is wrapped in the specified type."""
-        with pytest.raises(ValueError, match="operation failed: something broke"):
-            with wrap_errors(ValueError, "operation failed"):
-                raise RuntimeError("something broke")
+        with (
+            pytest.raises(ValueError, match="operation failed: something broke"),
+            wrap_errors(ValueError, "operation failed"),
+        ):
+            raise RuntimeError("something broke")
 
     def test_wrapped_exception_chains_original(self):
         """Test that the original exception is chained via __cause__."""
-        with pytest.raises(ValueError) as exc_info:
-            with wrap_errors(ValueError, "wrapper"):
-                raise KeyError("original")
+        with (
+            pytest.raises(ValueError, match="wrapper") as exc_info,
+            wrap_errors(ValueError, "wrapper"),
+        ):
+            raise KeyError("original")
         assert isinstance(exc_info.value.__cause__, KeyError)
 
     def test_passthrough_exception_not_wrapped(self):
         """Test that passthrough exceptions are re-raised as-is."""
-        with pytest.raises(KeyboardInterrupt):
-            with wrap_errors(RuntimeError, "should not wrap", KeyboardInterrupt):
-                raise KeyboardInterrupt
+        with (
+            pytest.raises(KeyboardInterrupt),
+            wrap_errors(RuntimeError, "should not wrap", KeyboardInterrupt),
+        ):
+            raise KeyboardInterrupt
 
     def test_passthrough_list_non_matching_still_wrapped(self):
         """Test that non-matching exceptions are still wrapped even with passthrough list."""
-        with pytest.raises(ValueError, match="wrapped: oops"):
-            with wrap_errors(ValueError, "wrapped", KeyboardInterrupt, SystemExit):
-                raise RuntimeError("oops")
+        with (
+            pytest.raises(ValueError, match="wrapped: oops"),
+            wrap_errors(ValueError, "wrapped", KeyboardInterrupt, SystemExit),
+        ):
+            raise RuntimeError("oops")
 
 
 class TestTo180:
@@ -126,12 +134,15 @@ class TestTo180:
 class TestApplyGriddedTransformations:
     """Tests for apply_gridded_transformations."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_ds(self):
         """Create a sample Dataset with 1D lat/lon coordinates."""
         return xr.Dataset(
             {
-                "temperature": (["latitude", "longitude"], np.arange(12).reshape(3, 4).astype(float)),
+                "temperature": (
+                    ["latitude", "longitude"],
+                    np.arange(12).reshape(3, 4).astype(float),
+                ),
                 "pressure": (["latitude", "longitude"], np.ones((3, 4))),
             },
             coords={
@@ -140,7 +151,7 @@ class TestApplyGriddedTransformations:
             },
         )
 
-    @pytest.fixture()
+    @pytest.fixture
     def curvilinear_ds(self):
         """Create a sample Dataset with 2D lat/lon coordinates (curvilinear)."""
         lats = np.array([[10.0, 11.0], [20.0, 21.0], [30.0, 31.0]])
@@ -196,7 +207,9 @@ class TestApplyGriddedTransformations:
         """Test unit conversions multiply variables by factor."""
         transforms = {"unit_conversions": {"temperature": 1.8, "pressure": 100.0}}
         result = apply_gridded_transformations(sample_ds, transforms)
-        np.testing.assert_allclose(result["temperature"].values, sample_ds["temperature"].values * 1.8)
+        np.testing.assert_allclose(
+            result["temperature"].values, sample_ds["temperature"].values * 1.8
+        )
         np.testing.assert_allclose(result["pressure"].values, sample_ds["pressure"].values * 100.0)
 
     def test_unit_conversions_missing_variable(self, sample_ds):
@@ -233,13 +246,15 @@ class TestApplyGriddedTransformations:
         }
         result = apply_gridded_transformations(sample_ds, transforms)
         assert list(result.data_vars) == ["temp_scaled"]
-        np.testing.assert_allclose(result["temp_scaled"].values, sample_ds["temperature"].values * 2.0)
+        np.testing.assert_allclose(
+            result["temp_scaled"].values, sample_ds["temperature"].values * 2.0
+        )
 
 
 class TestApplyTsTransformations:
     """Tests for apply_ts_transformations."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def sample_df(self):
         """Create a sample DataFrame."""
         return pd.DataFrame(
@@ -303,7 +318,9 @@ class TestApplyTsTransformations:
         }
         result = apply_ts_transformations(sample_df, transforms)
         assert list(result.columns) == ["discharge_scaled"]
-        np.testing.assert_allclose(result["discharge_scaled"].values, sample_df["flow"].values * 2.0)
+        np.testing.assert_allclose(
+            result["discharge_scaled"].values, sample_df["flow"].values * 2.0
+        )
 
     def test_does_not_mutate_input(self, sample_df):
         """Test that transformations do not modify the original DataFrame."""
