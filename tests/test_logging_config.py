@@ -26,7 +26,10 @@ def _restore_logger_state():
         original_console_handler.level if original_console_handler is not None else None
     )
     yield
-    if cosecha_logging._file_handler is not None and cosecha_logging._file_handler is not original_file_handler:
+    if (
+        cosecha_logging._file_handler is not None
+        and cosecha_logging._file_handler is not original_file_handler
+    ):
         logger.removeHandler(cosecha_logging._file_handler)
         cosecha_logging._file_handler.close()
     logger.handlers = list(original_handlers)
@@ -122,6 +125,7 @@ class TestValidateLevel:
         """Test invalid int level raises ValueError."""
         with pytest.raises(ValueError, match="Invalid log level"):
             _validate_level(999)
+
 
 class TestConfigureLogger:
     """Tests for configure_logger."""
