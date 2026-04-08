@@ -6,8 +6,8 @@ import logging
 
 import pytest
 
-import cosecha.logging as cosecha_logging
-from cosecha.logging import (
+import cosecha._logging as cosecha_logging
+from cosecha._logging import (
     _validate_level,
     configure_logger,
     generate_log_path,

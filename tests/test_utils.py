@@ -8,7 +8,7 @@ import pytest
 import xarray as xr
 
 from cosecha.exceptions import TransformationError
-from cosecha.utils import (
+from cosecha._utils import (
     apply_gridded_transformations,
     apply_ts_transformations,
     to_180,

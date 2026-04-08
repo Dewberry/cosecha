@@ -17,9 +17,9 @@ import s3fs
 import xarray as xr
 
 from cosecha.exceptions import APIError, DateRangeError, ReaperError
-from cosecha.logging import logger
+from cosecha._logging import logger
 from cosecha.reaping.base import GriddedReaper
-from cosecha.utils import apply_gridded_transformations, to_180, wrap_errors
+from cosecha._utils import apply_gridded_transformations, to_180, wrap_errors
 
 __all__ = ["MRMSReaper"]
 

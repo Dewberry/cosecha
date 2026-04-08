@@ -20,8 +20,8 @@ import xarray as xr
 from pyiceberg.catalog import load_catalog
 
 from cosecha.exceptions import ReaperError
-from cosecha.logging import logger
-from cosecha.utils import wrap_errors
+from cosecha._logging import logger
+from cosecha._utils import wrap_errors
 
 __all__ = ["GriddedReaper", "TimeSeriesReaper"]
 

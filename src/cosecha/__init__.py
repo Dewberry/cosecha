@@ -5,7 +5,7 @@ from __future__ import annotations
 from importlib.metadata import PackageNotFoundError, version
 
 from cosecha import exceptions
-from cosecha.logging import configure_logger
+from cosecha._logging import configure_logger
 from cosecha.reaping import (
     GriddedReaper,
     MRMSReaper,

@@ -12,9 +12,9 @@ import pandas as pd
 from dataretrieval import waterdata as dr_waterdata
 
 from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
-from cosecha.logging import logger
+from cosecha._logging import logger
 from cosecha.reaping.base import TimeSeriesReaper
-from cosecha.utils import apply_ts_transformations, wrap_errors
+from cosecha._utils import apply_ts_transformations, wrap_errors
 
 __all__ = [
     "USGSNWISReaper",
