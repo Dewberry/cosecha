@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Major refactor: Create base reaper classes with sowers. Remove HarvestedData
 - Replace logging_config with logging module
 - Consolidate exception handling with wrap_errors context manager
+- Consolidate base reaper classes and utilities
+- Replace rich logging with stdlib StreamHandler
+- Fix ruff lint warnings in tests
 
 ### Fix
 
@@ -51,8 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix file path naming
 - Use waterdata API for USGS data instead of NWIS
 - Remove unnecessary mkdir
+- Improve reapers with consistent parsing and public exports
 
 ### New Contributors
 
 - @slawler made their first contribution
+
 
