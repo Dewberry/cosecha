@@ -103,7 +103,7 @@ nav:
 - API Reference: reference.md
 - Release Notes: CHANGELOG.md
 - Contributing: CONTRIBUTING.md
-- License: LICENSE.md
+- License: LICENSE
 plugins:
 - search
 - mkdocs-jupyter:
