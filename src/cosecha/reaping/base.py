@@ -10,6 +10,7 @@ from __future__ import annotations
 import contextlib
 from abc import ABC, abstractmethod
 from pathlib import Path
+from typing import overload
 
 import icechunk
 import pandas as pd
@@ -50,6 +51,42 @@ class ReaperBase(ABC):
         self.data = self._reap()
         return self.data
 
+    @overload
+    def _ensure_data(self, expected_type: type[pd.DataFrame], type_label: str) -> pd.DataFrame: ...
+    @overload
+    def _ensure_data(self, expected_type: type[xr.Dataset], type_label: str) -> xr.Dataset: ...
+    def _ensure_data(
+        self,
+        expected_type: type[pd.DataFrame | xr.Dataset],
+        type_label: str,
+    ) -> pd.DataFrame | xr.Dataset:
+        """Verify that data has been reaped and matches the expected type.
+
+        Called by ``sow_to_*`` methods before writing.
+
+        Parameters
+        ----------
+        expected_type : type
+            Expected type of ``self.data`` (e.g., ``pd.DataFrame``, ``xr.Dataset``).
+        type_label : str
+            Human-readable label used in error messages.
+
+        Returns
+        -------
+        pd.DataFrame | xr.Dataset
+            The validated data, narrowed to the expected type.
+
+        Raises
+        ------
+        ReaperError
+            If ``reap()`` has not been called or data is not the expected type.
+        """
+        if self.data is None:
+            raise ReaperError("No data to sow. Call reap() first.")
+        if not isinstance(self.data, expected_type):
+            raise ReaperError(f"Data is not {type_label}.")
+        return self.data
+
 
 class TimeSeriesReaper(ReaperBase):
     """Abstract base class for harvesting time-series data."""
@@ -72,16 +109,15 @@ class TimeSeriesReaper(ReaperBase):
         str
             The absolute path to the written Parquet file.
         """
-        if self.data is None:
-            raise ReaperError("No data to sow. Call reap() first.")
-        if not isinstance(self.data, pd.DataFrame):
-            raise ReaperError("Data is not time-series (DataFrame).")
+        data = self._ensure_data(pd.DataFrame, "time-series (DataFrame)")
 
         with wrap_errors(ReaperError, "Parquet write failed"):
-            table = pa.Table.from_pandas(self.data)
-            pq.write_table(table, str(file_path), compression="snappy")
-            logger.info(f"Successfully wrote Parquet file: {file_path}")
-            return str(file_path)
+            out_path = Path(file_path)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            table = pa.Table.from_pandas(data)
+            pq.write_table(table, str(out_path), compression="snappy")
+            logger.info(f"Successfully wrote Parquet file: {out_path}")
+            return str(out_path)
 
     def sow_to_iceberg(
         self,
@@ -96,6 +132,8 @@ class TimeSeriesReaper(ReaperBase):
         ----------
         warehouse_path : str | Path
             Path to the Iceberg warehouse directory. Will be created if needed.
+        table_name : str
+            Name of the Iceberg table to create or append to.
         namespace : str, optional
             Namespace (database) for Iceberg tables (default: 'default').
         catalog_name : str, optional
@@ -106,38 +144,36 @@ class TimeSeriesReaper(ReaperBase):
         str
             The fully qualified table name (namespace.table_name).
         """
-        if self.data is None:
-            raise ReaperError("No data to sow. Call reap() first.")
-        if not isinstance(self.data, pd.DataFrame):
-            raise ReaperError("Data is not time-series (DataFrame).")
+        data = self._ensure_data(pd.DataFrame, "time-series (DataFrame)")
 
         wh_path = Path(warehouse_path)
         if wh_path.exists() and wh_path.is_file():
-            raise ValueError(f"warehouse_path must be a directory, got file: {wh_path}")
+            raise ReaperError(f"warehouse_path must be a directory, got file: {wh_path}")
         wh_path.mkdir(parents=True, exist_ok=True)
 
         metadata_dir = wh_path / ".iceberg"
         metadata_dir.mkdir(parents=True, exist_ok=True)
 
-        catalog = load_catalog(
-            catalog_name,
-            type="sql",
-            uri=f"sqlite:///{metadata_dir / 'iceberg.db'}",
-            warehouse=str(wh_path),
-        )
-
-        with wrap_errors(ReaperError, "Iceberg write failed"):
+        with (
+            load_catalog(
+                catalog_name,
+                type="sql",
+                uri=f"sqlite:///{metadata_dir / 'iceberg.db'}",
+                warehouse=str(wh_path),
+            ) as catalog,
+            wrap_errors(ReaperError, "Iceberg write failed"),
+        ):
             try:
                 table = catalog.load_table(f"{namespace}.{table_name}")
             except Exception:
                 with contextlib.suppress(Exception):
                     catalog.create_namespace(namespace)
-                pa_table = pa.Table.from_pandas(self.data)
+                pa_table = pa.Table.from_pandas(data)
                 table = catalog.create_table(
                     identifier=f"{namespace}.{table_name}", schema=pa_table.schema
                 )
 
-            pa_table = pa.Table.from_pandas(self.data)
+            pa_table = pa.Table.from_pandas(data)
             table.append(pa_table)
 
             full_name = f"{namespace}.{table_name}"
@@ -163,16 +199,13 @@ class GriddedReaper(ReaperBase):
         str
             The absolute path to the written Zarr store.
         """
-        if self.data is None:
-            raise ReaperError("No data to sow. Call reap() first.")
-        if not isinstance(self.data, xr.Dataset):
-            raise ReaperError("Data is not an xarray Dataset.")
+        data = self._ensure_data(xr.Dataset, "an xarray Dataset")
 
         out_path = Path(file_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         with wrap_errors(ReaperError, "Zarr write failed"):
-            self.data.to_zarr(str(out_path), mode="w", consolidated=consolidate)
+            data.to_zarr(str(out_path), mode="w", consolidated=consolidate)
             logger.info(f"Successfully wrote Zarr store: {out_path}")
             return str(out_path)
 
@@ -192,16 +225,13 @@ class GriddedReaper(ReaperBase):
         str
             Path to the written NetCDF file.
         """
-        if self.data is None:
-            raise ReaperError("No data to sow. Call reap() first.")
-        if not isinstance(self.data, xr.Dataset):
-            raise ReaperError("Data is not an xarray Dataset.")
+        data = self._ensure_data(xr.Dataset, "an xarray Dataset")
 
         out_path = Path(file_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         with wrap_errors(ReaperError, "NetCDF write failed"):
-            self.data.to_netcdf(out_path, mode="w", engine="h5netcdf")
+            data.to_netcdf(out_path, mode="w", engine="h5netcdf")
             logger.info(f"Written NetCDF file to {out_path}")
             return str(out_path)
 
@@ -220,14 +250,11 @@ class GriddedReaper(ReaperBase):
         str
             The absolute path to the written IceChunk grouping.
         """
-        if self.data is None:
-            raise ReaperError("No data to sow. Call reap() first.")
-        if not isinstance(self.data, xr.Dataset):
-            raise ReaperError("Data is not an xarray Dataset.")
+        data = self._ensure_data(xr.Dataset, "an xarray Dataset")
 
         st_path = Path(storage_path)
         if st_path.exists() and st_path.is_file():
-            raise ValueError(f"storage_path must be a directory, got file: {st_path}")
+            raise ReaperError(f"storage_path must be a directory, got file: {st_path}")
         st_path.mkdir(parents=True, exist_ok=True)
 
         storage = icechunk.local_filesystem_storage(str(st_path))
@@ -240,7 +267,7 @@ class GriddedReaper(ReaperBase):
 
         with wrap_errors(ReaperError, "IceChunk write failed"):
             session = repo.writable_session("main")
-            self.data.to_zarr(
+            data.to_zarr(
                 store=session.store, group=group_path, mode="w", zarr_format=3, consolidated=False
             )
             session.commit(f"Appended data to {group_path}")

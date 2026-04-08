@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, overload
 
 from cosecha.exceptions import TransformationError
 from cosecha.logging import logger
@@ -28,7 +28,7 @@ def wrap_errors(
     """
     try:
         yield
-    except BaseException as e:
+    except Exception as e:
         if passthrough and isinstance(e, passthrough):
             raise
         logger.exception(message)
@@ -56,7 +56,6 @@ def _apply_spatial_subset(result: xr.Dataset, subset: dict[str, Any]) -> xr.Data
                     mask = lon_mask if mask is None else (mask & lon_mask)
 
                 if mask is not None:
-                    # Find the bounding box in y/x index space
                     y_idx, x_idx = mask.values.nonzero()
 
                     if len(y_idx) > 0 and len(x_idx) > 0:
@@ -84,6 +83,34 @@ def _apply_spatial_subset(result: xr.Dataset, subset: dict[str, Any]) -> xr.Data
             f"Spatial subset failed: {e}. Available dimensions: {list(result.dims)}"
         ) from e
     return result
+
+
+@overload
+def to_180(data: xr.DataArray) -> xr.DataArray: ...
+@overload
+def to_180(data: xr.Dataset) -> xr.Dataset: ...
+def to_180(data: xr.DataArray | xr.Dataset) -> xr.DataArray | xr.Dataset:
+    """Convert longitude coordinates from [0, 360] to [-180, 180] range.
+
+    When longitude is a 1-D coordinate the result is also sorted by
+    longitude; multi-dimensional coordinates (e.g. curvilinear grids)
+    are converted in-place without reordering.
+
+    Parameters
+    ----------
+    data : xr.DataArray | xr.Dataset
+        Data with a ``longitude`` coordinate in [0, 360] range.
+
+    Returns
+    -------
+    xr.DataArray | xr.Dataset
+        Copy of the input with longitude wrapped to [-180, 180].
+    """
+    data = data.copy()
+    data["longitude"] = ((data["longitude"] + 180) % 360) - 180
+    if data["longitude"].ndim == 1:
+        data = data.sortby("longitude")
+    return data
 
 
 def apply_gridded_transformations(
@@ -119,11 +146,9 @@ def apply_gridded_transformations(
 
     result = data.copy()
 
-    # Spatial subset
     if "spatial_subset" in transformations:
         result = _apply_spatial_subset(result, transformations["spatial_subset"])
 
-    # Unit conversions
     if "unit_conversions" in transformations:
         conversions = transformations["unit_conversions"]
         for var, factor in conversions.items():
@@ -135,13 +160,11 @@ def apply_gridded_transformations(
             result[var] = result[var] * factor
             logger.debug(f"Applied unit conversion to '{var}': factor={factor}")
 
-    # Variable rename
     if "variable_rename" in transformations:
         renames = transformations["variable_rename"]
         result = result.rename(renames)
         logger.debug(f"Renamed variables: {renames}")
 
-    # Keep specific variables
     if "keep_variables" in transformations:
         vars_to_keep = transformations["keep_variables"]
         missing = set(vars_to_keep) - set(result.data_vars)
@@ -187,7 +210,6 @@ def apply_ts_transformations(
 
     result = data.copy()
 
-    # Apply unit conversions
     if "unit_conversions" in transformations:
         conversions = transformations["unit_conversions"]
         for col, factor in conversions.items():
@@ -199,13 +221,11 @@ def apply_ts_transformations(
             result[col] = result[col] * factor
             logger.debug(f"Applied unit conversion to '{col}': factor={factor}")
 
-    # Rename columns
     if "rename_columns" in transformations:
         renames = transformations["rename_columns"]
         result = result.rename(columns=renames)
         logger.debug(f"Renamed columns: {renames}")
 
-    # Filter to specific columns
     if "filter_columns" in transformations:
         cols = transformations["filter_columns"]
         missing = set(cols) - set(result.columns)
