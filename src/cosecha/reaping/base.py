@@ -160,6 +160,7 @@ class TimeSeriesReaper(ReaperBase):
                 type="sql",
                 uri=f"sqlite:///{metadata_dir / 'iceberg.db'}",
                 warehouse=str(wh_path),
+                **{"py-io-impl": "pyiceberg.io.fsspec.FsspecFileIO"},
             ) as catalog,
             wrap_errors(ReaperError, "Iceberg write failed"),
         ):
