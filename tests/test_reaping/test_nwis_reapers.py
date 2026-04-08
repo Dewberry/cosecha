@@ -23,8 +23,8 @@ class TestUSGSStreamflowReaper:
             end_date="2026-01-31",
         )
         assert reaper.site_ids == ["01018035"]
-        assert reaper.start_date == "2026-01-01"
-        assert reaper.end_date == "2026-01-31"
+        assert reaper.start_date == pd.Timestamp("2026-01-01")
+        assert reaper.end_date == pd.Timestamp("2026-01-31")
         assert reaper.parameter_code == "00060"
 
     def test_initialization_multiple_sites(self):
@@ -68,12 +68,12 @@ class TestUSGSStreamflowReaper:
             )
 
     def test_invalid_start_date(self):
-        """Test initialization fails with invalid start date format."""
-        with pytest.raises(DateRangeError):
+        """Test initialization fails with unparsable start date."""
+        with pytest.raises(DateRangeError, match="Could not parse date"):
             USGSNWISReaper(
                 parameter_code="00060",
                 site_ids=["01018035"],
-                start_date="2026/01/01",
+                start_date="not-a-date",
                 end_date="2026-01-31",
             )
 
@@ -94,7 +94,6 @@ class TestUSGSStreamflowReaper:
     @patch("cosecha.reaping.nwis.dr_waterdata.get_continuous")
     def test_reap_success(self, mock_get_continuous):
         """Test successful data retrieval using dataretrieval."""
-        # Mock dataretrieval response
         mock_df = pd.DataFrame(
             {
                 "monitoring_location_id": ["USGS-01018035", "USGS-01018035"],
@@ -165,6 +164,39 @@ class TestUSGSStreamflowReaper:
 
         with pytest.raises(APIError, match="Failed to fetch NWIS data"):
             reaper.reap()
+
+    @patch("cosecha.reaping.nwis.dr_waterdata.get_continuous")
+    def test_reap_empty_response(self, mock_get_continuous):
+        """Test reap handles empty API response."""
+        mock_get_continuous.return_value = (pd.DataFrame(), {})
+
+        reaper = USGSNWISReaper(
+            parameter_code="00060",
+            site_ids=["01018035"],
+            start_date="2022-01-01",
+            end_date="2022-01-31",
+        )
+
+        harvested = reaper.reap()
+        assert isinstance(harvested, pd.DataFrame)
+        assert harvested.empty
+
+    @patch("cosecha.reaping.nwis.dr_waterdata.get_continuous")
+    def test_reap_with_transformations(self, mock_get_continuous):
+        """Test reap applies transformations."""
+        mock_df = pd.DataFrame({"value": [1.0, 2.0], "site": ["A", "B"]})
+        mock_get_continuous.return_value = (mock_df, {})
+
+        reaper = USGSNWISReaper(
+            site_ids=["01018035"],
+            start_date="2022-01-01",
+            end_date="2022-01-31",
+            transformations={"rename_columns": {"value": "discharge"}},
+        )
+
+        harvested = reaper.reap()
+        assert "discharge" in harvested.columns
+        assert "value" not in harvested.columns
 
 
 class TestUSGSStageReaper:

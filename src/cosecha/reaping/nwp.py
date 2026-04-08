@@ -6,6 +6,7 @@ models (HRRR, RRFS, etc.) using the herbie library for data fetching.
 
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 import pandas as pd
@@ -14,7 +15,7 @@ import xarray as xr
 from cosecha.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.logging import logger
 from cosecha.reaping.base import GriddedReaper
-from cosecha.utils import apply_gridded_transformations, wrap_errors
+from cosecha.utils import apply_gridded_transformations, to_180, wrap_errors
 
 __all__ = ["NWPReaper"]
 
@@ -45,15 +46,8 @@ class NWPReaper(GriddedReaper):
         Raises
         ------
         DateRangeError
-            If init_time cannot be parsed or forecast_hours are invalid.
+            If forecast_hours are invalid.
         """
-        # Validate init_time
-        try:
-            parsed_time = pd.to_datetime(self.init_time)
-            logger.debug(f"Parsed init_time: {parsed_time}")
-        except Exception as e:
-            raise DateRangeError(f"Could not parse init_time '{self.init_time}': {e}") from e
-
         if self.forecast_hours is not None and not all(
             isinstance(h, int) and h > 0 for h in self.forecast_hours
         ):
@@ -87,24 +81,30 @@ class NWPReaper(GriddedReaper):
         ----------
         init_time : str
             Model initialization time in format "YYYY-MM-DD HH:MM" or similar.
-            Will be parsed by pandas.to_datetime().
+            Parsed by ``pandas.to_datetime()``.
         forecast_hours : list[int] | range | None, optional
             Forecast hours to request (e.g., [1, 6, 12] or range(1, 19)). Can be none if fetching analysis product.
         model : str, optional
             NWP model name (default: 'hrrr'). Other options: 'rrfs', 'rtma', etc.
-        variable: str, optional
-            A simplified variable name mapping to a predefined GRIB regex search string. Common examples include 'hourly_precip', 'total_precip', 'temp_2m'. Ignored if `search_str` is provided.
-        search_str: str, optional
-            Exact GRIB regex search string to use. Overrides the `variable` lookup if provided.
-        product: str, optional
+        variable : str | None, optional
+            A simplified variable name mapping to a predefined GRIB regex search
+            string. Common examples include 'hourly_precip', 'total_precip',
+            'temp_2m'. Ignored if ``search_str`` is provided.
+        search_str : str | None, optional
+            Exact GRIB regex search string to use. Overrides the ``variable``
+            lookup if provided.
+        product : str | None, optional
             Specific Herbie model product string.
-        transformations: dict[str, Any], optional
+        transformations : dict[str, Any] | None, optional
             Optional transformations to apply to the raw data before returning.
 
         Raises
         ------
         DateRangeError
             If init_time is invalid or forecast_hours are malformed.
+        ReaperError
+            If ``variable`` is not recognized for the given ``model``
+            and no ``search_str`` is provided.
         ImportError
             If herbie is not installed.
 
@@ -123,7 +123,10 @@ class NWPReaper(GriddedReaper):
         """
         super().__init__()
         self.model = model
-        self.init_time = init_time
+        try:
+            self.init_time = pd.to_datetime(init_time)
+        except Exception as e:
+            raise DateRangeError(f"Could not parse init_time '{init_time}': {e}") from e
         self.forecast_hours = (
             list(forecast_hours) if isinstance(forecast_hours, range) else forecast_hours
         )
@@ -132,7 +135,7 @@ class NWPReaper(GriddedReaper):
         elif variable and model in NWP_SEARCH_STRINGS and variable in NWP_SEARCH_STRINGS[model]:
             self.search_str = NWP_SEARCH_STRINGS[model][variable]
         else:
-            raise ValueError(
+            raise ReaperError(
                 f"Invalid variable '{variable}' for model '{model}'. "
                 f"Available variables: {list(NWP_SEARCH_STRINGS.get(model, {}).keys())}. "
                 f"Or provide a custom search_str."
@@ -140,13 +143,13 @@ class NWPReaper(GriddedReaper):
         self.product = product
         self.transformations = transformations
 
-        # Validate parameters
         self._validate_params()
         self._check_herbie()
 
         logger.debug(
-            f"NWPReaper initialized: model={model}, init_time={init_time}, "
-            f"forecast_hours={len(self.forecast_hours) if self.forecast_hours else 'None'}, search_str='{search_str}', product='{product}'"
+            f"NWPReaper initialized: model={self.model}, init_time={self.init_time}, "
+            f"forecast_hours={len(self.forecast_hours) if self.forecast_hours else 'None'}, "
+            f"search_str='{self.search_str}', product='{self.product}'"
         )
 
     def _fetch_with_herbie(self) -> xr.Dataset:
@@ -165,7 +168,7 @@ class NWPReaper(GriddedReaper):
         from herbie.fast import FastHerbie  # noqa: PLC0415
 
         logger.info(
-            f"Fetching HRRR data: model={self.model}, init_time={self.init_time}, "
+            f"Fetching {self.model.upper()} data: init_time={self.init_time}, "
             f"forecast_hours={self.forecast_hours}"
         )
 
@@ -180,12 +183,18 @@ class NWPReaper(GriddedReaper):
             else:
                 h = FastHerbie([self.init_time], model=self.model, product=self.product)
 
-            ds = h.xarray(search=self.search_str)
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore", message="In a future version of xarray", category=FutureWarning
+                )
+                ds = h.xarray(search=self.search_str)
             if not isinstance(ds, xr.Dataset):
                 raise APIError("Herbie did not return an xarray Dataset")
 
-            ds.herbie.to_180()
-            logger.info(f"Successfully fetched NWP data: {len(ds.data_vars)} variables")
+            ds = to_180(ds)
+            logger.info(
+                f"Successfully fetched {self.model.upper()} data: {len(ds.data_vars)} variables"
+            )
             return ds
 
     def _reap(self) -> xr.Dataset:
@@ -209,9 +218,9 @@ class NWPReaper(GriddedReaper):
         ... )
         >>> ds = reaper.reap()
         """
-        logger.info(f"Reaping HRRR data for {self.model} model")
+        logger.info(f"Reaping {self.model.upper()} data")
 
-        with wrap_errors(ReaperError, "HRRR reaping failed", APIError):
+        with wrap_errors(ReaperError, f"{self.model.upper()} reaping failed", APIError):
             ds = self._fetch_with_herbie()
             ds = ds.rename({k: k.lower() for k in map(str, ds.dims) if k != k.lower()})
 
@@ -219,7 +228,7 @@ class NWPReaper(GriddedReaper):
                 ds = apply_gridded_transformations(ds, self.transformations)
 
             logger.info(
-                f"Successfully reaped HRRR data: {len(ds.data_vars)} variables, "
+                f"Successfully reaped {self.model.upper()} data: {len(ds.data_vars)} variables, "
                 f"{len(self.forecast_hours) if self.forecast_hours else 'None'} forecast hours"
             )
             return ds

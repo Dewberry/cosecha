@@ -11,7 +11,6 @@ from typing import Any
 import pandas as pd
 from dataretrieval import waterdata as dr_waterdata
 
-from cosecha.data_models import validate_date_range
 from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
 from cosecha.logging import logger
 from cosecha.reaping.base import TimeSeriesReaper
@@ -49,10 +48,10 @@ class USGSNWISReaper(TimeSeriesReaper):
             if not isinstance(site_id, str) or not site_id.strip():
                 raise InvalidSiteError(f"Invalid site ID: {site_id}")
 
-        try:
-            validate_date_range(self.start_date, self.end_date)
-        except ValueError as e:
-            raise DateRangeError(str(e)) from e
+        if self.start_date > self.end_date:
+            raise DateRangeError(
+                f"start_date ({self.start_date}) must be <= end_date ({self.end_date})"
+            )
 
     def __init__(
         self,
@@ -91,8 +90,11 @@ class USGSNWISReaper(TimeSeriesReaper):
         """
         super().__init__()
         self.site_ids = site_ids
-        self.start_date = start_date
-        self.end_date = end_date
+        try:
+            self.start_date = pd.to_datetime(start_date)
+            self.end_date = pd.to_datetime(end_date)
+        except Exception as e:
+            raise DateRangeError(f"Could not parse date: {e}") from e
         self.transformations = transformations
         self.parameter_code = parameter_code
         self._validate_params()
@@ -121,7 +123,7 @@ class USGSNWISReaper(TimeSeriesReaper):
         )
 
         sites = [f"USGS-{s}" if not s.startswith("USGS-") else s for s in self.site_ids]
-        time_range = f"{self.start_date}/{self.end_date}"
+        time_range = f"{self.start_date.isoformat()}/{self.end_date.isoformat()}"
 
         with wrap_errors(APIError, "Failed to fetch NWIS data"):
             df, _metadata = dr_waterdata.get_continuous(

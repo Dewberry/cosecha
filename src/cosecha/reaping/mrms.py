@@ -12,13 +12,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 
+import pandas as pd
 import s3fs
 import xarray as xr
 
 from cosecha.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.logging import logger
 from cosecha.reaping.base import GriddedReaper
-from cosecha.utils import apply_gridded_transformations, wrap_errors
+from cosecha.utils import apply_gridded_transformations, to_180, wrap_errors
 
 __all__ = ["MRMSReaper"]
 
@@ -43,9 +44,9 @@ class MRMSReaper(GriddedReaper):
     def __init__(
         self,
         variable: str = "MultiSensor_QPE_01H_Pass2_00.00",
-        time: datetime | None = None,
-        start_time: datetime | None = None,
-        end_time: datetime | None = None,
+        time: str | None = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
         transformations: dict[str, Any] | None = None,
         cache_data: bool = False,
     ) -> None:
@@ -55,12 +56,12 @@ class MRMSReaper(GriddedReaper):
         ----------
         variable : str
             MRMS variable name.
-        time : datetime, optional
-            A single datetime to fetch.
-        start_time : datetime, optional
-            Start time for the fetch range.
-        end_time : datetime, optional
-            End time for the fetch range.
+        time : str, optional
+            A single datetime to fetch, e.g. "2026-01-01 12:00".
+        start_time : str, optional
+            Start time for the fetch range, e.g. "2026-01-01 00:00".
+        end_time : str, optional
+            End time for the fetch range, e.g. "2026-01-01 18:00".
         transformations : dict[str, Any], optional
             Optional transformations to apply to the raw data before returning.
         cache_data : bool, optional
@@ -68,13 +69,15 @@ class MRMSReaper(GriddedReaper):
         """
         super().__init__()
         self.variable = variable
-        self.time = time
-        self.start_time = start_time
-        self.end_time = end_time
+        try:
+            self.time = pd.to_datetime(time) if time is not None else None
+            self.start_time = pd.to_datetime(start_time) if start_time is not None else None
+            self.end_time = pd.to_datetime(end_time) if end_time is not None else None
+        except Exception as e:
+            raise DateRangeError(f"Could not parse time parameter: {e}") from e
         self.transformations = transformations
         self.cache_data = cache_data
 
-        # tempdir cache directory
         self.cache_dir = Path(tempfile.gettempdir()) / "mrms_cache"
 
         self._validate_params()
@@ -102,12 +105,6 @@ class MRMSReaper(GriddedReaper):
             raise APIError(f"No files found for {self.variable} for the requested times.")
 
         return files_list
-
-    def _to_180(self, ds: xr.DataArray) -> xr.DataArray:
-        """Convert longitude from 0-360 to -180 to 180."""
-        ds = ds.copy()
-        ds["longitude"] = ((ds["longitude"] + 180) % 360) - 180
-        return ds.sortby("longitude")
 
     def _process_single_file(self, file: str) -> xr.Dataset | None:
         # Deterministic filename for cache based on the S3 file path name
@@ -151,17 +148,13 @@ class MRMSReaper(GriddedReaper):
                     f.flush()
                     data_in = xr.load_dataarray(f.name, engine="cfgrib", decode_timedelta=True)
 
-        mrms_da = self._to_180(data_in)
+        mrms_da = to_180(data_in)
         mrms_da = mrms_da.expand_dims("time")
         mrms_da = mrms_da.sortby("latitude")
 
-        mrms_ds = mrms_da.to_dataset(name=self.variable)
-        if self.transformations:
-            mrms_ds = apply_gridded_transformations(mrms_ds, self.transformations)
+        return mrms_da.to_dataset(name=self.variable)
 
-        return mrms_ds
-
-    def fetch_data(self) -> xr.Dataset:
+    def _fetch_data(self) -> xr.Dataset:
         """Fetch MRMS data from S3.
 
         Returns
@@ -193,7 +186,10 @@ class MRMSReaper(GriddedReaper):
             raise APIError("No data could be successfully fetched and processed.")
         elif len(data_arrays) == 1:
             return data_arrays[0]
-        return cast("xr.Dataset", xr.concat(data_arrays, dim="time"))
+        return cast(
+            "xr.Dataset",
+            xr.concat(data_arrays, dim="time", coords="minimal", compat="override"),
+        )
 
     def _reap(self) -> xr.Dataset:
         """Fetch and return MRMS gridded data.
@@ -211,7 +207,11 @@ class MRMSReaper(GriddedReaper):
         logger.info(f"Reaping MRMS data for {self.variable}")
 
         with wrap_errors(ReaperError, "MRMS reaping failed"):
-            ds = self.fetch_data()
+            ds = self._fetch_data()
             ds = ds.rename({k: k.lower() for k in map(str, ds.dims) if k != k.lower()})
+
+            if self.transformations:
+                ds = apply_gridded_transformations(ds, self.transformations)
+
             logger.info(f"Successfully reaped MRMS data: {len(ds.data_vars)} variables")
             return ds
