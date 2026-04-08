@@ -151,7 +151,7 @@ class TimeSeriesReaper(ReaperBase):
         """
         data = self._ensure_data(pd.DataFrame, "time-series (DataFrame)")
 
-        wh_path = Path(warehouse_path)
+        wh_path = Path(warehouse_path).resolve()
         if wh_path.exists() and wh_path.is_file():
             raise ReaperError(f"warehouse_path must be a directory, got file: {wh_path}")
         wh_path.mkdir(parents=True, exist_ok=True)
@@ -164,7 +164,7 @@ class TimeSeriesReaper(ReaperBase):
                 catalog_name,
                 type="sql",
                 uri=f"sqlite:///{metadata_dir / 'iceberg.db'}",
-                warehouse=str(wh_path),
+                warehouse=wh_path.as_uri(),
                 **{"py-io-impl": "pyiceberg.io.fsspec.FsspecFileIO"},
             ) as catalog,
             wrap_errors(ReaperError, "Iceberg write failed"),
