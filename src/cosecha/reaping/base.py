@@ -10,7 +10,7 @@ from __future__ import annotations
 import contextlib
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import overload
+from typing import TypeVar
 from urllib.parse import urlparse
 
 import fsspec
@@ -26,6 +26,8 @@ from cosecha._utils import ensure_local_parent, is_remote, wrap_errors
 from cosecha.exceptions import ReaperError
 
 __all__ = ["GriddedReaper", "TimeSeriesReaper"]
+
+T_ReaperData = TypeVar("T_ReaperData", pd.DataFrame, xr.Dataset)
 
 
 class ReaperBase(ABC):
@@ -53,29 +55,25 @@ class ReaperBase(ABC):
         self.data = self._reap()
         return self.data
 
-    @overload
-    def _ensure_data(self, expected_type: type[pd.DataFrame], type_label: str) -> pd.DataFrame: ...
-    @overload
-    def _ensure_data(self, expected_type: type[xr.Dataset], type_label: str) -> xr.Dataset: ...
     def _ensure_data(
         self,
-        expected_type: type[pd.DataFrame | xr.Dataset],
+        expected_type: type[T_ReaperData],
         type_label: str,
-    ) -> pd.DataFrame | xr.Dataset:
+    ) -> T_ReaperData:
         """Verify that data has been reaped and matches the expected type.
 
         Called by ``sow_to_*`` methods before writing.
 
         Parameters
         ----------
-        expected_type : type
+        expected_type : type[T_ReaperData]
             Expected type of ``self.data`` (e.g., ``pd.DataFrame``, ``xr.Dataset``).
         type_label : str
             Human-readable label used in error messages.
 
         Returns
         -------
-        pd.DataFrame | xr.Dataset
+        T_ReaperData
             The validated data, narrowed to the expected type.
 
         Raises

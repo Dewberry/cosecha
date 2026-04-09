@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING, Any, overload
-
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from cosecha._logging import logger
 from cosecha.exceptions import TransformationError
@@ -15,6 +14,8 @@ if TYPE_CHECKING:
 
     import pandas as pd
     import xarray as xr
+
+T_Data = TypeVar("T_Data", "xr.DataArray", "xr.Dataset")
 
 
 def is_remote(path: str | Path) -> bool:
@@ -98,11 +99,7 @@ def _apply_spatial_subset(result: xr.Dataset, subset: dict[str, Any]) -> xr.Data
     return result
 
 
-@overload
-def to_180(data: xr.DataArray) -> xr.DataArray: ...
-@overload
-def to_180(data: xr.Dataset) -> xr.Dataset: ...
-def to_180(data: xr.DataArray | xr.Dataset) -> xr.DataArray | xr.Dataset:
+def to_180(data: T_Data) -> T_Data:
     """Convert longitude coordinates from [0, 360] to [-180, 180] range.
 
     When longitude is a 1-D coordinate the result is also sorted by
@@ -111,12 +108,12 @@ def to_180(data: xr.DataArray | xr.Dataset) -> xr.DataArray | xr.Dataset:
 
     Parameters
     ----------
-    data : xr.DataArray | xr.Dataset
+    data : T_Data
         Data with a ``longitude`` coordinate in [0, 360] range.
 
     Returns
     -------
-    xr.DataArray | xr.Dataset
+    T_Data
         Copy of the input with longitude wrapped to [-180, 180].
     """
     data = data.copy()
