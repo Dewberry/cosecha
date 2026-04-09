@@ -224,22 +224,24 @@ class GriddedReaper(ReaperBase):
         Parameters
         ----------
         file_path : str | Path
-            Path where the NetCDF file will be written. Parent directories will be created if needed.
+            Local path or remote URI (e.g. ``s3://bucket/data.nc``)
+            where the NetCDF file will be written.
+            Parent directories are created automatically for local paths.
 
         Returns
         -------
         str
-            Path to the written NetCDF file.
+            The path or URI of the written NetCDF file.
         """
         data = self._ensure_data(xr.Dataset, "an xarray Dataset")
 
-        out_path = Path(file_path)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
+        path_str = str(file_path)
+        ensure_local_parent(path_str)
 
         with wrap_errors(ReaperError, "NetCDF write failed"):
-            data.to_netcdf(out_path, mode="w", engine="h5netcdf")
-            logger.info(f"Written NetCDF file to {out_path}")
-            return str(out_path)
+            data.to_netcdf(path_str, mode="w", engine="h5netcdf")
+            logger.info(f"Written NetCDF file to {path_str}")
+            return path_str
 
     def sow_to_icechunk(self, storage_path: str | Path, group_path: str) -> str:
         """Write Dataset to IceChunk format.
