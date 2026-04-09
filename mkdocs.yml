@@ -99,7 +99,7 @@ nav:
 - Getting Started: README.md
 - Examples:
   - Overview: examples/index.md
-  - Example Notebook: examples/example.ipynb
+  - Hurricane Beryl Flood Analysis: examples/beryl_flood_analysis.ipynb
 - API Reference: reference.md
 - Release Notes: CHANGELOG.md
 - Contributing: CONTRIBUTING.md
