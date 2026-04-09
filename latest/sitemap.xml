@@ -1,31 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://dewberry.github.io/cosecha/latest/reference/</loc>
-         <lastmod>2026-03-21</lastmod>
+        <loc>https://dewberry.github.io/cosecha/latest/reference/</loc>
+        <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://dewberry.github.io/cosecha/latest/examples/</loc>
-         <lastmod>2026-03-21</lastmod>
+        <loc>https://dewberry.github.io/cosecha/latest/examples/</loc>
+        <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://dewberry.github.io/cosecha/latest/examples/example/</loc>
-         <lastmod>2026-03-21</lastmod>
+        <loc>https://dewberry.github.io/cosecha/latest/examples/beryl_flood_analysis/</loc>
+        <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://dewberry.github.io/cosecha/latest/CHANGELOG/</loc>
-         <lastmod>2026-03-21</lastmod>
+        <loc>https://dewberry.github.io/cosecha/latest/CHANGELOG/</loc>
+        <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://dewberry.github.io/cosecha/latest/CONTRIBUTING/</loc>
-         <lastmod>2026-03-21</lastmod>
+        <loc>https://dewberry.github.io/cosecha/latest/CONTRIBUTING/</loc>
+        <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://dewberry.github.io/cosecha/latest/</loc>
-         <lastmod>2026-03-21</lastmod>
+        <loc>https://dewberry.github.io/cosecha/latest/</loc>
+        <changefreq>daily</changefreq>
     </url>
     <url>
-         <loc>https://dewberry.github.io/cosecha/latest/LICENSE/</loc>
-         <lastmod>2026-03-21</lastmod>
+        <loc>https://dewberry.github.io/cosecha/latest/LICENSE/</loc>
+        <changefreq>daily</changefreq>
     </url>
 </urlset>
