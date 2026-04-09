@@ -128,7 +128,8 @@ class TestSowToS3:
             yield
         s3fs.S3FileSystem.clear_instance_cache()
 
-    def test_parquet_s3(self, _mock_s3):
+    @pytest.mark.usefixtures("_mock_s3")
+    def test_parquet_s3(self):
         """sow_to_parquet round-trips data through a mock S3 bucket."""
         reaper = _TSReaper()
         reaper.reap()
