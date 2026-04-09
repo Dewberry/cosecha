@@ -21,13 +21,6 @@ __all__ = [
 ]
 
 
-_PARAM_MAPPING = {
-    "00060": {"data_type": "instantaneous streamflow", "variable_name": "streamflow"},
-    "00065": {"data_type": "instantaneous stage", "variable_name": "stage"},
-    "00045": {"data_type": "instantaneous precipitation", "variable_name": "precipitation"},
-}
-
-
 class USGSNWISReaper(TimeSeriesReaper):
     """Reaper for USGS NWIS instantaneous data."""
 
