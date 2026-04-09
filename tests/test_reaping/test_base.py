@@ -117,7 +117,7 @@ class TestSowToZarr:
 class TestSowToS3:
     """Test S3 write support for parquet and zarr."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def _mock_s3(self, monkeypatch):
         monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
         monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")

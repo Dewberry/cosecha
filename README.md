@@ -25,10 +25,10 @@ With optional dependencies for NWP (HRRR, RRFS) support:
 pip install 'cosecha[nwp]'
 ```
 
-**Note:** Cosecha depends on the [ecCodes](https://confluence.ecmwf.int/display/ECC)
-C library for reading GRIB2 data (used by MRMS). When installing with pip,
-you must have ecCodes available on your system. The easiest cross-platform
-approach is to install it via conda-forge:
+**Note:** Cosecha depends on the [ecCodes](https://confluence.ecmwf.int/display/ECC) C
+library for reading GRIB2 data (used by MRMS). When installing with pip, you must have
+ecCodes available on your system. The easiest cross-platform approach is to install it
+via conda-forge:
 
 ```console
 conda install -c conda-forge eccodes
