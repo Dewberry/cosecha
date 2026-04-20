@@ -86,25 +86,47 @@ class MRMSReaper(GriddedReaper):
             anon=True, config_kwargs={"connect_timeout": 30, "read_timeout": 60}
         )
 
-    def _find_available_files(self, times: list[datetime]) -> list[str]:
+    def _find_available_files(self) -> list[str]:
         files_list = []
-        for dt in times:
-            yyyymmdd = dt.strftime("%Y%m%d")
-            hh = dt.strftime("%H")
-
-            available_files = self.aws.ls(
-                f"noaa-mrms-pds/CONUS/{self.variable}/{yyyymmdd}/", refresh=True
-            )
+        
+        if self.time is not None:
+            start = self.time
+            end = self.time
+        else:
+            start = self.start_time
+            end = self.end_time
+            
+        current_date = start.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = end.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        while current_date <= end_date:
+            yyyymmdd = current_date.strftime("%Y%m%d")
+            
+            try:
+                available_files = self.aws.ls(
+                    f"noaa-mrms-pds/CONUS/{self.variable}/{yyyymmdd}/", refresh=True
+                )
+            except Exception as e:
+                raise APIError(f"Could not list available files for {self.variable} on {yyyymmdd}: {e}") from e
 
             for file in available_files:
-                file_hour = file[-15:-13]
-                if file_hour == hh:
-                    files_list.append(file)
+                try:
+                    filename = file.split("/")[-1]
+                    # filename looks like: Variable_YYYYMMDD-HHMMSS.grib2.gz
+                    timestamp_str = filename.split("_")[-1].split(".")[0]
+                    file_dt = datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S")
+                    
+                    if start <= file_dt <= end: # If file is within the requested time range, add to list
+                        files_list.append(file)
+                except (ValueError, IndexError):
+                    continue
+            
+            current_date += timedelta(days=1)
 
         if not files_list:
             raise APIError(f"No files found for {self.variable} for the requested times.")
 
-        return files_list
+        return sorted(files_list)
 
     def _process_single_file(self, file: str) -> xr.Dataset | None:
         # Deterministic filename for cache based on the S3 file path name
@@ -162,16 +184,7 @@ class MRMSReaper(GriddedReaper):
         xr.Dataset
             Raw MRMS gridded data.
         """
-        times = []
-        if self.time is not None:
-            times.append(self.time)
-        elif self.start_time is not None and self.end_time is not None:
-            curr = self.start_time
-            while curr <= self.end_time:
-                times.append(curr)
-                curr += timedelta(hours=1)
-
-        files = self._find_available_files(times)
+        files = self._find_available_files()
 
         data_arrays = []
         if self.cache_data:
