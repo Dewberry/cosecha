@@ -70,8 +70,8 @@ class NWPReaper(GriddedReaper):
         init_time: str,
         forecast_hours: list[int] | range | None = None,
         model: str = "hrrr",
-        variable: str | None = "hourly_precip",
-        search_str: str | None = None,
+        variable: str | list[str] | None = "hourly_precip",
+        search_str: str | list[str] | None = None,
         product: str | None = None,
         transformations: dict[str, Any] | None = None,
     ) -> None:
@@ -86,13 +86,12 @@ class NWPReaper(GriddedReaper):
             Forecast hours to request (e.g., [1, 6, 12] or range(1, 19)). Can be none if fetching analysis product.
         model : str, optional
             NWP model name (default: 'hrrr'). Other options: 'rrfs', 'rtma', etc.
-        variable : str | None, optional
-            A simplified variable name mapping to a predefined GRIB regex search
-            string. Common examples include 'hourly_precip', 'total_precip',
-            'temp_2m'. Ignored if ``search_str`` is provided.
-        search_str : str | None, optional
-            Exact GRIB regex search string to use. Overrides the ``variable``
-            lookup if provided.
+        variable : str | list[str] | None, optional
+            A simplified variable name (or list of names) mapping to predefined GRIB regex search
+            strings. Common examples include 'hourly_precip', 'total_precip',
+            'temp_2m'.
+        search_str : str | list[str] | None, optional
+            Exact GRIB regex search string(s) to use. Can be combined with ``variable``.
         product : str | None, optional
             Specific Herbie model product string.
         transformations : dict[str, Any] | None, optional
@@ -103,8 +102,8 @@ class NWPReaper(GriddedReaper):
         DateRangeError
             If init_time is invalid or forecast_hours are malformed.
         ReaperError
-            If ``variable`` is not recognized for the given ``model``
-            and no ``search_str`` is provided.
+            If ``variable`` is not recognized for the given ``model``,
+            or neither ``variable`` nor ``search_str`` are provided.
         ImportError
             If herbie is not installed.
 
@@ -130,16 +129,30 @@ class NWPReaper(GriddedReaper):
         self.forecast_hours = (
             list(forecast_hours) if isinstance(forecast_hours, range) else forecast_hours
         )
+
+        search_parts = []
         if search_str is not None:
-            self.search_str = search_str
-        elif variable and model in NWP_SEARCH_STRINGS and variable in NWP_SEARCH_STRINGS[model]:
-            self.search_str = NWP_SEARCH_STRINGS[model][variable]
-        else:
-            raise ReaperError(
-                f"Invalid variable '{variable}' for model '{model}'. "
-                f"Available variables: {list(NWP_SEARCH_STRINGS.get(model, {}).keys())}. "
-                f"Or provide a custom search_str."
-            )
+            if isinstance(search_str, str):
+                search_parts.append(search_str)
+            else:
+                search_parts.extend(search_str)
+
+        if variable is not None:
+            variables = [variable] if isinstance(variable, str) else variable
+            for var in variables:
+                if model in NWP_SEARCH_STRINGS and var in NWP_SEARCH_STRINGS[model]:
+                    search_parts.append(NWP_SEARCH_STRINGS[model][var])
+                else:
+                    raise ReaperError(
+                        f"Invalid variable '{var}' for model '{model}'. "
+                        f"Available variables: {list(NWP_SEARCH_STRINGS.get(model, {}).keys())}."
+                    )
+                    
+        if not search_parts:
+            raise ReaperError("Must provide at least one variable or search_str.")
+            
+        self.search_str = f"(?:{'|'.join(search_parts)})"
+
         self.product = product
         self.transformations = transformations
 
@@ -188,6 +201,14 @@ class NWPReaper(GriddedReaper):
                     "ignore", message="In a future version of xarray", category=FutureWarning
                 )
                 ds = h.xarray(search=self.search_str)
+            
+            if isinstance(ds, list):
+                # Merge the datasets together if multiple vars were requested
+                try:
+                    ds = xr.merge(ds, compat="override")
+                except Exception as e:
+                    raise APIError(f"Failed to merge Herbie datasets: {e}") from e
+
             if not isinstance(ds, xr.Dataset):
                 raise APIError("Herbie did not return an xarray Dataset")
 
