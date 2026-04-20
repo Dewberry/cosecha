@@ -22,15 +22,15 @@ class TestMRMSReaper:
         """Test valid initialization with single time."""
         reaper = MRMSReaper(time="2026-01-01")
         assert reaper.variable == "MultiSensor_QPE_01H_Pass2_00.00"
-        assert reaper.time == pd.Timestamp("2026-01-01")
+        assert reaper.time == pd.Timestamp("2026-01-01", tz="UTC")
         assert reaper.start_time is None
         assert reaper.end_time is None
 
     def test_initialization_time_range(self):
         """Test valid initialization with time range."""
         reaper = MRMSReaper(start_time="2026-01-01", end_time="2026-01-02")
-        assert reaper.start_time == pd.Timestamp("2026-01-01")
-        assert reaper.end_time == pd.Timestamp("2026-01-02")
+        assert reaper.start_time == pd.Timestamp("2026-01-01", tz="UTC")
+        assert reaper.end_time == pd.Timestamp("2026-01-02", tz="UTC")
         assert reaper.time is None
 
     def test_initialization_custom_variable(self):
@@ -61,7 +61,7 @@ class TestMRMSReaper:
         reaper.aws = mock_s3
 
         with pytest.raises(APIError, match="No files found for"):
-            reaper._find_available_files([pd.Timestamp("2026-01-01 12:00")])
+            reaper._find_available_files()
 
     def test_reap_mocked_success(self, mocker):
         """Test reap with mocked _fetch_data."""
@@ -105,7 +105,7 @@ class TestMRMSReaper:
         ]
         reaper.aws = mock_s3
 
-        result = reaper._find_available_files([pd.Timestamp("2026-01-01 12:00")])
+        result = reaper._find_available_files()
 
         assert len(result) == 1
         assert "120000" in result[0]
