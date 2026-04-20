@@ -8,7 +8,7 @@ from __future__ import annotations
 import gzip
 import tempfile
 import time as time_mod
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, cast
 
@@ -57,11 +57,11 @@ class MRMSReaper(GriddedReaper):
         variable : str
             MRMS variable name.
         time : str, optional
-            A single datetime to fetch, e.g. "2026-01-01 12:00".
+            A single datetime to fetch, e.g. "2026-01-01 12:00Z". Also accepts "latest" to fetch the most recent available data for the variable provided. If not provided, start_time and end_time must be provided.
         start_time : str, optional
-            Start time for the fetch range, e.g. "2026-01-01 00:00".
+            Start time for the fetch range, e.g. "2026-01-01 00:00Z".
         end_time : str, optional
-            End time for the fetch range, e.g. "2026-01-01 18:00".
+            End time for the fetch range, e.g. "2026-01-01 18:00Z".
         transformations : dict[str, Any], optional
             Optional transformations to apply to the raw data before returning.
         cache_data : bool, optional
@@ -70,9 +70,9 @@ class MRMSReaper(GriddedReaper):
         super().__init__()
         self.variable = variable
         try:
-            self.time = pd.to_datetime(time) if time is not None else None
-            self.start_time = pd.to_datetime(start_time) if start_time is not None else None
-            self.end_time = pd.to_datetime(end_time) if end_time is not None else None
+            self.time = time if time == "latest" else (pd.to_datetime(time, utc=True) if time is not None else None)
+            self.start_time = pd.to_datetime(start_time, utc=True) if start_time is not None else None
+            self.end_time = pd.to_datetime(end_time, utc=True) if end_time is not None else None
         except Exception as e:
             raise DateRangeError(f"Could not parse time parameter: {e}") from e
         self.transformations = transformations
@@ -89,7 +89,10 @@ class MRMSReaper(GriddedReaper):
     def _find_available_files(self) -> list[str]:
         files_list = []
         
-        if self.time is not None:
+        if self.time == "latest":
+            end = datetime.now(timezone.utc)
+            start = end - timedelta(days=1)
+        elif self.time is not None:
             start = self.time
             end = self.time
         else:
@@ -114,7 +117,7 @@ class MRMSReaper(GriddedReaper):
                     filename = file.split("/")[-1]
                     # filename looks like: Variable_YYYYMMDD-HHMMSS.grib2.gz
                     timestamp_str = filename.split("_")[-1].split(".")[0]
-                    file_dt = datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S")
+                    file_dt = datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S").replace(tzinfo=timezone.utc)
                     
                     if start <= file_dt <= end: # If file is within the requested time range, add to list
                         files_list.append(file)
@@ -126,7 +129,8 @@ class MRMSReaper(GriddedReaper):
         if not files_list:
             raise APIError(f"No files found for {self.variable} for the requested times.")
 
-        return sorted(files_list)
+        sorted_files = sorted(files_list)
+        return [sorted_files[-1]] if self.time == "latest" else sorted_files
 
     def _process_single_file(self, file: str) -> xr.Dataset | None:
         # Deterministic filename for cache based on the S3 file path name
