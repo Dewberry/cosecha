@@ -53,6 +53,26 @@ class TestNWPReaper:
         reaper = NWPReaper(init_time="2026-01-01 00:00", forecast_hours=range(1, 13))
         assert reaper.forecast_hours == list(range(1, 13))
 
+    def test_initialization_multiple_variables(self):
+        """Test valid initialization with multiple variables."""
+        reaper = NWPReaper(init_time="2026-01-01 00:00", variable=["hourly_precip", "temp_2m"])
+        assert (
+            r":APCP:.*(?:0-1|[1-9]\d*-\d+) hour" in reaper.search_str
+            or r":APCP:.*:(?:0-1|[1-9]\d*-\d+) hour" in reaper.search_str
+        )
+        assert "TMP:2 m above" in reaper.search_str
+
+    def test_initialization_latest_init_time(self, mocker):
+        """Test valid initialization with 'latest' init_time."""
+        mock_timestamp = pd.Timestamp("2026-04-20 20:00:00")
+        mocker.patch.object(
+            NWPReaper,
+            "_get_latest_model_init",
+            return_value=mock_timestamp,
+        )
+        reaper = NWPReaper(init_time="latest")
+        assert reaper.init_time == mock_timestamp
+
     def test_initialization_custom_model(self):
         """Test initialization with custom model."""
         reaper = NWPReaper(

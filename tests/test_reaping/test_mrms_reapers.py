@@ -26,6 +26,14 @@ class TestMRMSReaper:
         assert reaper.start_time is None
         assert reaper.end_time is None
 
+    def test_initialization_latest_time(self):
+        """Test valid initialization with latest time."""
+        reaper = MRMSReaper(time="latest")
+        assert reaper.variable == "MultiSensor_QPE_01H_Pass2_00.00"
+        assert reaper.time == "latest"
+        assert reaper.start_time is None
+        assert reaper.end_time is None
+
     def test_initialization_time_range(self):
         """Test valid initialization with time range."""
         reaper = MRMSReaper(start_time="2026-01-01", end_time="2026-01-02")
