@@ -8,7 +8,7 @@ from __future__ import annotations
 import gzip
 import tempfile
 import time as time_mod
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, cast
 
@@ -70,8 +70,14 @@ class MRMSReaper(GriddedReaper):
         super().__init__()
         self.variable = variable
         try:
-            self.time = time if time == "latest" else (pd.to_datetime(time, utc=True) if time is not None else None)
-            self.start_time = pd.to_datetime(start_time, utc=True) if start_time is not None else None
+            self.time = (
+                time
+                if time == "latest"
+                else (pd.to_datetime(time, utc=True) if time is not None else None)
+            )
+            self.start_time = (
+                pd.to_datetime(start_time, utc=True) if start_time is not None else None
+            )
             self.end_time = pd.to_datetime(end_time, utc=True) if end_time is not None else None
         except Exception as e:
             raise DateRangeError(f"Could not parse time parameter: {e}") from e
@@ -88,9 +94,9 @@ class MRMSReaper(GriddedReaper):
 
     def _find_available_files(self) -> list[str]:
         files_list = []
-        
+
         if self.time == "latest":
-            end = datetime.now(timezone.utc)
+            end = datetime.now(UTC)
             start = end - timedelta(days=1)
         elif self.time is not None:
             start = self.time
@@ -98,32 +104,36 @@ class MRMSReaper(GriddedReaper):
         else:
             start = self.start_time
             end = self.end_time
-            
+
         current_date = start.replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = end.replace(hour=0, minute=0, second=0, microsecond=0)
-        
+
         while current_date <= end_date:
             yyyymmdd = current_date.strftime("%Y%m%d")
-            
+
             try:
                 available_files = self.aws.ls(
                     f"noaa-mrms-pds/CONUS/{self.variable}/{yyyymmdd}/", refresh=True
                 )
             except Exception as e:
-                raise APIError(f"Could not list available files for {self.variable} on {yyyymmdd}: {e}") from e
+                raise APIError(
+                    f"Could not list available files for {self.variable} on {yyyymmdd}: {e}"
+                ) from e
 
             for file in available_files:
                 try:
                     filename = file.split("/")[-1]
                     # filename looks like: Variable_YYYYMMDD-HHMMSS.grib2.gz
                     timestamp_str = filename.split("_")[-1].split(".")[0]
-                    file_dt = datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S").replace(tzinfo=timezone.utc)
-                    
-                    if start <= file_dt <= end: # If file is within the requested time range, add to list
+                    file_dt = datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S").replace(tzinfo=UTC)
+
+                    if (
+                        start <= file_dt <= end
+                    ):  # If file is within the requested time range, add to list
                         files_list.append(file)
                 except (ValueError, IndexError):
                     continue
-            
+
             current_date += timedelta(days=1)
 
         if not files_list:
