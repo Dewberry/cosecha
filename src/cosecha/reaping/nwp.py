@@ -65,6 +65,13 @@ class NWPReaper(GriddedReaper):
                 "herbie is not installed. Install with: pip install 'cosecha[nwp]'"
             ) from None
 
+    def _get_latest_model_init(self) -> pd.Timestamp:
+        from herbie import HerbieLatest  # noqa: PLC0415
+
+        with wrap_errors(APIError, "Could not fetch latest model initialization time from Herbie"):
+            h = HerbieLatest(model=self.model, fxx=max(self.forecast_hours))
+            return h.date
+
     def __init__(
         self,
         init_time: str,
@@ -81,7 +88,8 @@ class NWPReaper(GriddedReaper):
         ----------
         init_time : str
             Model initialization time in format "YYYY-MM-DD HH:MM" or similar.
-            Parsed by ``pandas.to_datetime()``.
+            Parsed by ``pandas.to_datetime()``. Also accepts "latest" to automatically fetch
+            the most recent initialization time for the specified model.
         forecast_hours : list[int] | range | None, optional
             Forecast hours to request (e.g., [1, 6, 12] or range(1, 19)). Can be none if fetching analysis product.
         model : str, optional
@@ -121,14 +129,18 @@ class NWPReaper(GriddedReaper):
         ... )
         """
         super().__init__()
+        self._check_herbie()
         self.model = model
-        try:
-            self.init_time = pd.to_datetime(init_time)
-        except Exception as e:
-            raise DateRangeError(f"Could not parse init_time '{init_time}': {e}") from e
         self.forecast_hours = (
             list(forecast_hours) if isinstance(forecast_hours, range) else forecast_hours
         )
+        try:
+            if init_time == "latest":
+                self.init_time = self._get_latest_model_init()
+            else:
+                self.init_time = pd.to_datetime(init_time)
+        except Exception as e:
+            raise DateRangeError(f"Could not parse init_time '{init_time}': {e}") from e
 
         search_parts = []
         if search_str is not None:
@@ -147,17 +159,16 @@ class NWPReaper(GriddedReaper):
                         f"Invalid variable '{var}' for model '{model}'. "
                         f"Available variables: {list(NWP_SEARCH_STRINGS.get(model, {}).keys())}."
                     )
-                    
+
         if not search_parts:
             raise ReaperError("Must provide at least one variable or search_str.")
-            
+
         self.search_str = f"(?:{'|'.join(search_parts)})"
 
         self.product = product
         self.transformations = transformations
 
         self._validate_params()
-        self._check_herbie()
 
         logger.debug(
             f"NWPReaper initialized: model={self.model}, init_time={self.init_time}, "
@@ -201,7 +212,7 @@ class NWPReaper(GriddedReaper):
                     "ignore", message="In a future version of xarray", category=FutureWarning
                 )
                 ds = h.xarray(search=self.search_str)
-            
+
             if isinstance(ds, list):
                 # Merge the datasets together if multiple vars were requested
                 try:
