@@ -107,7 +107,7 @@ class NWPReaper(GriddedReaper):
 
         Raises
         ------
-        DateRangeError
+        ValueError
             If init_time is invalid or forecast_hours are malformed.
         ReaperError
             If ``variable`` is not recognized for the given ``model``,
@@ -209,16 +209,14 @@ class NWPReaper(GriddedReaper):
 
             with warnings.catch_warnings():
                 warnings.filterwarnings(
-                    "ignore", message="In a future version of xarray", category=FutureWarning
+                    "ignore",
+                    message="In a future version of xarray",
+                    category=FutureWarning,
                 )
                 ds = h.xarray(search=self.search_str)
 
             if isinstance(ds, list):
-                # Merge the datasets together if multiple vars were requested
-                try:
-                    ds = xr.merge(ds, compat="override")
-                except Exception as e:
-                    raise APIError(f"Failed to merge Herbie datasets: {e}") from e
+                ds = xr.merge(ds, compat="override")
 
             if not isinstance(ds, xr.Dataset):
                 raise APIError("Herbie did not return an xarray Dataset")
