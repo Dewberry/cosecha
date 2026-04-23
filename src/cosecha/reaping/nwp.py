@@ -134,13 +134,11 @@ class NWPReaper(GriddedReaper):
         self.forecast_hours = (
             list(forecast_hours) if isinstance(forecast_hours, range) else forecast_hours
         )
-        try:
-            if init_time == "latest":
-                self.init_time = self._get_latest_model_init()
-            else:
-                self.init_time = pd.to_datetime(init_time)
-        except Exception as e:
-            raise DateRangeError(f"Could not parse init_time '{init_time}': {e}") from e
+
+        if init_time == "latest":
+            self.init_time = self._get_latest_model_init()
+        else:
+            self.init_time = pd.to_datetime(init_time)
 
         search_parts = []
         if search_str is not None:
