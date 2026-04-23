@@ -41,7 +41,7 @@ class MRMSReaper(GriddedReaper):
 
     def __init__(
         self,
-        dates: Literal["latest"] | str | tuple[str, str],  # noqa: PYI051
+        dates: Literal["latest"] | tuple[str, str],
         variable: str = "MultiSensor_QPE_01H_Pass2_00.00",
         transformations: dict[str, Any] | None = None,
         cache_data: bool = False,
@@ -50,9 +50,9 @@ class MRMSReaper(GriddedReaper):
 
         Parameters
         ----------
-        dates : Literal["latest"] | str | tuple[str, str]
-            "latest" to fetch the most recent available data, a single string for a specific time (e.g., "2026-01-01 00:00Z"),
-                or a tuple of (start_time, end_time) to fetch a custom range, e.g. ("2026-01-01 00:00Z", "2026-01-01 18:00Z").
+        dates : Literal["latest"] | tuple[str, str]
+            "latest" to fetch the most recent available data, or a tuple of (start_time, end_time) to fetch a custom range, e.g. ("2026-01-01 00:00Z", "2026-01-01 18:00Z").
+                To fetch a single time point, set start_time and end_time to the same value, e.g. ("2026-01-01 00:00Z", "2026-01-01 00:00Z").
         variable : str
             MRMS variable name.
         transformations : dict[str, Any], optional
@@ -64,18 +64,12 @@ class MRMSReaper(GriddedReaper):
         self.variable = variable
         self.is_latest = dates == "latest"
 
-        try:
-            if self.is_latest:
-                self.end_date = datetime.now(UTC)
-                self.start_date = self.end_date - timedelta(days=1)
-            elif isinstance(dates, str):
-                self.start_date = pd.to_datetime(dates, utc=True)
-                self.end_date = self.start_date
-            else:
-                self.start_date = pd.to_datetime(dates[0], utc=True)
-                self.end_date = pd.to_datetime(dates[1], utc=True)
-        except Exception as e:
-            raise DateRangeError(f"Could not parse dates parameter: {e}") from e
+        if self.is_latest:
+            self.end_date = datetime.now(UTC)
+            self.start_date = self.end_date - timedelta(days=1)
+        else:
+            self.start_date = pd.to_datetime(dates[0], utc=True)
+            self.end_date = pd.to_datetime(dates[1], utc=True)
 
         self.transformations = transformations
         self.cache_data = cache_data
