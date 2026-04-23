@@ -1,8 +1,8 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to this project will be documented in this file. The format is based
+on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.1] - 2026-04-23
 
@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Consolidate time args into one 'dates' arg
+
 ## [0.1.0] - 2026-04-08
 
 ### Added
@@ -38,7 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove placeholder scripts by @sray014
 - Move transformations from sowers to reapers by @sray014
 - Refactor USGS classes into one class by @sray014
-- Major refactor: Create base reaper classes with sowers. Remove HarvestedData by @sray014
+- Major refactor: Create base reaper classes with sowers. Remove HarvestedData by
+    @sray014
 - Replace logging_config with logging module
 - Consolidate exception handling with wrap_errors context manager
 - Consolidate base reaper classes and utilities
@@ -80,8 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New Contributors
 
-- @sray014 made their first contribution in [#1](https://github.com/Dewberry/cosecha/pull/1)
+- @sray014 made their first contribution in
+    [#1](https://github.com/Dewberry/cosecha/pull/1)
 - @ made their first contribution
-- @slawler made their first contribution
-[0.1.1]: https://github.com/Dewberry/cosecha/compare/v0.1.0...v0.1.1
-
+- @slawler made their first contribution \[0.1.1\]:
+    https://github.com/Dewberry/cosecha/compare/v0.1.0...v0.1.1
