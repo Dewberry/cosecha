@@ -14,7 +14,8 @@ def pytest_configure(config):
         "markers", "requires_herbie: mark test as requiring herbie optional dependency"
     )
     config.addinivalue_line(
-        "markers", "requires_iceberg: mark test as requiring Iceberg catalog configuration"
+        "markers",
+        "requires_iceberg: mark test as requiring Iceberg catalog configuration",
     )
 
 
@@ -51,7 +52,9 @@ try:
         metadata_dir = Path(tmpdir) / ".iceberg"
         metadata_dir.mkdir(parents=True, exist_ok=True)
         with SqlCatalog(
-            name="test", uri=f"sqlite:///{metadata_dir / 'iceberg.db'}", warehouse=tmpdir
+            name="test",
+            uri=f"sqlite:///{metadata_dir / 'iceberg.db'}",
+            warehouse=tmpdir,
         ):
             iceberg_available = True
 except (ImportError, Exception):

@@ -185,7 +185,12 @@ class TestApplyGriddedTransformations:
 
     def test_spatial_subset_2d_curvilinear(self, curvilinear_ds):
         """Test spatial subset with 2D lat/lon coordinates (curvilinear grid)."""
-        transforms = {"spatial_subset": {"lat_bounds": (15.0, 35.0), "lon_bounds": (-105.0, -85.0)}}
+        transforms = {
+            "spatial_subset": {
+                "lat_bounds": (15.0, 35.0),
+                "lon_bounds": (-105.0, -85.0),
+            }
+        }
         result = apply_gridded_transformations(curvilinear_ds, transforms)
         assert "temperature" in result.data_vars
         assert result.sizes["y"] == 2

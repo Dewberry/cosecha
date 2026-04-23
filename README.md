@@ -48,7 +48,10 @@ from cosecha import USGSNWISReaper
 
 # Fetch USGS streamflow data
 reaper = USGSNWISReaper(
-    site_ids=["01650000"], start_date="2026-01-01", end_date="2026-01-31", parameter_code="00060"
+    site_ids=["01650000"],
+    start_date="2026-01-01",
+    end_date="2026-01-31",
+    parameter_code="00060",
 )
 
 # Execute
