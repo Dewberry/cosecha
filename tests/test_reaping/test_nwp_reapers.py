@@ -76,7 +76,10 @@ class TestNWPReaper:
     def test_initialization_custom_model(self):
         """Test initialization with custom model."""
         reaper = NWPReaper(
-            init_time="2026-01-01 00:00", forecast_hours=[1, 6], model="rrfs", search_str="custom"
+            init_time="2026-01-01 00:00",
+            forecast_hours=[1, 6],
+            model="rrfs",
+            search_str="custom",
         )
         assert reaper.model == "rrfs"
 

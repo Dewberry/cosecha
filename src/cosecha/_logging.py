@@ -65,7 +65,9 @@ def get_log_file_path() -> Path | None:
     return None
 
 
-def _validate_level(level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] | int) -> int:
+def _validate_level(
+    level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] | int,
+) -> int:
     if isinstance(level, str):
         level_upper = level.upper()
         if level_upper not in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
