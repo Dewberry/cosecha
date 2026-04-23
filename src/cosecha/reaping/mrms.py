@@ -62,7 +62,7 @@ class MRMSReaper(GriddedReaper):
         """
         super().__init__()
 
-        if dates != "latest" and (isinstance(dates, str) or len(dates) != 2):
+        if dates != "latest" and not (isinstance(dates, (tuple, list)) and len(dates) == 2):
             raise ValueError(
                 'dates must be "latest" or a sequence of length 2, e.g. ("2026-01-01 00:00Z", "2026-01-01 18:00Z")'
             )
