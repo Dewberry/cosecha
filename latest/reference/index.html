@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.6">
     
     
       
@@ -1271,13 +1271,11 @@ S3 credentials are read from the environment.</p>
 
 <a href="#cosecha.MRMSReaper" class="headerlink" title="Permanent link">#</a></h2>
 <div class="language-python doc-signature highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">MRMSReaper</span><span class="p">(</span>
-</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">variable</span><span class="o">=</span><span class="s2">&quot;MultiSensor_QPE_01H_Pass2_00.00&quot;</span><span class="p">,</span>
-</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">start_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">end_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">transformations</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">cache_data</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">dates</span><span class="p">,</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">variable</span><span class="o">=</span><span class="s2">&quot;MultiSensor_QPE_01H_Pass2_00.00&quot;</span><span class="p">,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">transformations</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">cache_data</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">)</span>
 </span></code></pre></div>
 
     <div class="doc doc-contents ">
@@ -1294,6 +1292,15 @@ S3 credentials are read from the environment.</p>
 <p><span class="doc-section-title">Parameters:</span></p>
     <ul>
         <li class="doc-section-item field-body">
+            <b><code>dates</code></b>
+              (<code><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a>[&#39;latest&#39;] | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>)
+          –
+          <div class="doc-md-description">
+            <p>"latest" to fetch the most recent available data, or a tuple of (start_time, end_time) to fetch a custom range, e.g. ("2026-01-01 00:00Z", "2026-01-01 18:00Z").
+    To fetch a single time point, set start_time and end_time to the same value, e.g. ("2026-01-01 00:00Z", "2026-01-01 00:00Z").</p>
+          </div>
+        </li>
+        <li class="doc-section-item field-body">
             <b><code>variable</code></b>
               (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>, default:
                   <code>&#39;MultiSensor_QPE_01H_Pass2_00.00&#39;</code>
@@ -1301,36 +1308,6 @@ S3 credentials are read from the environment.</p>
           –
           <div class="doc-md-description">
             <p>MRMS variable name.</p>
-          </div>
-        </li>
-        <li class="doc-section-item field-body">
-            <b><code>time</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>, default:
-                  <code>None</code>
-)
-          –
-          <div class="doc-md-description">
-            <p>A single datetime to fetch, e.g. "2026-01-01 12:00".</p>
-          </div>
-        </li>
-        <li class="doc-section-item field-body">
-            <b><code>start_time</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>, default:
-                  <code>None</code>
-)
-          –
-          <div class="doc-md-description">
-            <p>Start time for the fetch range, e.g. "2026-01-01 00:00".</p>
-          </div>
-        </li>
-        <li class="doc-section-item field-body">
-            <b><code>end_time</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>, default:
-                  <code>None</code>
-)
-          –
-          <div class="doc-md-description">
-            <p>End time for the fetch range, e.g. "2026-01-01 18:00".</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
@@ -1614,7 +1591,8 @@ S3 credentials are read from the environment.</p>
           –
           <div class="doc-md-description">
             <p>Model initialization time in format "YYYY-MM-DD HH:MM" or similar.
-Parsed by <code>pandas.to_datetime()</code>.</p>
+Parsed by <code>pandas.to_datetime()</code>. Also accepts "latest" to automatically fetch
+the most recent initialization time for the specified model.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
@@ -1639,25 +1617,24 @@ Parsed by <code>pandas.to_datetime()</code>.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>variable</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | None</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>] | None</code>, default:
                   <code>&#39;hourly_precip&#39;</code>
 )
           –
           <div class="doc-md-description">
-            <p>A simplified variable name mapping to a predefined GRIB regex search
-string. Common examples include 'hourly_precip', 'total_precip',
-'temp_2m'. Ignored if <code>search_str</code> is provided.</p>
+            <p>A simplified variable name (or list of names) mapping to predefined GRIB regex search
+strings. Common examples include 'hourly_precip', 'total_precip',
+'temp_2m'.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
             <b><code>search_str</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | None</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>] | None</code>, default:
                   <code>None</code>
 )
           –
           <div class="doc-md-description">
-            <p>Exact GRIB regex search string to use. Overrides the <code>variable</code>
-lookup if provided.</p>
+            <p>Exact GRIB regex search string(s) to use. Can be combined with <code>variable</code>.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
@@ -1686,7 +1663,7 @@ lookup if provided.</p>
 <p><span class="doc-section-title">Raises:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><span title="cosecha.exceptions.DateRangeError">DateRangeError</span></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
             –
           <div class="doc-md-description">
             <p>If init_time is invalid or forecast_hours are malformed.</p>
@@ -1696,8 +1673,8 @@ lookup if provided.</p>
               <code><span title="cosecha.exceptions.ReaperError">ReaperError</span></code>
             –
           <div class="doc-md-description">
-            <p>If <code>variable</code> is not recognized for the given <code>model</code>
-and no <code>search_str</code> is provided.</p>
+            <p>If <code>variable</code> is not recognized for the given <code>model</code>,
+or neither <code>variable</code> nor <code>search_str</code> are provided.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">

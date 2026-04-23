@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.6">
     
     
       
@@ -588,6 +588,45 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#011-2026-04-23" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        [0.1.1] - 2026-04-23
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="[0.1.1] - 2026-04-23">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#010-2026-04-08" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -595,6 +634,67 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="[0.1.0] - 2026-04-08">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#added_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixed_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fixed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#new-contributors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        New Contributors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -700,8 +800,88 @@
 <p>All notable changes to this project will be documented in this file. The format is based
 on <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a>, and this project adheres to
 <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>.</p>
+<h2 id="011-2026-04-23">[0.1.1] - 2026-04-23<a class="headerlink" href="#011-2026-04-23" title="Permanent link">#</a></h2>
+<h3 id="added">Added<a class="headerlink" href="#added" title="Permanent link">#</a></h3>
+<ul>
+<li>Add subhourly time handling</li>
+<li>Add "latest" time option when reaping data</li>
+<li>Allow selection of multiple NWP variables</li>
+<li>Add "latest" option when reaping model data</li>
+</ul>
+<h3 id="fixed">Fixed<a class="headerlink" href="#fixed" title="Permanent link">#</a></h3>
+<ul>
+<li>Consolidate time args into one 'dates' arg</li>
+</ul>
 <h2 id="010-2026-04-08">[0.1.0] - 2026-04-08<a class="headerlink" href="#010-2026-04-08" title="Permanent link">#</a></h2>
-<p>Initial release.</p>
+<h3 id="added_1">Added<a class="headerlink" href="#added_1" title="Permanent link">#</a></h3>
+<ul>
+<li>Add reaping class and exceptions by @slawler</li>
+<li>Add nwis and nwp reapers by @slawler</li>
+<li>Add sowing base class and exceptions by @slawler</li>
+<li>Add sowing classes by @slawler</li>
+<li>Add cosecha top level code by @slawler</li>
+<li>Add dataretrieval for nwis reaper by @slawler</li>
+<li>Generalize HRRReaper to accept other herbie models by @sray014</li>
+<li>Add MRMS reaper by @sray014</li>
+<li>Update spatial subset to work on 1d and 2d lat/lon coords by @sray014</li>
+<li>Add ability to cache mrms files by @sray014</li>
+<li>Add S3 support for parquet, zarr, and icechunk writers</li>
+</ul>
+<h3 id="changed">Changed<a class="headerlink" href="#changed" title="Permanent link">#</a></h3>
+<ul>
+<li>Consolidate apply_transormations methods into utils script by @sray014</li>
+<li>Remove placeholder scripts by @sray014</li>
+<li>Move transformations from sowers to reapers by @sray014</li>
+<li>Refactor USGS classes into one class by @sray014</li>
+<li>Major refactor: Create base reaper classes with sowers. Remove HarvestedData by
+    @sray014</li>
+<li>Replace logging_config with logging module</li>
+<li>Consolidate exception handling with wrap_errors context manager</li>
+<li>Consolidate base reaper classes and utilities</li>
+<li>Replace rich logging with stdlib StreamHandler</li>
+<li>Fix ruff lint warnings in tests</li>
+<li>Remove unused SpatialBoundsError and exception re-exports</li>
+<li>Make utils and logging modules private</li>
+<li>Use TypeVar instead of overload decorator by @sray014</li>
+</ul>
+<h3 id="fix">Fix<a class="headerlink" href="#fix" title="Permanent link">#</a></h3>
+<ul>
+<li>Update pyproj dependencies by @sray014</li>
+</ul>
+<h3 id="fixed_1">Fixed<a class="headerlink" href="#fixed_1" title="Permanent link">#</a></h3>
+<ul>
+<li>Add search for matching vars in nwp by @slawler</li>
+<li>Updated dependencies by @sray014</li>
+<li>Fix icechunk sower so it actually writes to an icechunk store by @sray014</li>
+<li>Remove network tests by @sray014</li>
+<li>Remove network tests by @sray014</li>
+<li>Add eccodes as dependencies by @sray014</li>
+<li>Move unneeded optional dependencies by @sray014</li>
+<li>Fix spelling by @sray014</li>
+<li>Remove duplicate dependencies, ignore 'docs' folder in linter by @sray014</li>
+<li>Use custom logger by @sray014</li>
+<li>Allow time in format YYYY-MM-DDTHH:MMZ for usgs by @sray014</li>
+<li>Add transformation to class init, fix docs, remove stat code by @sray014</li>
+<li>Remove unused args by @sray014</li>
+<li>Fix file path naming by @sray014</li>
+<li>Use waterdata API for USGS data instead of NWIS by @sray014</li>
+<li>Remove unnecessary mkdir by @sray014</li>
+<li>Improve reapers with consistent parsing and public exports</li>
+<li>Correct LICENSE path in mkdocs nav</li>
+<li>Restore LICENSE.md path in mkdocs nav to match docs hook</li>
+<li>Add eccodes to pixi envs and broaden conftest exception handling</li>
+<li>Use FsspecFileIO for Iceberg to support Windows paths</li>
+<li>Use file URI for Iceberg warehouse on Windows</li>
+<li>Use ensure_local_parent when writing to netcdf by @sray014</li>
+</ul>
+<h3 id="new-contributors">New Contributors<a class="headerlink" href="#new-contributors" title="Permanent link">#</a></h3>
+<ul>
+<li>@sray014 made their first contribution in
+    <a href="https://github.com/Dewberry/cosecha/pull/1">#1</a></li>
+<li>@ made their first contribution</li>
+<li>@slawler made their first contribution [0.1.1]:
+    https://github.com/Dewberry/cosecha/compare/v0.1.0...v0.1.1</li>
+</ul>
 
 
 
