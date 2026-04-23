@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
+from pandas._libs.tslibs.parsing import DateParseError
 
 from cosecha.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.reaping.nwp import NWPReaper
@@ -85,7 +86,7 @@ class TestNWPReaper:
 
     def test_invalid_init_time(self):
         """Test initialization fails with invalid init_time."""
-        with pytest.raises(DateRangeError, match="Could not parse init_time"):
+        with pytest.raises(DateParseError):
             NWPReaper(init_time="invalid time", forecast_hours=[1, 6])
 
     def test_valid_forecast_hours_empty(self):

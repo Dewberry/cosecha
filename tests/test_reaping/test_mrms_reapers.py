@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
+from pandas._libs.tslibs.parsing import DateParseError
 
 from cosecha.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.reaping.mrms import MRMSReaper
@@ -20,7 +21,7 @@ class TestMRMSReaper:
 
     def test_initialization_single_time(self):
         """Test valid initialization with single time."""
-        reaper = MRMSReaper(dates="2026-01-01")
+        reaper = MRMSReaper(dates=("2026-01-01", "2026-01-01"))
         assert reaper.variable == "MultiSensor_QPE_01H_Pass2_00.00"
         assert reaper.start_date == pd.Timestamp("2026-01-01", tz="UTC")
         assert reaper.end_date == pd.Timestamp("2026-01-01", tz="UTC")
@@ -39,7 +40,7 @@ class TestMRMSReaper:
 
     def test_initialization_custom_variable(self):
         """Test valid initialization with custom variable."""
-        reaper = MRMSReaper(dates="2026-01-01", variable="custom_var")
+        reaper = MRMSReaper(dates=("2026-01-01", "2026-01-01"), variable="custom_var")
         assert reaper.variable == "custom_var"
 
     def test_invalid_no_time(self):
@@ -54,12 +55,12 @@ class TestMRMSReaper:
 
     def test_validate_params_valid(self):
         """Test _validate_params with valid parameters."""
-        reaper = MRMSReaper(dates="2026-01-01")
+        reaper = MRMSReaper(dates=("2026-01-01", "2026-01-01"))
         reaper._validate_params()  # Should not raise
 
     def test_find_available_files_no_files(self, mocker):
         """Test _find_available_files raises APIError when no files are found."""
-        reaper = MRMSReaper(dates="2026-01-01 12:00")
+        reaper = MRMSReaper(dates=("2026-01-01 12:00", "2026-01-01 12:00"))
         mock_s3 = mocker.MagicMock()
         mock_s3.ls.return_value = []
         reaper.aws = mock_s3
@@ -75,7 +76,7 @@ class TestMRMSReaper:
             }
         )
 
-        reaper = MRMSReaper(dates="2026-01-01")
+        reaper = MRMSReaper(dates=("2026-01-01", "2026-01-01"))
         mocker.patch.object(reaper, "_fetch_data", return_value=mock_ds)
 
         harvested = reaper.reap()
@@ -86,20 +87,20 @@ class TestMRMSReaper:
 
     def test_reap_api_error_handling(self, mocker):
         """Test that reap handles errors from _fetch_data gracefully."""
-        reaper = MRMSReaper(dates="2026-01-01")
+        reaper = MRMSReaper(dates=("2026-01-01", "2026-01-01"))
         mocker.patch.object(reaper, "_fetch_data", side_effect=APIError("S3 fetch failed"))
 
         with pytest.raises(ReaperError, match="MRMS reaping failed"):
             reaper.reap()
 
     def test_invalid_time_string(self):
-        """Test that an unparsable time string raises DateRangeError."""
-        with pytest.raises(DateRangeError, match="Could not parse dates parameter"):
-            MRMSReaper(dates="not-a-valid-date")
+        """Test that an unparsable time string raises DateParseError."""
+        with pytest.raises(DateParseError):
+            MRMSReaper(dates=("not-a-valid-date", "not-a-valid-date"))
 
     def test_find_available_files_matches_hour(self, mocker):
         """Test _find_available_files returns only files matching the requested hour."""
-        reaper = MRMSReaper(dates="2026-01-01 12:00")
+        reaper = MRMSReaper(dates=("2026-01-01 12:00", "2026-01-01 12:00"))
         mock_s3 = mocker.MagicMock()
         base = "noaa-mrms-pds/CONUS/MultiSensor_QPE_01H_Pass2_00.00/20260101"
         mock_s3.ls.return_value = [
@@ -116,7 +117,7 @@ class TestMRMSReaper:
 
     def test_fetch_data_single_time(self, mocker):
         """Test _fetch_data with a single time returns the dataset directly."""
-        reaper = MRMSReaper(dates="2026-01-01 12:00")
+        reaper = MRMSReaper(dates=("2026-01-01 12:00", "2026-01-01 12:00"))
         single_ds = xr.Dataset(
             {"precip": (("time", "latitude", "longitude"), [[[1.0, 2.0], [3.0, 4.0]]])}
         )
@@ -172,7 +173,7 @@ class TestMRMSReaper:
 
     def test_fetch_data_all_files_fail(self, mocker):
         """Test _fetch_data raises APIError when all files fail to process."""
-        reaper = MRMSReaper(dates="2026-01-01 12:00")
+        reaper = MRMSReaper(dates=("2026-01-01 12:00", "2026-01-01 12:00"))
         mocker.patch.object(
             reaper,
             "_find_available_files",
@@ -191,7 +192,7 @@ class TestMRMSReaper:
         mock_ds = xr.Dataset({"old": (("time", "latitude", "longitude"), [[[1, 2], [3, 4]]])})
 
         reaper = MRMSReaper(
-            dates="2026-01-01",
+            dates=("2026-01-01", "2026-01-01"),
             transformations={"variable_rename": {"old": "new"}},
         )
         mocker.patch.object(reaper, "_fetch_data", return_value=mock_ds)
@@ -204,7 +205,7 @@ class TestMRMSReaper:
 
     def test_process_single_file_retry_then_success(self, mocker):
         """Test _process_single_file succeeds after initial failure with retry."""
-        reaper = MRMSReaper(dates="2026-01-01 12:00")
+        reaper = MRMSReaper(dates=("2026-01-01 12:00", "2026-01-01 12:00"))
         mocker.patch("cosecha.reaping.mrms.time_mod.sleep")
 
         compressed = gzip.compress(b"fake grib2 data")
@@ -246,7 +247,7 @@ class TestMRMSReaper:
 
     def test_process_single_file_all_retries_fail(self, mocker):
         """Test _process_single_file returns None when all retries fail."""
-        reaper = MRMSReaper(dates="2026-01-01 12:00")
+        reaper = MRMSReaper(dates=("2026-01-01 12:00", "2026-01-01 12:00"))
         mocker.patch("cosecha.reaping.mrms.time_mod.sleep")
 
         reaper.aws = MagicMock()
@@ -264,7 +265,7 @@ class TestMRMSReaper:
     @pytest.mark.network
     def test_reap_network(self):
         """Test live MRMS fetch from S3."""
-        reaper = MRMSReaper(dates="2024-01-01 12:00")
+        reaper = MRMSReaper(dates=("2024-01-01 12:00", "2024-01-01 12:00"))
         harvested = reaper.reap()
         assert isinstance(harvested, xr.Dataset)
         assert len(harvested.data_vars) > 0
