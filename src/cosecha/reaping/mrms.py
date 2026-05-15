@@ -101,6 +101,10 @@ class MRMSReaper(GriddedReaper):
                 available_files = self.aws.ls(
                     f"noaa-mrms-pds/CONUS/{self.variable}/{yyyymmdd}/", refresh=True
                 )
+            except FileNotFoundError:
+                logger.debug(f"No directory found for {self.variable} on {yyyymmdd}, skipping.")
+                current_date += timedelta(days=1)
+                continue
             except Exception as e:
                 raise APIError(
                     f"Could not list available files for {self.variable} on {yyyymmdd}: {e}"
