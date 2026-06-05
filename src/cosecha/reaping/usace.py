@@ -17,7 +17,7 @@ from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
 from cosecha.reaping.base import TimeSeriesReaper
 
 __all__ = [
-    "USACEReaper",
+    "ReservoirReaper",
 ]
 
 BASE_URL = "https://water.usace.army.mil/cda/reporting/providers/{provider}/timeseries"
@@ -93,9 +93,9 @@ class ReservoirReaper(TimeSeriesReaper):
 
         Examples
         --------
-        >>> reaper = USACEReaper(
+        >>> reaper = ReservoirReaper(
         ...     site_ids=["JPLT2", "BNBT2"],
-        ...     params=["storage", "elevation", "outflow"],
+        ...     params=["storage", "elevation", "outflow", "inflow"],
         ...     start_date="2026-06-04T00:00:00Z",
         ...     end_date="2026-06-05T00:00:00Z",
         ... )
@@ -145,7 +145,7 @@ class ReservoirReaper(TimeSeriesReaper):
         }
 
         with wrap_errors(APIError, f"Failed to fetch USACE time series: {ts_name}"):
-            resp = requests.get(url, params=request_params, timeout=30)
+            resp = requests.get(url, params=request_params, timeout=60)
             resp.raise_for_status()
             data = resp.json()
 
