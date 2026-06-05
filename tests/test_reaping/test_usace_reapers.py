@@ -489,7 +489,7 @@ class TestReservoirReaper:
 
         call_args = mock_get.call_args
         timeout = call_args.kwargs.get("timeout", call_args[1].get("timeout"))
-        assert timeout == 30
+        assert timeout == 60
 
     # ------------------------------------------------------------------
     # Network test (opt-in)
