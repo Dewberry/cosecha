@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
+from tiny_retriever.exceptions import ServiceError
 
 from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
 from cosecha.reaping.usace import ReservoirReaper
@@ -123,19 +124,19 @@ class TestReservoirReaper:
     # Fetch / reap tests (mocked)
     # ------------------------------------------------------------------
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_reap_success_single_site_single_param(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_reap_success_single_site_single_param(self, mock_fetch):
         """Test successful fetch for one site and one parameter."""
-        mock_response = mock_get.return_value
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {
-            "values": [
-                ["2026-06-04T01:00:00Z", 150.0],
-                ["2026-06-04T02:00:00Z", 152.0],
-                ["2026-06-04T03:00:00Z", 151.5],
-            ],
-            "unit": "ac-ft",
-        }
+        mock_fetch.return_value = [
+            {
+                "values": [
+                    ["2026-06-04T01:00:00Z", 150.0],
+                    ["2026-06-04T02:00:00Z", 152.0],
+                    ["2026-06-04T03:00:00Z", 151.5],
+                ],
+                "unit": "ac-ft",
+            }
+        ]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -151,20 +152,20 @@ class TestReservoirReaper:
         assert harvested["site_id"].unique().tolist() == ["JPLT2"]
         assert harvested["variable"].unique().tolist() == ["storage"]
         assert harvested["unit"].iloc[0] == "ac-ft"
-        mock_get.assert_called_once()
+        mock_fetch.assert_called_once()
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_reap_multiple_sites_multiple_params(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_reap_multiple_sites_multiple_params(self, mock_fetch):
         """Test successful fetch for multiple sites and parameters."""
-        mock_response = mock_get.return_value
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {
-            "values": [
-                ["2026-06-04T01:00:00Z", 100.0],
-                ["2026-06-04T02:00:00Z", 101.0],
-            ],
-            "unit": "ft",
-        }
+        mock_fetch.return_value = [
+            {
+                "values": [
+                    ["2026-06-04T01:00:00Z", 100.0],
+                    ["2026-06-04T02:00:00Z", 101.0],
+                ],
+                "unit": "ft",
+            }
+        ] * 4  # 2 sites x 2 params
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2", "BNBT2"],
@@ -179,15 +180,12 @@ class TestReservoirReaper:
         assert len(harvested) == 8
         assert set(harvested["site_id"].unique()) == {"JPLT2", "BNBT2"}
         assert set(harvested["variable"].unique()) == {"storage", "elevation"}
-        # Should be called 4 times (2 sites x 2 params)
-        assert mock_get.call_count == 4
+        mock_fetch.assert_called_once()
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_reap_empty_response(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_reap_empty_response(self, mock_fetch):
         """Test reap handles empty API response."""
-        mock_response = mock_get.return_value
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {"values": []}
+        mock_fetch.return_value = [{"values": []}]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -200,12 +198,10 @@ class TestReservoirReaper:
         assert isinstance(harvested, pd.DataFrame)
         assert harvested.empty
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_reap_no_values_key(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_reap_no_values_key(self, mock_fetch):
         """Test reap handles response with missing values key."""
-        mock_response = mock_get.return_value
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {}
+        mock_fetch.return_value = [{}]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -218,10 +214,10 @@ class TestReservoirReaper:
         assert isinstance(harvested, pd.DataFrame)
         assert harvested.empty
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_reap_api_error(self, mock_get):
-        """Test error handling when requests fails."""
-        mock_get.side_effect = Exception("Connection timeout")
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_reap_api_error(self, mock_fetch):
+        """Test error handling when fetch fails."""
+        mock_fetch.side_effect = Exception("Connection timeout")
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -233,13 +229,10 @@ class TestReservoirReaper:
         with pytest.raises(APIError, match="Failed to fetch USACE time series"):
             reaper.reap()
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_reap_http_error(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_reap_service_error(self, mock_fetch):
         """Test error handling when API returns HTTP error."""
-        from requests.exceptions import HTTPError
-
-        mock_response = mock_get.return_value
-        mock_response.raise_for_status.side_effect = HTTPError("404 Not Found")
+        mock_fetch.side_effect = ServiceError("404 Not Found", "http://example.com")
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -251,27 +244,18 @@ class TestReservoirReaper:
         with pytest.raises(APIError, match="Failed to fetch USACE time series"):
             reaper.reap()
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_reap_partial_failure(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_reap_partial_failure(self, mock_fetch):
         """Test that partial failures still return available data."""
-        call_count = [0]
-
-        def side_effect(*args, **kwargs):
-            call_count[0] += 1
-            mock_resp = type("Response", (), {})()
-            mock_resp.raise_for_status = lambda: None
-            if call_count[0] == 1:
-                # First call returns data
-                mock_resp.json = lambda: {
-                    "values": [["2026-06-04T01:00:00Z", 100.0]],
-                    "unit": "ac-ft",
-                }
-            else:
-                # Second call returns empty
-                mock_resp.json = lambda: {"values": []}
-            return mock_resp
-
-        mock_get.side_effect = side_effect
+        mock_fetch.return_value = [
+            # First param returns data
+            {
+                "values": [["2026-06-04T01:00:00Z", 100.0]],
+                "unit": "ac-ft",
+            },
+            # Second param returns empty
+            {"values": []},
+        ]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -284,15 +268,15 @@ class TestReservoirReaper:
         assert len(harvested) == 1
         assert harvested["variable"].iloc[0] == "storage"
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_reap_stores_data_on_instance(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_reap_stores_data_on_instance(self, mock_fetch):
         """Test that reap() stores data on the instance."""
-        mock_response = mock_get.return_value
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {
-            "values": [["2026-06-04T01:00:00Z", 100.0]],
-            "unit": "ac-ft",
-        }
+        mock_fetch.return_value = [
+            {
+                "values": [["2026-06-04T01:00:00Z", 100.0]],
+                "unit": "ac-ft",
+            }
+        ]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -308,18 +292,18 @@ class TestReservoirReaper:
     # Transformation tests
     # ------------------------------------------------------------------
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_reap_with_rename_columns(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_reap_with_rename_columns(self, mock_fetch):
         """Test reap applies rename_columns transformation."""
-        mock_response = mock_get.return_value
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {
-            "values": [
-                ["2026-06-04T01:00:00Z", 150.0],
-                ["2026-06-04T02:00:00Z", 152.0],
-            ],
-            "unit": "ac-ft",
-        }
+        mock_fetch.return_value = [
+            {
+                "values": [
+                    ["2026-06-04T01:00:00Z", 150.0],
+                    ["2026-06-04T02:00:00Z", 152.0],
+                ],
+                "unit": "ac-ft",
+            }
+        ]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -333,18 +317,18 @@ class TestReservoirReaper:
         assert "storage_value" in harvested.columns
         assert "value" not in harvested.columns
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_reap_with_unit_conversions(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_reap_with_unit_conversions(self, mock_fetch):
         """Test reap applies unit_conversions transformation."""
-        mock_response = mock_get.return_value
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {
-            "values": [
-                ["2026-06-04T01:00:00Z", 100.0],
-                ["2026-06-04T02:00:00Z", 200.0],
-            ],
-            "unit": "cfs",
-        }
+        mock_fetch.return_value = [
+            {
+                "values": [
+                    ["2026-06-04T01:00:00Z", 100.0],
+                    ["2026-06-04T02:00:00Z", 200.0],
+                ],
+                "unit": "cfs",
+            }
+        ]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -358,17 +342,17 @@ class TestReservoirReaper:
         assert harvested["value"].iloc[0] == pytest.approx(2.8316847)
         assert harvested["value"].iloc[1] == pytest.approx(5.6633694)
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_reap_with_filter_columns(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_reap_with_filter_columns(self, mock_fetch):
         """Test reap applies filter_columns transformation."""
-        mock_response = mock_get.return_value
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {
-            "values": [
-                ["2026-06-04T01:00:00Z", 150.0],
-            ],
-            "unit": "ac-ft",
-        }
+        mock_fetch.return_value = [
+            {
+                "values": [
+                    ["2026-06-04T01:00:00Z", 150.0],
+                ],
+                "unit": "ac-ft",
+            }
+        ]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -381,17 +365,17 @@ class TestReservoirReaper:
 
         assert list(harvested.columns) == ["site_id", "datetime", "value"]
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_reap_with_multiple_transformations(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_reap_with_multiple_transformations(self, mock_fetch):
         """Test reap applies multiple transformations in sequence."""
-        mock_response = mock_get.return_value
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {
-            "values": [
-                ["2026-06-04T01:00:00Z", 100.0],
-            ],
-            "unit": "cfs",
-        }
+        mock_fetch.return_value = [
+            {
+                "values": [
+                    ["2026-06-04T01:00:00Z", 100.0],
+                ],
+                "unit": "cfs",
+            }
+        ]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -408,17 +392,17 @@ class TestReservoirReaper:
         assert "flow" in harvested.columns
         assert harvested["flow"].iloc[0] == 200.0
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_reap_no_transformations(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_reap_no_transformations(self, mock_fetch):
         """Test reap with no transformations returns raw data."""
-        mock_response = mock_get.return_value
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {
-            "values": [
-                ["2026-06-04T01:00:00Z", 150.0],
-            ],
-            "unit": "ac-ft",
-        }
+        mock_fetch.return_value = [
+            {
+                "values": [
+                    ["2026-06-04T01:00:00Z", 150.0],
+                ],
+                "unit": "ac-ft",
+            }
+        ]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -434,12 +418,10 @@ class TestReservoirReaper:
     # Request parameter tests
     # ------------------------------------------------------------------
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_request_uses_correct_url(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_request_uses_correct_url(self, mock_fetch):
         """Test that the correct URL is constructed for the provider."""
-        mock_response = mock_get.return_value
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {"values": []}
+        mock_fetch.return_value = [{"values": []}]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -450,15 +432,14 @@ class TestReservoirReaper:
         )
         reaper.reap()
 
-        call_args = mock_get.call_args
-        assert "nwk" in call_args[0][0] or "nwk" in call_args.kwargs.get("url", call_args[0][0])
+        call_args = mock_fetch.call_args
+        urls = call_args[0][0]  # first positional arg is the list of URLs
+        assert all("nwk" in u for u in urls)
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_request_uses_correct_ts_name(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_request_uses_correct_ts_name(self, mock_fetch):
         """Test that the correct time series name is sent."""
-        mock_response = mock_get.return_value
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {"values": []}
+        mock_fetch.return_value = [{"values": []}]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -468,16 +449,14 @@ class TestReservoirReaper:
         )
         reaper.reap()
 
-        call_args = mock_get.call_args
-        params = call_args.kwargs.get("params", call_args[1].get("params"))
-        assert params["name"] == "JPLT2-Gated_Total.Flow-Out.Inst.1Hour.0.Rev-SWF-REGI"
+        call_args = mock_fetch.call_args
+        urls = call_args[0][0]
+        assert "JPLT2-Gated_Total.Flow-Out.Inst.1Hour.0.Rev-SWF-REGI" in urls[0]
 
-    @patch("cosecha.reaping.usace.requests.get")
-    def test_request_timeout(self, mock_get):
+    @patch("cosecha.reaping.usace.tiny_retriever.fetch")
+    def test_request_timeout(self, mock_fetch):
         """Test that requests are made with a timeout."""
-        mock_response = mock_get.return_value
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {"values": []}
+        mock_fetch.return_value = [{"values": []}]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -487,9 +466,9 @@ class TestReservoirReaper:
         )
         reaper.reap()
 
-        call_args = mock_get.call_args
-        timeout = call_args.kwargs.get("timeout", call_args[1].get("timeout"))
-        assert timeout == 60
+        call_args = mock_fetch.call_args
+        timeout = call_args[1]["timeout"]
+        assert timeout == 120
 
     # ------------------------------------------------------------------
     # Network test (opt-in)

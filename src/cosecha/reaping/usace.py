@@ -6,10 +6,11 @@ USACE CDA Reporting API, including storage, elevation, and outflow data.
 
 from __future__ import annotations
 
+from itertools import product
 from typing import Any
 
 import pandas as pd
-import requests
+import tiny_retriever
 
 from cosecha._logging import logger
 from cosecha._utils import apply_ts_transformations, wrap_errors
@@ -56,8 +57,7 @@ class ReservoirReaper(TimeSeriesReaper):
         for param in self.params:
             if param not in PARAMETERS:
                 raise InvalidSiteError(
-                    f"Unknown parameter: {param!r}. "
-                    f"Available: {list(PARAMETERS.keys())}"
+                    f"Unknown parameter: {param!r}. Available: {list(PARAMETERS.keys())}"
                 )
 
         if self.start_date > self.end_date:
@@ -119,78 +119,41 @@ class ReservoirReaper(TimeSeriesReaper):
             f"dates={self.start_date} to {self.end_date}, provider={self.provider}"
         )
 
-    def _fetch_timeseries(self, ts_name: str) -> tuple[pd.DataFrame, dict]:
-        """Fetch a single time series from the USACE CDA reporting API.
+    def _build_urls(self) -> tuple[list[tuple[str, str]], list[str]]:
+        """Build full URLs for all site/parameter combinations."""
+        base = BASE_URL.format(provider=self.provider)
+        begin = self.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+        end = self.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+        queries = list(product(self.site_ids, self.params))
+        urls = [
+            f"{base}?name={PARAMETERS[p].format(code=c)}&begin={begin}&end={end}"
+            for c, p in queries
+        ]
+        return queries, urls
 
-        Parameters
-        ----------
-        ts_name : str
-            Full time series identifier.
+    def _fetch(self, urls: list[str]) -> list[dict[str, Any]]:
+        """Fetch all URLs asynchronously via tiny_retriever."""
+        with wrap_errors(APIError, "Failed to fetch USACE time series"):
+            return tiny_retriever.fetch(urls, "json", timeout=120)
 
-        Returns
-        -------
-        tuple[pd.DataFrame, dict]
-            DataFrame with datetime and value columns, and response metadata.
-
-        Raises
-        ------
-        APIError
-            If the request fails.
-        """
-        url = BASE_URL.format(provider=self.provider)
-        request_params = {
-            "name": ts_name,
-            "begin": self.start_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "end": self.end_date.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        }
-
-        with wrap_errors(APIError, f"Failed to fetch USACE time series: {ts_name}"):
-            resp = requests.get(url, params=request_params, timeout=60)
-            resp.raise_for_status()
-            data = resp.json()
-
-        if not data.get("values"):
-            return pd.DataFrame(), data
-
-        df = pd.DataFrame(data["values"], columns=["datetime", "value"])
-        df["datetime"] = pd.to_datetime(df["datetime"])
-        return df, data
-
-    def _fetch_and_parse(self) -> pd.DataFrame:
-        """Fetch all requested parameters for all sites.
-
-        Returns
-        -------
-        pd.DataFrame
-            Long-format DataFrame with columns: site_id, datetime, variable, value, unit.
-
-        Raises
-        ------
-        APIError
-            If fetching fails.
-        """
-        logger.debug(
-            f"Fetching {len(self.params)} parameter(s) for "
-            f"{len(self.site_ids)} site(s) from {self.start_date} to {self.end_date}"
-        )
-
+    def _parse_responses(
+        self,
+        queries: list[tuple[str, str]],
+        responses: list[dict[str, Any]],
+    ) -> pd.DataFrame:
+        """Parse JSON responses into a long-format DataFrame."""
         records: list[pd.DataFrame] = []
+        for (code, param), data in zip(queries, responses, strict=True):
+            if not data or not data.get("values"):
+                logger.warning(f"No data returned for {code} | {param}")
+                continue
 
-        for code in self.site_ids:
-            for param in self.params:
-                ts_name = PARAMETERS[param].format(code=code)
-                logger.debug(f"Fetching {code} | {param}: {ts_name}")
-
-                df, meta = self._fetch_timeseries(ts_name)
-                if df.empty:
-                    logger.warning(f"No data returned for {code} | {param}")
-                    continue
-
-                df["site_id"] = code
-                df["variable"] = param
-                df["unit"] = meta.get("unit", "")
-                records.append(df)
-                logger.debug(f"Fetched {len(df)} records for {code} | {param}")
+            df = pd.DataFrame(data["values"], columns=["datetime", "value"])
+            df["datetime"] = pd.to_datetime(df["datetime"])
+            df["site_id"] = code
+            df["variable"] = param
+            df["unit"] = data.get("unit", "")
+            records.append(df)
 
         if not records:
             logger.warning("USACE returned no data for any site/parameter combination")
@@ -199,30 +162,17 @@ class ReservoirReaper(TimeSeriesReaper):
         return pd.concat(records, ignore_index=True)
 
     def _reap(self) -> pd.DataFrame:
-        """Fetch data from USACE CDA and return as a pandas DataFrame.
-
-        Returns
-        -------
-        pd.DataFrame
-            Long-format DataFrame with columns: site_id, datetime, variable, value, unit.
-
-        Raises
-        ------
-        APIError
-            If fetching fails.
-        """
+        """Fetch data from USACE CDA and return as a pandas DataFrame."""
         logger.info(
-            f"Reaping data from USACE CDA for {len(self.site_ids)} site(s), "
-            f"{len(self.params)} parameter(s)"
+            f"Reaping USACE CDA: {len(self.site_ids)} site(s), {len(self.params)} parameter(s)"
         )
 
-        df = self._fetch_and_parse()
+        queries, urls = self._build_urls()
+        responses = self._fetch(urls)
+        df = self._parse_responses(queries, responses)
 
         if self.transformations:
             df = apply_ts_transformations(df, self.transformations)
 
-        logger.info(
-            f"Successfully reaped {len(df)} records from "
-            f"{len(self.site_ids)} site(s)"
-        )
+        logger.info(f"Reaped {len(df)} records from {len(self.site_ids)} site(s)")
         return df
