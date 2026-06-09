@@ -45,6 +45,7 @@ dependencies = [
   "pyiceberg>=0.5",
   "s3fs",
   "sqlalchemy",
+  "tiny-retriever>=0.3",
   "xarray>=2025.11",
   "zarr>=3",
 ]
