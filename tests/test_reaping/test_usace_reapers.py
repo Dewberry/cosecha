@@ -12,6 +12,31 @@ from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
 from cosecha.reaping.usace import ReservoirReaper
 
 
+def _make_catalog(site_ids, params):
+    """Build a fake locations catalog for the given sites and params."""
+    label_map = {
+        "storage": ("Flood Storage", "Stor.Inst.1Hour.0.Decodes-Rev", "ac-ft"),
+        "elevation": ("Elevation", "Elev.Inst.1Hour.0.Decodes-Rev", "ft"),
+        "outflow": ("Outflow", "Flow-Out.Inst.1Hour.0.Rev-SWF-REGI", "cfs"),
+        "inflow": ("Inflow", "Flow-In.Ave.~1Day.1Day.Computed-SWF-REGI", "cfs"),
+    }
+    catalog = []
+    for site_id in site_ids:
+        ts_list = []
+        for param in params:
+            label, suffix, unit = label_map[param]
+            ts_list.append(
+                {
+                    "tsid": f"{site_id}.{suffix}",
+                    "label": label,
+                    "parameter": param,
+                    "unit": unit,
+                }
+            )
+        catalog.append({"code": site_id, "timeseries": ts_list})
+    return catalog
+
+
 class TestReservoirReaper:
     """Tests for USACE ReservoirReaper."""
 
@@ -127,7 +152,8 @@ class TestReservoirReaper:
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
     def test_reap_success_single_site_single_param(self, mock_fetch):
         """Test successful fetch for one site and one parameter."""
-        mock_fetch.return_value = [
+        catalog = _make_catalog(["JPLT2"], ["storage"])
+        ts_response = [
             {
                 "values": [
                     ["2026-06-04T01:00:00Z", 150.0],
@@ -137,6 +163,7 @@ class TestReservoirReaper:
                 "unit": "ac-ft",
             }
         ]
+        mock_fetch.side_effect = [[catalog], ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -152,12 +179,12 @@ class TestReservoirReaper:
         assert harvested["site_id"].unique().tolist() == ["JPLT2"]
         assert harvested["variable"].unique().tolist() == ["storage"]
         assert harvested["unit"].iloc[0] == "ac-ft"
-        mock_fetch.assert_called_once()
 
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
     def test_reap_multiple_sites_multiple_params(self, mock_fetch):
         """Test successful fetch for multiple sites and parameters."""
-        mock_fetch.return_value = [
+        catalog = _make_catalog(["JPLT2", "BNBT2"], ["storage", "elevation"])
+        ts_response = [
             {
                 "values": [
                     ["2026-06-04T01:00:00Z", 100.0],
@@ -166,6 +193,7 @@ class TestReservoirReaper:
                 "unit": "ft",
             }
         ] * 4  # 2 sites x 2 params
+        mock_fetch.side_effect = [[catalog], ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2", "BNBT2"],
@@ -180,12 +208,12 @@ class TestReservoirReaper:
         assert len(harvested) == 8
         assert set(harvested["site_id"].unique()) == {"JPLT2", "BNBT2"}
         assert set(harvested["variable"].unique()) == {"storage", "elevation"}
-        mock_fetch.assert_called_once()
 
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
     def test_reap_empty_response(self, mock_fetch):
         """Test reap handles empty API response."""
-        mock_fetch.return_value = [{"values": []}]
+        catalog = _make_catalog(["JPLT2"], ["storage"])
+        mock_fetch.side_effect = [[catalog], [{"values": []}]]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -201,7 +229,8 @@ class TestReservoirReaper:
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
     def test_reap_no_values_key(self, mock_fetch):
         """Test reap handles response with missing values key."""
-        mock_fetch.return_value = [{}]
+        catalog = _make_catalog(["JPLT2"], ["storage"])
+        mock_fetch.side_effect = [[catalog], [{}]]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -226,7 +255,7 @@ class TestReservoirReaper:
             end_date="2026-06-05T00:00:00Z",
         )
 
-        with pytest.raises(APIError, match="Failed to fetch USACE time series"):
+        with pytest.raises(APIError, match="Failed to fetch USACE"):
             reaper.reap()
 
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
@@ -241,13 +270,14 @@ class TestReservoirReaper:
             end_date="2026-06-05T00:00:00Z",
         )
 
-        with pytest.raises(APIError, match="Failed to fetch USACE time series"):
+        with pytest.raises(APIError, match="Failed to fetch USACE"):
             reaper.reap()
 
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
     def test_reap_partial_failure(self, mock_fetch):
         """Test that partial failures still return available data."""
-        mock_fetch.return_value = [
+        catalog = _make_catalog(["JPLT2"], ["storage", "elevation"])
+        ts_response = [
             # First param returns data
             {
                 "values": [["2026-06-04T01:00:00Z", 100.0]],
@@ -256,6 +286,7 @@ class TestReservoirReaper:
             # Second param returns empty
             {"values": []},
         ]
+        mock_fetch.side_effect = [[catalog], ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -271,12 +302,14 @@ class TestReservoirReaper:
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
     def test_reap_stores_data_on_instance(self, mock_fetch):
         """Test that reap() stores data on the instance."""
-        mock_fetch.return_value = [
+        catalog = _make_catalog(["JPLT2"], ["storage"])
+        ts_response = [
             {
                 "values": [["2026-06-04T01:00:00Z", 100.0]],
                 "unit": "ac-ft",
             }
         ]
+        mock_fetch.side_effect = [[catalog], ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -295,7 +328,8 @@ class TestReservoirReaper:
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
     def test_reap_with_rename_columns(self, mock_fetch):
         """Test reap applies rename_columns transformation."""
-        mock_fetch.return_value = [
+        catalog = _make_catalog(["JPLT2"], ["storage"])
+        ts_response = [
             {
                 "values": [
                     ["2026-06-04T01:00:00Z", 150.0],
@@ -304,6 +338,7 @@ class TestReservoirReaper:
                 "unit": "ac-ft",
             }
         ]
+        mock_fetch.side_effect = [[catalog], ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -320,7 +355,8 @@ class TestReservoirReaper:
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
     def test_reap_with_unit_conversions(self, mock_fetch):
         """Test reap applies unit_conversions transformation."""
-        mock_fetch.return_value = [
+        catalog = _make_catalog(["JPLT2"], ["outflow"])
+        ts_response = [
             {
                 "values": [
                     ["2026-06-04T01:00:00Z", 100.0],
@@ -329,6 +365,7 @@ class TestReservoirReaper:
                 "unit": "cfs",
             }
         ]
+        mock_fetch.side_effect = [[catalog], ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -345,7 +382,8 @@ class TestReservoirReaper:
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
     def test_reap_with_filter_columns(self, mock_fetch):
         """Test reap applies filter_columns transformation."""
-        mock_fetch.return_value = [
+        catalog = _make_catalog(["JPLT2"], ["storage"])
+        ts_response = [
             {
                 "values": [
                     ["2026-06-04T01:00:00Z", 150.0],
@@ -353,6 +391,7 @@ class TestReservoirReaper:
                 "unit": "ac-ft",
             }
         ]
+        mock_fetch.side_effect = [[catalog], ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -368,7 +407,8 @@ class TestReservoirReaper:
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
     def test_reap_with_multiple_transformations(self, mock_fetch):
         """Test reap applies multiple transformations in sequence."""
-        mock_fetch.return_value = [
+        catalog = _make_catalog(["JPLT2"], ["outflow"])
+        ts_response = [
             {
                 "values": [
                     ["2026-06-04T01:00:00Z", 100.0],
@@ -376,6 +416,7 @@ class TestReservoirReaper:
                 "unit": "cfs",
             }
         ]
+        mock_fetch.side_effect = [[catalog], ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -395,7 +436,8 @@ class TestReservoirReaper:
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
     def test_reap_no_transformations(self, mock_fetch):
         """Test reap with no transformations returns raw data."""
-        mock_fetch.return_value = [
+        catalog = _make_catalog(["JPLT2"], ["storage"])
+        ts_response = [
             {
                 "values": [
                     ["2026-06-04T01:00:00Z", 150.0],
@@ -403,6 +445,7 @@ class TestReservoirReaper:
                 "unit": "ac-ft",
             }
         ]
+        mock_fetch.side_effect = [[catalog], ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -421,7 +464,8 @@ class TestReservoirReaper:
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
     def test_request_uses_correct_url(self, mock_fetch):
         """Test that the correct URL is constructed for the provider."""
-        mock_fetch.return_value = [{"values": []}]
+        catalog = _make_catalog(["JPLT2"], ["storage"])
+        mock_fetch.side_effect = [[catalog], [{"values": []}]]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -432,14 +476,23 @@ class TestReservoirReaper:
         )
         reaper.reap()
 
-        call_args = mock_fetch.call_args
-        urls = call_args[0][0]  # first positional arg is the list of URLs
+        # Second call is the timeseries fetch
+        call_args = mock_fetch.call_args_list[1]
+        urls = call_args[0][0]
         assert all("nwk" in u for u in urls)
 
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
     def test_request_uses_correct_ts_name(self, mock_fetch):
         """Test that the correct time series name is sent."""
-        mock_fetch.return_value = [{"values": []}]
+        catalog = [
+            {
+                "code": "JPLT2",
+                "timeseries": [
+                    {"tsid": "JPLT2.Flow-Out.Inst.1Hour.0.Rev-SWF-REGI", "label": "Outflow"}
+                ],
+            }
+        ]
+        mock_fetch.side_effect = [[catalog], [{"values": []}]]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -449,14 +502,15 @@ class TestReservoirReaper:
         )
         reaper.reap()
 
-        call_args = mock_fetch.call_args
+        call_args = mock_fetch.call_args_list[1]
         urls = call_args[0][0]
-        assert "JPLT2-Gated_Total.Flow-Out.Inst.1Hour.0.Rev-SWF-REGI" in urls[0]
+        assert "JPLT2.Flow-Out.Inst.1Hour.0.Rev-SWF-REGI" in urls[0]
 
     @patch("cosecha.reaping.usace.tiny_retriever.fetch")
     def test_request_timeout(self, mock_fetch):
         """Test that requests are made with a timeout."""
-        mock_fetch.return_value = [{"values": []}]
+        catalog = _make_catalog(["JPLT2"], ["storage"])
+        mock_fetch.side_effect = [[catalog], [{"values": []}]]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -466,7 +520,8 @@ class TestReservoirReaper:
         )
         reaper.reap()
 
-        call_args = mock_fetch.call_args
+        # Second call is the timeseries fetch
+        call_args = mock_fetch.call_args_list[1]
         timeout = call_args[1]["timeout"]
         assert timeout == 120
 
