@@ -6,6 +6,7 @@ USACE CDA Reporting API, including storage, elevation, and outflow data.
 
 from __future__ import annotations
 
+import contextlib
 from itertools import product
 from typing import Any
 
@@ -119,47 +120,53 @@ class ReservoirReaper(TimeSeriesReaper):
             f"dates={self.start_date} to {self.end_date}, provider={self.provider}"
         )
 
-    def _build_urls(self) -> tuple[list[tuple[str, str]], list[str]]:
+    def _build_urls(self) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
         """Build full URLs for all site/parameter combinations."""
         base = BASE_URL.format(provider=self.provider)
         begin = self.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
         end = self.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-        queries = list(product(self.site_ids, self.params))
-        urls = [
-            f"{base}?name={PARAMETERS[p].format(code=c)}&begin={begin}&end={end}"
-            for c, p in queries
-        ]
-        return queries, urls
+        codes, params, urls = zip(
+            *(
+                (c, p, f"{base}?name={PARAMETERS[p].format(code=c)}&begin={begin}&end={end}")
+                for c, p in product(self.site_ids, self.params)
+            ),
+            strict=False,
+        )
+        return codes, params, urls
 
     def _fetch(self, urls: list[str]) -> list[dict[str, Any]]:
         """Fetch all URLs asynchronously via tiny_retriever."""
         with wrap_errors(APIError, "Failed to fetch USACE time series"):
             return tiny_retriever.fetch(urls, "json", timeout=120)
 
+    def _parse_single(self, code: str, param: str, data: dict[str, Any]) -> pd.DataFrame | None:
+        """Parse a single JSON response into a DataFrame, or None if empty."""
+        if not data or not data.get("values"):
+            logger.warning(f"No data returned for {code} | {param}")
+            return None
+        df = pd.DataFrame(data["values"], columns=["datetime", "value"])
+        df["datetime"] = pd.to_datetime(df["datetime"])
+        df["site_id"] = code
+        df["variable"] = param
+        df["unit"] = data.get("unit", "")
+        return df
+
     def _parse_responses(
         self,
-        queries: list[tuple[str, str]],
+        codes: tuple[str, ...],
+        params: tuple[str, ...],
         responses: list[dict[str, Any]],
     ) -> pd.DataFrame:
         """Parse JSON responses into a long-format DataFrame."""
-        records: list[pd.DataFrame] = []
-        for (code, param), data in zip(queries, responses, strict=True):
-            if not data or not data.get("values"):
-                logger.warning(f"No data returned for {code} | {param}")
-                continue
-
-            df = pd.DataFrame(data["values"], columns=["datetime", "value"])
-            df["datetime"] = pd.to_datetime(df["datetime"])
-            df["site_id"] = code
-            df["variable"] = param
-            df["unit"] = data.get("unit", "")
-            records.append(df)
-
-        if not records:
-            logger.warning("USACE returned no data for any site/parameter combination")
-            return pd.DataFrame()
-
-        return pd.concat(records, ignore_index=True)
+        records = (
+            df
+            for c, p, data in zip(codes, params, responses, strict=True)
+            if (df := self._parse_single(c, p, data)) is not None
+        )
+        with contextlib.suppress(ValueError):
+            return pd.concat(records, ignore_index=True)
+        logger.warning("USACE returned no data for any site/parameter combination")
+        return pd.DataFrame()
 
     def _reap(self) -> pd.DataFrame:
         """Fetch data from USACE CDA and return as a pandas DataFrame."""
@@ -167,9 +174,9 @@ class ReservoirReaper(TimeSeriesReaper):
             f"Reaping USACE CDA: {len(self.site_ids)} site(s), {len(self.params)} parameter(s)"
         )
 
-        queries, urls = self._build_urls()
+        codes, params, urls = self._build_urls()
         responses = self._fetch(urls)
-        df = self._parse_responses(queries, responses)
+        df = self._parse_responses(codes, params, responses)
 
         if self.transformations:
             df = apply_ts_transformations(df, self.transformations)
