@@ -163,7 +163,7 @@ class TestReservoirReaper:
                 "unit": "ac-ft",
             }
         ]
-        mock_fetch.side_effect = [[catalog], ts_response]
+        mock_fetch.side_effect = [catalog, ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -193,7 +193,7 @@ class TestReservoirReaper:
                 "unit": "ft",
             }
         ] * 4  # 2 sites x 2 params
-        mock_fetch.side_effect = [[catalog], ts_response]
+        mock_fetch.side_effect = [catalog, ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2", "BNBT2"],
@@ -213,7 +213,7 @@ class TestReservoirReaper:
     def test_reap_empty_response(self, mock_fetch):
         """Test reap handles empty API response."""
         catalog = _make_catalog(["JPLT2"], ["storage"])
-        mock_fetch.side_effect = [[catalog], [{"values": []}]]
+        mock_fetch.side_effect = [catalog, [{"values": []}]]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -230,7 +230,7 @@ class TestReservoirReaper:
     def test_reap_no_values_key(self, mock_fetch):
         """Test reap handles response with missing values key."""
         catalog = _make_catalog(["JPLT2"], ["storage"])
-        mock_fetch.side_effect = [[catalog], [{}]]
+        mock_fetch.side_effect = [catalog, [{}]]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -286,7 +286,7 @@ class TestReservoirReaper:
             # Second param returns empty
             {"values": []},
         ]
-        mock_fetch.side_effect = [[catalog], ts_response]
+        mock_fetch.side_effect = [catalog, ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -309,7 +309,7 @@ class TestReservoirReaper:
                 "unit": "ac-ft",
             }
         ]
-        mock_fetch.side_effect = [[catalog], ts_response]
+        mock_fetch.side_effect = [catalog, ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -338,7 +338,7 @@ class TestReservoirReaper:
                 "unit": "ac-ft",
             }
         ]
-        mock_fetch.side_effect = [[catalog], ts_response]
+        mock_fetch.side_effect = [catalog, ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -365,7 +365,7 @@ class TestReservoirReaper:
                 "unit": "cfs",
             }
         ]
-        mock_fetch.side_effect = [[catalog], ts_response]
+        mock_fetch.side_effect = [catalog, ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -391,7 +391,7 @@ class TestReservoirReaper:
                 "unit": "ac-ft",
             }
         ]
-        mock_fetch.side_effect = [[catalog], ts_response]
+        mock_fetch.side_effect = [catalog, ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -416,7 +416,7 @@ class TestReservoirReaper:
                 "unit": "cfs",
             }
         ]
-        mock_fetch.side_effect = [[catalog], ts_response]
+        mock_fetch.side_effect = [catalog, ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -445,7 +445,7 @@ class TestReservoirReaper:
                 "unit": "ac-ft",
             }
         ]
-        mock_fetch.side_effect = [[catalog], ts_response]
+        mock_fetch.side_effect = [catalog, ts_response]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -465,7 +465,7 @@ class TestReservoirReaper:
     def test_request_uses_correct_url(self, mock_fetch):
         """Test that the correct URL is constructed for the provider."""
         catalog = _make_catalog(["JPLT2"], ["storage"])
-        mock_fetch.side_effect = [[catalog], [{"values": []}]]
+        mock_fetch.side_effect = [catalog, [{"values": []}]]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -492,7 +492,7 @@ class TestReservoirReaper:
                 ],
             }
         ]
-        mock_fetch.side_effect = [[catalog], [{"values": []}]]
+        mock_fetch.side_effect = [catalog, [{"values": []}]]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
@@ -510,7 +510,7 @@ class TestReservoirReaper:
     def test_request_timeout(self, mock_fetch):
         """Test that requests are made with a timeout."""
         catalog = _make_catalog(["JPLT2"], ["storage"])
-        mock_fetch.side_effect = [[catalog], [{"values": []}]]
+        mock_fetch.side_effect = [catalog, [{"values": []}]]
 
         reaper = ReservoirReaper(
             site_ids=["JPLT2"],
