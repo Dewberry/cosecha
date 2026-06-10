@@ -129,11 +129,6 @@ class ReservoirReaper(TimeSeriesReaper):
         with wrap_errors(APIError, "Failed to fetch USACE locations catalog"):
             return tiny_retriever.fetch(url, "json", timeout=self.catalog_timeout)
 
-    def _find_tsid(self, timeseries_list: list[dict[str, Any]], param: str) -> str | None:
-        """Find the tsid matching a parameter's label in a sites timeseries list."""
-        label = LABEL_MAP[param]
-        return next((ts.get("tsid") for ts in timeseries_list if ts.get("label") == label), None)
-
     def _build_urls(self):
         """Discover tsids from the catalog and build URLs for each site/param."""
         catalog = self._get_catalog()
@@ -160,7 +155,10 @@ class ReservoirReaper(TimeSeriesReaper):
                 continue
 
             for param in self.params:
-                tsid = self._find_tsid(timeseries_list, param)
+                label = LABEL_MAP[param]
+                tsid = next(
+                    (ts.get("tsid") for ts in timeseries_list if ts.get("label") == label), None
+                )
                 if tsid:
                     codes.append(site_id)
                     params.append(param)
