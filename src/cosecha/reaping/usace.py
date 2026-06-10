@@ -35,6 +35,9 @@ LABEL_MAP = {
 class ReservoirReaper(TimeSeriesReaper):
     """Reaper for USACE CDA reservoir time series data."""
 
+    timeout: int = 120
+    catalog_timeout: int = 60
+
     def _validate_params(self) -> None:
         """Validate initialization parameters.
 
@@ -58,7 +61,7 @@ class ReservoirReaper(TimeSeriesReaper):
         for param in self.params:
             if param not in LABEL_MAP:
                 raise InvalidSiteError(
-                    f"Unknown parameter: {param!r}. Available: {list(LABEL_MAP.keys())}"
+                    f"Unknown parameter: {param!r}. Available: {list(LABEL_MAP)}"
                 )
 
         if self.start_date > self.end_date:
@@ -124,25 +127,22 @@ class ReservoirReaper(TimeSeriesReaper):
         """Fetch the locations catalog for this provider."""
         url = LOCATIONS_URL.format(provider=self.provider)
         with wrap_errors(APIError, "Failed to fetch USACE locations catalog"):
-            return tiny_retriever.fetch([url], "json", timeout=60)[0]
+            return tiny_retriever.fetch(url, "json", timeout=self.catalog_timeout)
 
-    def _find_tsid(self, timeseries_list, param):
+    def _find_tsid(self, timeseries_list: list[dict[str, Any]], param: str) -> str | None:
         """Find the tsid matching a parameter's label in a sites timeseries list."""
         label = LABEL_MAP[param]
-        for ts in timeseries_list:
-            if ts.get("label") == label:
-                return ts["tsid"]
-        return None
+        return next((ts.get("tsid") for ts in timeseries_list if ts.get("label") == label), None)
 
     def _build_urls(self):
         """Discover tsids from the catalog and build URLs for each site/param."""
         catalog = self._get_catalog()
 
         # Build a lookup: site code to list of timeseries
-        site_lookup = {}
-        for location in catalog:
-            code = location.get("code", "").upper()
-            site_lookup[code] = location.get("timeseries") or []
+        site_lookup = {
+            location.get("code", "").upper(): location.get("timeseries") or []
+            for location in catalog
+        }
 
         # For each site and param, find the tsid and build the URL
         base = BASE_URL.format(provider=self.provider)
@@ -173,7 +173,7 @@ class ReservoirReaper(TimeSeriesReaper):
     def _fetch(self, urls: list[str]) -> list[dict[str, Any]]:
         """Fetch all URLs asynchronously via tiny_retriever."""
         with wrap_errors(APIError, "Failed to fetch USACE time series"):
-            return tiny_retriever.fetch(urls, "json", timeout=120)
+            return tiny_retriever.fetch(urls, "json", timeout=self.timeout)
 
     def _parse_single(self, code: str, param: str, data: dict[str, Any]) -> pd.DataFrame | None:
         """Parse a single JSON response into a DataFrame, or None if empty."""
