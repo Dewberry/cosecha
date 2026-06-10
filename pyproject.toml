@@ -33,6 +33,7 @@ dynamic = [
   "version",
 ]
 dependencies = [
+  "aiohttp>=3.14",
   "cfgrib",
   "dataretrieval",
   "eccodes",
