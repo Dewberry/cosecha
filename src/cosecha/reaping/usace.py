@@ -123,13 +123,13 @@ class ReservoirReaper(TimeSeriesReaper):
             f"dates={self.start_date} to {self.end_date}, provider={self.provider}"
         )
 
-    def _get_catalog(self):
+    def _get_catalog(self) -> list[dict[str, Any]]:
         """Fetch the locations catalog for this provider."""
         url = LOCATIONS_URL.format(provider=self.provider)
         with wrap_errors(APIError, "Failed to fetch USACE locations catalog"):
             return tiny_retriever.fetch(url, "json", timeout=self.catalog_timeout)
 
-    def _build_urls(self):
+    def _build_urls(self) -> tuple[list[str], list[str], list[str]]:
         """Discover tsids from the catalog and build URLs for each site/param."""
         catalog = self._get_catalog()
 
