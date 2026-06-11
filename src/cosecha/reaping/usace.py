@@ -7,7 +7,6 @@ USACE CDA Reporting API, including storage, elevation, and outflow data.
 from __future__ import annotations
 
 import contextlib
-from itertools import product
 from typing import Any
 
 import pandas as pd
@@ -23,17 +22,21 @@ __all__ = [
 ]
 
 BASE_URL = "https://water.usace.army.mil/cda/reporting/providers/{provider}/timeseries"
+LOCATIONS_URL = "https://water.usace.army.mil/cda/reporting/providers/{provider}/locations"
 
-PARAMETERS = {
-    "storage": "{code}.Stor.Inst.1Hour.0.Decodes-Rev",
-    "elevation": "{code}.Elev.Inst.1Hour.0.Decodes-Rev",
-    "outflow": "{code}-Gated_Total.Flow-Out.Inst.1Hour.0.Rev-SWF-REGI",
-    "inflow": "{code}.Flow-In.Ave.~1Day.1Day.Computed-SWF-REGI",  # daily only
+LABEL_MAP = {
+    "storage": "Flood Storage",
+    "elevation": "Elevation",
+    "outflow": "Outflow",
+    "inflow": "Inflow",
 }
 
 
 class ReservoirReaper(TimeSeriesReaper):
     """Reaper for USACE CDA reservoir time series data."""
+
+    timeout: int = 120
+    catalog_timeout: int = 60
 
     def _validate_params(self) -> None:
         """Validate initialization parameters.
@@ -56,9 +59,9 @@ class ReservoirReaper(TimeSeriesReaper):
             raise InvalidSiteError("params cannot be empty")
 
         for param in self.params:
-            if param not in PARAMETERS:
+            if param not in LABEL_MAP:
                 raise InvalidSiteError(
-                    f"Unknown parameter: {param!r}. Available: {list(PARAMETERS.keys())}"
+                    f"Unknown parameter: {param!r}. Available: {list(LABEL_MAP)}"
                 )
 
         if self.start_date > self.end_date:
@@ -120,24 +123,55 @@ class ReservoirReaper(TimeSeriesReaper):
             f"dates={self.start_date} to {self.end_date}, provider={self.provider}"
         )
 
-    def _build_urls(self) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
-        """Build full URLs for all site/parameter combinations."""
+    def _get_catalog(self) -> list[dict[str, Any]]:
+        """Fetch the locations catalog for this provider."""
+        url = LOCATIONS_URL.format(provider=self.provider)
+        with wrap_errors(APIError, "Failed to fetch USACE locations catalog"):
+            return tiny_retriever.fetch(url, "json", timeout=self.catalog_timeout)
+
+    def _build_urls(self) -> tuple[list[str], list[str], list[str]]:
+        """Discover tsids from the catalog and build URLs for each site/param."""
+        catalog = self._get_catalog()
+
+        # Build a lookup: site code to list of timeseries
+        site_lookup = {
+            location.get("code", "").upper(): location.get("timeseries") or []
+            for location in catalog
+        }
+
+        # For each site and param, find the tsid and build the URL
         base = BASE_URL.format(provider=self.provider)
         begin = self.start_date.strftime("%Y-%m-%dT%H:%M:%SZ")
         end = self.end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
-        codes, params, urls = zip(
-            *(
-                (c, p, f"{base}?name={PARAMETERS[p].format(code=c)}&begin={begin}&end={end}")
-                for c, p in product(self.site_ids, self.params)
-            ),
-            strict=False,
-        )
+
+        codes = []
+        params = []
+        urls = []
+
+        for site_id in self.site_ids:
+            timeseries_list = site_lookup.get(site_id.upper(), [])
+            if not timeseries_list:
+                logger.warning(f"Site {site_id} not found in {self.provider} catalog")
+                continue
+
+            for param in self.params:
+                label = LABEL_MAP[param]
+                tsid = next(
+                    (ts.get("tsid") for ts in timeseries_list if ts.get("label") == label), None
+                )
+                if tsid:
+                    codes.append(site_id)
+                    params.append(param)
+                    urls.append(f"{base}?name={tsid}&begin={begin}&end={end}")
+                else:
+                    logger.warning(f"No '{LABEL_MAP[param]}' timeseries found for {site_id}")
+
         return codes, params, urls
 
     def _fetch(self, urls: list[str]) -> list[dict[str, Any]]:
         """Fetch all URLs asynchronously via tiny_retriever."""
         with wrap_errors(APIError, "Failed to fetch USACE time series"):
-            return tiny_retriever.fetch(urls, "json", timeout=120)
+            return tiny_retriever.fetch(urls, "json", timeout=self.timeout)
 
     def _parse_single(self, code: str, param: str, data: dict[str, Any]) -> pd.DataFrame | None:
         """Parse a single JSON response into a DataFrame, or None if empty."""
@@ -153,8 +187,8 @@ class ReservoirReaper(TimeSeriesReaper):
 
     def _parse_responses(
         self,
-        codes: tuple[str, ...],
-        params: tuple[str, ...],
+        codes: list[str],
+        params: list[str],
         responses: list[dict[str, Any]],
     ) -> pd.DataFrame:
         """Parse JSON responses into a long-format DataFrame."""
@@ -175,6 +209,10 @@ class ReservoirReaper(TimeSeriesReaper):
         )
 
         codes, params, urls = self._build_urls()
+        if not urls:
+            logger.warning("No time series found for any site/parameter combination")
+            return pd.DataFrame()
+
         responses = self._fetch(urls)
         df = self._parse_responses(codes, params, responses)
 
