@@ -5,12 +5,13 @@ This module implements reapers for NOAA MRMS data.
 
 from __future__ import annotations
 
+import contextlib
 import gzip
 import tempfile
 import time as time_mod
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import pandas as pd
 import s3fs
@@ -35,18 +36,13 @@ class MRMSReaper(GriddedReaper):
         DateRangeError
             If time parameters are invalid.
         """
-        if self.time is None and (self.start_time is None or self.end_time is None):
-            raise DateRangeError("Must provide either 'time' or both 'start_time' and 'end_time'.")
-
-        if self.start_time and self.end_time and self.start_time > self.end_time:
-            raise DateRangeError("start_time must be <= end_time.")
+        if self.start_date > self.end_date:
+            raise DateRangeError("start_date must be <= end_date.")
 
     def __init__(
         self,
+        dates: Literal["latest"] | tuple[str, str],
         variable: str = "MultiSensor_QPE_01H_Pass2_00.00",
-        time: str | None = None,
-        start_time: str | None = None,
-        end_time: str | None = None,
         transformations: dict[str, Any] | None = None,
         cache_data: bool = False,
     ) -> None:
@@ -54,27 +50,33 @@ class MRMSReaper(GriddedReaper):
 
         Parameters
         ----------
+        dates : Literal["latest"] | tuple[str, str]
+            "latest" to fetch the most recent available data, or a tuple of (start_time, end_time) to fetch a custom range, e.g. ("2026-01-01 00:00Z", "2026-01-01 18:00Z").
+                To fetch a single time point, set start_time and end_time to the same value, e.g. ("2026-01-01 00:00Z", "2026-01-01 00:00Z").
         variable : str
             MRMS variable name.
-        time : str, optional
-            A single datetime to fetch, e.g. "2026-01-01 12:00".
-        start_time : str, optional
-            Start time for the fetch range, e.g. "2026-01-01 00:00".
-        end_time : str, optional
-            End time for the fetch range, e.g. "2026-01-01 18:00".
         transformations : dict[str, Any], optional
             Optional transformations to apply to the raw data before returning.
         cache_data : bool, optional
             Whether to cache decompressed MRMS files on disk.
         """
         super().__init__()
+
+        if dates != "latest" and not (isinstance(dates, (tuple, list)) and len(dates) == 2):
+            raise ValueError(
+                'dates must be "latest" or a sequence of length 2, e.g. ("2026-01-01 00:00Z", "2026-01-01 18:00Z")'
+            )
+
         self.variable = variable
-        try:
-            self.time = pd.to_datetime(time) if time is not None else None
-            self.start_time = pd.to_datetime(start_time) if start_time is not None else None
-            self.end_time = pd.to_datetime(end_time) if end_time is not None else None
-        except Exception as e:
-            raise DateRangeError(f"Could not parse time parameter: {e}") from e
+        self.is_latest = dates == "latest"
+
+        if self.is_latest:
+            self.end_date = datetime.now(UTC)
+            self.start_date = self.end_date - timedelta(days=1)
+        else:
+            self.start_date = pd.to_datetime(dates[0], utc=True)
+            self.end_date = pd.to_datetime(dates[1], utc=True)
+
         self.transformations = transformations
         self.cache_data = cache_data
 
@@ -86,25 +88,45 @@ class MRMSReaper(GriddedReaper):
             anon=True, config_kwargs={"connect_timeout": 30, "read_timeout": 60}
         )
 
-    def _find_available_files(self, times: list[datetime]) -> list[str]:
+    def _find_available_files(self) -> list[str]:
         files_list = []
-        for dt in times:
-            yyyymmdd = dt.strftime("%Y%m%d")
-            hh = dt.strftime("%H")
 
-            available_files = self.aws.ls(
-                f"noaa-mrms-pds/CONUS/{self.variable}/{yyyymmdd}/", refresh=True
-            )
+        current_date = self.start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = self.end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        while current_date <= end_date:
+            yyyymmdd = current_date.strftime("%Y%m%d")
+
+            try:
+                available_files = self.aws.ls(
+                    f"noaa-mrms-pds/CONUS/{self.variable}/{yyyymmdd}/", refresh=True
+                )
+            except FileNotFoundError:
+                logger.debug(f"No directory found for {self.variable} on {yyyymmdd}, skipping.")
+                current_date += timedelta(days=1)
+                continue
+            except Exception as e:
+                raise APIError(
+                    f"Could not list available files for {self.variable} on {yyyymmdd}: {e}"
+                ) from e
 
             for file in available_files:
-                file_hour = file[-15:-13]
-                if file_hour == hh:
-                    files_list.append(file)
+                with contextlib.suppress(ValueError, IndexError):
+                    filename = file.split("/")[-1]
+                    # filename looks like: Variable_YYYYMMDD-HHMMSS.grib2.gz
+                    timestamp_str = filename.split("_")[-1].split(".")[0]
+                    file_dt = datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S").replace(tzinfo=UTC)
+
+                    if self.start_date <= file_dt <= self.end_date:
+                        files_list.append(file)
+
+            current_date += timedelta(days=1)
 
         if not files_list:
             raise APIError(f"No files found for {self.variable} for the requested times.")
 
-        return files_list
+        sorted_files = sorted(files_list)
+        return [sorted_files[-1]] if self.is_latest else sorted_files
 
     def _process_single_file(self, file: str) -> xr.Dataset | None:
         # Deterministic filename for cache based on the S3 file path name
@@ -162,16 +184,7 @@ class MRMSReaper(GriddedReaper):
         xr.Dataset
             Raw MRMS gridded data.
         """
-        times = []
-        if self.time is not None:
-            times.append(self.time)
-        elif self.start_time is not None and self.end_time is not None:
-            curr = self.start_time
-            while curr <= self.end_time:
-                times.append(curr)
-                curr += timedelta(hours=1)
-
-        files = self._find_available_files(times)
+        files = self._find_available_files()
 
         data_arrays = []
         if self.cache_data:

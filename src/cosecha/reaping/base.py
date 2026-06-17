@@ -287,7 +287,11 @@ class GriddedReaper(ReaperBase):
         with wrap_errors(ReaperError, "IceChunk write failed"):
             session = repo.writable_session("main")
             data.to_zarr(
-                store=session.store, group=group_path, mode="w", zarr_format=3, consolidated=False
+                store=session.store,
+                group=group_path,
+                mode="w",
+                zarr_format=3,
+                consolidated=False,
             )
             session.commit(f"Appended data to {group_path}")
             logger.info(f"Successfully committed to IceChunk repo at group: {group_path}")

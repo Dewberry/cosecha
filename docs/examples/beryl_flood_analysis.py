@@ -129,8 +129,7 @@ fig.tight_layout()
 
 # %%
 mrms = MRMSReaper(
-    start_time="2024-07-08 00:00",
-    end_time="2024-07-08 23:00",
+    dates = ("2024-07-08 00:00", "2024-07-08 23:00"),
     transformations={"spatial_subset": HOUSTON},
 )
 precip_obs = mrms.reap()
