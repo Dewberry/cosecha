@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
-import requests
 
 from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
 from cosecha.reaping.asos import ASOSReaper
@@ -19,7 +18,7 @@ class TestASOSReaper:
         """Test valid initialization."""
         reaper = ASOSReaper(
             state="TX",
-            data="p01i",
+            variable="p01i",
             start_date="2026-04-12",
             end_date="2026-04-13",
         )
@@ -33,7 +32,7 @@ class TestASOSReaper:
         """Test initialization with multiple data variables."""
         reaper = ASOSReaper(
             state="IA",
-            data=["p01i", "tmpf"],
+            variable=["p01i", "tmpf"],
             start_date="2026-04-12",
             end_date="2026-04-13",
         )
@@ -64,7 +63,7 @@ class TestASOSReaper:
         with pytest.raises(DateRangeError):
             ASOSReaper(
                 state="TX",
-                data="p01i",
+                variable="p01i",
                 start_date="2026-04-13",
                 end_date="2026-04-12",
             )
@@ -74,7 +73,7 @@ class TestASOSReaper:
         with pytest.raises(DateRangeError, match="Could not parse date"):
             ASOSReaper(
                 state="TX",
-                data="p01i",
+                variable="p01i",
                 start_date="not-a-date",
                 end_date="2026-04-13",
             )
@@ -84,7 +83,7 @@ class TestASOSReaper:
         """Test live network retrieval from ASOS."""
         reaper = ASOSReaper(
             state="TX",
-            data="p01i",
+            variable="p01i",
             start_date="2022-01-01",
             end_date="2022-01-02",
         )
@@ -93,11 +92,10 @@ class TestASOSReaper:
         assert "p01i" in harvested.columns
         assert isinstance(harvested, pd.DataFrame)
 
-    @patch("cosecha.reaping.asos.requests.get")
-    def test_reap_success(self, mock_get):
+    @patch("cosecha.reaping.asos.tiny_retriever.fetch")
+    def test_reap_success(self, mock_fetch):
         """Test successful data retrieval."""
-        mock_response = MagicMock()
-        mock_response.text = (
+        mock_fetch.return_value = (
             "# comment 1\n"
             "# comment 2\n"
             "# comment 3\n"
@@ -107,12 +105,10 @@ class TestASOSReaper:
             "AUS,2026-04-12 00:00,-97.6698,30.1945,0.01\n"
             "AUS,2026-04-12 01:00,-97.6698,30.1945,0.02\n"
         )
-        mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
 
         reaper = ASOSReaper(
             state="TX",
-            data="p01i",
+            variable="p01i",
             start_date="2026-04-12",
             end_date="2026-04-12",
         )
@@ -123,47 +119,16 @@ class TestASOSReaper:
         assert isinstance(harvested, pd.DataFrame)
         assert "p01i" in harvested.columns
         assert "station" in harvested.columns
-        mock_get.assert_called_once()
-        
-        args, kwargs = mock_get.call_args
-        assert kwargs["params"]["network"] == "TX_ASOS"
-        assert kwargs["params"]["data"] == ["p01i"]
+        mock_fetch.assert_called_once()
 
-    @patch("cosecha.reaping.asos.time.sleep")
-    @patch("cosecha.reaping.asos.requests.get")
-    def test_reap_retry_logic(self, mock_get, mock_sleep):
-        """Test retry logic when API fails temporarily."""
-        mock_response = MagicMock()
-        mock_response.text = (
-            "# 1\n# 2\n# 3\n# 4\n# 5\n"
-            "station,p01i\n"
-            "AUS,0.01\n"
-        )
-        
-        # Fail twice, succeed on third
-        mock_get.side_effect = [
-            requests.RequestException("Timeout 1"),
-            requests.RequestException("Timeout 2"),
-            mock_response
-        ]
+        url = mock_fetch.call_args[0][0]
+        assert "network=TX_ASOS" in url
+        assert "data=p01i" in url
 
-        reaper = ASOSReaper(
-            state="TX",
-            start_date="2026-04-12",
-            end_date="2026-04-12",
-        )
-
-        harvested = reaper.reap()
-        
-        assert len(harvested) == 1
-        assert mock_get.call_count == 3
-        assert mock_sleep.call_count == 2
-
-    @patch("cosecha.reaping.asos.time.sleep")
-    @patch("cosecha.reaping.asos.requests.get")
-    def test_reap_api_error(self, mock_get, mock_sleep):
-        """Test error handling when API fails permanently."""
-        mock_get.side_effect = requests.RequestException("Connection failed")
+    @patch("cosecha.reaping.asos.tiny_retriever.fetch")
+    def test_reap_api_error(self, mock_fetch):
+        """Test error handling when API fails."""
+        mock_fetch.side_effect = Exception("Connection failed")
 
         reaper = ASOSReaper(
             state="TX",
@@ -173,21 +138,16 @@ class TestASOSReaper:
 
         with pytest.raises(APIError, match="Failed to fetch ASOS data for TX_ASOS"):
             reaper.reap()
-            
-        assert mock_get.call_count == 3
-        assert mock_sleep.call_count == 2
 
-    @patch("cosecha.reaping.asos.requests.get")
-    def test_reap_empty_response(self, mock_get):
+        mock_fetch.assert_called_once()
+
+    @patch("cosecha.reaping.asos.tiny_retriever.fetch")
+    def test_reap_empty_response(self, mock_fetch):
         """Test reap handles empty output after skipping comments."""
-        mock_response = MagicMock()
-        # Ensure that parsing returns an empty dataframe (e.g., just comments or header only)
-        mock_response.text = (
+        mock_fetch.return_value = (
             "# 1\n# 2\n# 3\n# 4\n# 5\n"
             "station,valid,lon,lat,p01i\n"
         )
-        mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
 
         reaper = ASOSReaper(
             state="TX",
@@ -199,17 +159,14 @@ class TestASOSReaper:
         assert isinstance(harvested, pd.DataFrame)
         assert harvested.empty
 
-    @patch("cosecha.reaping.asos.requests.get")
-    def test_reap_with_transformations(self, mock_get):
+    @patch("cosecha.reaping.asos.tiny_retriever.fetch")
+    def test_reap_with_transformations(self, mock_fetch):
         """Test reap applies format transformations when not empty."""
-        mock_response = MagicMock()
-        mock_response.text = (
+        mock_fetch.return_value = (
             "# 1\n# 2\n# 3\n# 4\n# 5\n"
             "station,p01i\n"
             "AUS,0.01\n"
         )
-        mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
 
         reaper = ASOSReaper(
             state="TX",
