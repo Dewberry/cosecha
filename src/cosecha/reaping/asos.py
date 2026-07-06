@@ -23,6 +23,7 @@ __all__ = [
 ]
 
 BASE_URL = "https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py"
+_IEM_ALL_VARS = "all"
 
 
 class ASOSReaper(TimeSeriesReaper):
@@ -83,7 +84,7 @@ class ASOSReaper(TimeSeriesReaper):
             raise DateRangeError(f"Could not parse date: {e}") from e
 
         if variable is None:
-            self.data_vars = ["all"]
+            self.data_vars = [_IEM_ALL_VARS]
         elif isinstance(variable, str):
             self.data_vars = [variable]
         else:
