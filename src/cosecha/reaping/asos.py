@@ -15,7 +15,7 @@ import tiny_retriever
 
 from cosecha._logging import logger
 from cosecha._utils import apply_ts_transformations, wrap_errors
-from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
+from cosecha.exceptions import APIError, DataNotFoundError, DateRangeError, InvalidSiteError
 from cosecha.reaping.base import TimeSeriesReaper
 
 __all__ = [
@@ -127,8 +127,9 @@ class ASOSReaper(TimeSeriesReaper):
         """
         df = pd.read_csv(StringIO(text), skiprows=5)
         if df.empty:
-            logger.warning(f"ASOS returned no data for network {self.network}")
-            return pd.DataFrame()
+            raise DataNotFoundError(
+                f"ASOS returned no data for network {self.network} and time range {self.start_date} to {self.end_date}"
+            )
         logger.debug(f"Fetched {len(df)} records from ASOS for {self.network}")
         return df
 

@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
+from cosecha.exceptions import APIError, DataNotFoundError, DateRangeError, InvalidSiteError
 from cosecha.reaping.asos import ASOSReaper
 
 
@@ -143,7 +143,7 @@ class TestASOSReaper:
 
     @patch("cosecha.reaping.asos.tiny_retriever.fetch")
     def test_reap_empty_response(self, mock_fetch):
-        """Test reap handles empty output after skipping comments."""
+        """Test reap raises DataNotFoundError on empty output."""
         mock_fetch.return_value = (
             "# 1\n# 2\n# 3\n# 4\n# 5\n"
             "station,valid,lon,lat,p01i\n"
@@ -155,9 +155,8 @@ class TestASOSReaper:
             end_date="2026-04-12",
         )
 
-        harvested = reaper.reap()
-        assert isinstance(harvested, pd.DataFrame)
-        assert harvested.empty
+        with pytest.raises(DataNotFoundError, match="no data"):
+            reaper.reap()
 
     @patch("cosecha.reaping.asos.tiny_retriever.fetch")
     def test_reap_with_transformations(self, mock_fetch):
