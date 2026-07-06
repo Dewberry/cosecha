@@ -15,7 +15,7 @@ import tiny_retriever
 
 from cosecha._logging import logger
 from cosecha._utils import apply_ts_transformations, wrap_errors
-from cosecha.exceptions import APIError, DataNotFoundError, DateRangeError, InvalidSiteError
+from cosecha.exceptions import APIError, DataNotFoundError, DateRangeError
 from cosecha.reaping.base import TimeSeriesReaper
 
 __all__ = [
@@ -34,14 +34,9 @@ class ASOSReaper(TimeSeriesReaper):
 
         Raises
         ------
-        InvalidSiteError
-            If no state is provided.
         DateRangeError
             If dates are invalid.
         """
-        if not self.state:
-            raise InvalidSiteError("state cannot be empty")
-
         if self.start_date > self.end_date:
             raise DateRangeError(
                 f"start_date ({self.start_date}) must be <= end_date ({self.end_date})"
@@ -51,7 +46,7 @@ class ASOSReaper(TimeSeriesReaper):
         self,
         start_date: str,
         end_date: str,
-        state: str = "ASOS",
+        state: str | None = None,
         variable: str | list[str] | None = None,
         transformations: dict[str, Any] | None = None,
         timeout: int = 120,
@@ -64,8 +59,9 @@ class ASOSReaper(TimeSeriesReaper):
             Start date in ISO 8601 format (YYYY-MM-DD).
         end_date : str
             End date in ISO 8601 format (YYYY-MM-DD).
-        state : str, optional
-            State abbreviation (e.g., 'TX' or 'ASOS' for all), by default "ASOS".
+        state : str | None, optional
+            State abbreviation (e.g., 'TX'). If None (default), fetches from
+            all networks (IEM limits this to a 24-hour window).
         variable : str | list[str] | None, optional
             Variable to fetch (e.g., 'p01i', 'tmpf', or ['p01i', 'tmpf']).
             If None, fetches 'all'.
@@ -76,7 +72,7 @@ class ASOSReaper(TimeSeriesReaper):
         """
         super().__init__()
         self.state = state
-        self.network = "ASOS" if state.upper() == "ASOS" else f"{state.upper()}_ASOS"
+        self.network = f"{state.upper()}_ASOS" if state else None
 
         try:
             self.start_date = pd.to_datetime(start_date)
@@ -104,7 +100,6 @@ class ASOSReaper(TimeSeriesReaper):
     def _build_url(self) -> str:
         """Build the IEM ASOS request URL with query parameters."""
         params = [
-            ("network", self.network),
             ("year1", self.start_date.year),
             ("month1", self.start_date.month),
             ("day1", self.start_date.day),
@@ -114,13 +109,15 @@ class ASOSReaper(TimeSeriesReaper):
             ("format", "comma"),
             ("latlon", "yes"),
         ]
+        if self.network is not None:
+            params.insert(0, ("network", self.network))
         for var in self.data_vars:
             params.append(("data", var))
         return f"{BASE_URL}?{urlencode(params)}"
 
     def _fetch(self, url: str) -> str:
         """Fetch CSV text from IEM via tiny_retriever."""
-        with wrap_errors(APIError, f"Failed to fetch ASOS data for {self.network}"):
+        with wrap_errors(APIError, f"Failed to fetch ASOS data for {self.network or 'all networks'}"):
             return tiny_retriever.fetch(url, "text", timeout=self.timeout)
 
     def _parse_response(self, text: str) -> pd.DataFrame:
@@ -131,15 +128,15 @@ class ASOSReaper(TimeSeriesReaper):
         df = pd.read_csv(StringIO(text), skiprows=5)
         if df.empty:
             raise DataNotFoundError(
-                f"ASOS returned no data for network {self.network} and time range {self.start_date} to {self.end_date}"
+                f"ASOS returned no data for network {self.network or 'all networks'} and time range {self.start_date} to {self.end_date}"
             )
-        logger.debug(f"Fetched {len(df)} records from ASOS for {self.network}")
+        logger.debug(f"Fetched {len(df)} records from ASOS for {self.network or 'all networks'}")
         return df
 
     def _reap(self) -> pd.DataFrame:
         """Fetch data from ASOS and return as a pandas DataFrame."""
         logger.info(
-            f"Reaping ASOS data: network={self.network}, "
+            f"Reaping ASOS data: network={self.network or 'all networks'}, "
             f"data={self.data_vars}"
         )
 
@@ -150,5 +147,5 @@ class ASOSReaper(TimeSeriesReaper):
         if self.transformations and not df.empty:
             df = apply_ts_transformations(df, self.transformations)
 
-        logger.info(f"Reaped {len(df)} records from {self.network}")
+        logger.info(f"Reaped {len(df)} records from {self.network or 'all networks'}")
         return df

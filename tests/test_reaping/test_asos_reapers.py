@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from cosecha.exceptions import APIError, DataNotFoundError, DateRangeError, InvalidSiteError
+from cosecha.exceptions import APIError, DataNotFoundError, DateRangeError
 from cosecha.reaping.asos import ASOSReaper
 
 
@@ -40,23 +40,13 @@ class TestASOSReaper:
         assert reaper.network == "IA_ASOS"
 
     def test_initialization_all_network(self):
-        """Test initialization with ASOS state."""
+        """Test initialization with no state fetches all networks."""
         reaper = ASOSReaper(
-            state="ASOS",
             start_date="2026-04-12",
             end_date="2026-04-13",
         )
-        assert reaper.network == "ASOS"
+        assert reaper.network is None
         assert reaper.data_vars == ["all"]
-
-    def test_empty_state(self):
-        """Test initialization fails with empty state."""
-        with pytest.raises(InvalidSiteError, match="state cannot be empty"):
-            ASOSReaper(
-                state="",
-                start_date="2026-04-12",
-                end_date="2026-04-13",
-            )
 
     def test_invalid_date_range(self):
         """Test initialization fails with invalid date range."""
