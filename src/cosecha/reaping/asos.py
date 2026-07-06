@@ -130,7 +130,9 @@ class ASOSReaper(TimeSeriesReaper):
 
     def _fetch(self, url: str) -> str:
         """Fetch CSV text from IEM via tiny_retriever."""
-        with wrap_errors(APIError, f"Failed to fetch ASOS data for {self.network or 'all networks'}"):
+        with wrap_errors(
+            APIError, f"Failed to fetch ASOS data for {self.network or 'all networks'}"
+        ):
             return tiny_retriever.fetch(url, "text", timeout=self.timeout)
 
     def _parse_response(self, text: str) -> pd.DataFrame:
@@ -149,8 +151,7 @@ class ASOSReaper(TimeSeriesReaper):
     def _reap(self) -> pd.DataFrame:
         """Fetch data from ASOS and return as a pandas DataFrame."""
         logger.info(
-            f"Reaping ASOS data: network={self.network or 'all networks'}, "
-            f"data={self.data_vars}"
+            f"Reaping ASOS data: network={self.network or 'all networks'}, data={self.data_vars}"
         )
 
         url = self._build_url()

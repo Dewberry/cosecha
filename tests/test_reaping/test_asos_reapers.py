@@ -134,10 +134,7 @@ class TestASOSReaper:
     @patch("cosecha.reaping.asos.tiny_retriever.fetch")
     def test_reap_empty_response(self, mock_fetch):
         """Test reap raises DataNotFoundError on empty output."""
-        mock_fetch.return_value = (
-            "# 1\n# 2\n# 3\n# 4\n# 5\n"
-            "station,valid,lon,lat,p01i\n"
-        )
+        mock_fetch.return_value = "# 1\n# 2\n# 3\n# 4\n# 5\nstation,valid,lon,lat,p01i\n"
 
         reaper = ASOSReaper(
             state="TX",
@@ -151,11 +148,7 @@ class TestASOSReaper:
     @patch("cosecha.reaping.asos.tiny_retriever.fetch")
     def test_reap_with_transformations(self, mock_fetch):
         """Test reap applies format transformations when not empty."""
-        mock_fetch.return_value = (
-            "# 1\n# 2\n# 3\n# 4\n# 5\n"
-            "station,p01i\n"
-            "AUS,0.01\n"
-        )
+        mock_fetch.return_value = "# 1\n# 2\n# 3\n# 4\n# 5\nstation,p01i\nAUS,0.01\n"
 
         reaper = ASOSReaper(
             state="TX",
