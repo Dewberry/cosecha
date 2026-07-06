@@ -57,9 +57,9 @@ class ASOSReaper(TimeSeriesReaper):
         Parameters
         ----------
         start_date : str
-            Start date in ISO 8601 format (YYYY-MM-DD HH:MMZ).
+            Start date in ISO 8601 format (YYYY-MM-DDTHH:MMZ).
         end_date : str
-            End date in ISO 8601 format (YYYY-MM-DD HH:MMZ).
+            End date in ISO 8601 format (YYYY-MM-DDTHH:MMZ).
         state : str | None, optional
             State abbreviation (e.g., 'TX'). If None (default), fetches from
             all networks (IEM limits this to a 24-hour window).
