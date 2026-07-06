@@ -48,6 +48,7 @@ class ASOSReaper(TimeSeriesReaper):
         end_date: str,
         state: str | None = None,
         variable: str | list[str] | None = None,
+        report_type: int | list[int] | None = None,
         transformations: dict[str, Any] | None = None,
         timeout: int = 120,
     ) -> None:
@@ -65,6 +66,9 @@ class ASOSReaper(TimeSeriesReaper):
         variable : str | list[str] | None, optional
             Variable to fetch (e.g., 'p01i', 'tmpf', or ['p01i', 'tmpf']).
             If None, fetches 'all'.
+        report_type : int | list[int] | None, optional
+            IEM report type filter: 1 (HFMETAR/5-min), 3 (routine), 4 (specials).
+            If None (default), returns all report types.
         transformations : dict[str, Any], optional
             Optional transformations to apply to the data.
         timeout : int, optional
@@ -90,6 +94,13 @@ class ASOSReaper(TimeSeriesReaper):
         self.transformations = transformations
         self.timeout = timeout
 
+        if report_type is None:
+            self.report_type = None
+        elif isinstance(report_type, int):
+            self.report_type = [report_type]
+        else:
+            self.report_type = report_type
+
         self._validate_params()
         logger.debug(
             f"Initialized {self.__class__.__name__}: "
@@ -99,21 +110,23 @@ class ASOSReaper(TimeSeriesReaper):
 
     def _build_url(self) -> str:
         """Build the IEM ASOS request URL with query parameters."""
-        params = [
-            ("year1", self.start_date.year),
-            ("month1", self.start_date.month),
-            ("day1", self.start_date.day),
-            ("year2", self.end_date.year),
-            ("month2", self.end_date.month),
-            ("day2", self.end_date.day),
-            ("format", "comma"),
-            ("latlon", "yes"),
-        ]
+        params = {
+            "year1": self.start_date.year,
+            "month1": self.start_date.month,
+            "day1": self.start_date.day,
+            "year2": self.end_date.year,
+            "month2": self.end_date.month,
+            "day2": self.end_date.day,
+            "tz": "Etc/UTC",
+            "format": "comma",
+            "latlon": "yes",
+            "data": self.data_vars,
+        }
         if self.network is not None:
-            params.insert(0, ("network", self.network))
-        for var in self.data_vars:
-            params.append(("data", var))
-        return f"{BASE_URL}?{urlencode(params)}"
+            params["network"] = self.network
+        if self.report_type is not None:
+            params["report_type"] = self.report_type
+        return f"{BASE_URL}?{urlencode(params, doseq=True)}"
 
     def _fetch(self, url: str) -> str:
         """Fetch CSV text from IEM via tiny_retriever."""
