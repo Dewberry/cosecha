@@ -29,8 +29,6 @@ _IEM_ALL_VARS = "all"
 class ASOSReaper(TimeSeriesReaper):
     """Reaper for IEM ASOS data."""
 
-    timeout: int = 120
-
     def _validate_params(self) -> None:
         """Validate initialization parameters.
 
@@ -56,6 +54,7 @@ class ASOSReaper(TimeSeriesReaper):
         state: str = "ASOS",
         variable: str | list[str] | None = None,
         transformations: dict[str, Any] | None = None,
+        timeout: int = 120,
     ) -> None:
         """Fetch data from IEM ASOS API.
 
@@ -72,6 +71,8 @@ class ASOSReaper(TimeSeriesReaper):
             If None, fetches 'all'.
         transformations : dict[str, Any], optional
             Optional transformations to apply to the data.
+        timeout : int, optional
+            Request timeout in seconds, by default 120.
         """
         super().__init__()
         self.state = state
@@ -91,6 +92,7 @@ class ASOSReaper(TimeSeriesReaper):
             self.data_vars = variable
 
         self.transformations = transformations
+        self.timeout = timeout
 
         self._validate_params()
         logger.debug(
