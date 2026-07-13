@@ -7,6 +7,7 @@ from importlib.metadata import PackageNotFoundError, version
 from cosecha import exceptions
 from cosecha._logging import configure_logger
 from cosecha.reaping import (
+    ASOSReaper,
     GriddedReaper,
     MRMSReaper,
     NWPReaper,
@@ -20,6 +21,7 @@ except PackageNotFoundError:
     __version__ = "999"
 
 __all__ = [
+    "ASOSReaper",
     "GriddedReaper",
     "MRMSReaper",
     "NWPReaper",

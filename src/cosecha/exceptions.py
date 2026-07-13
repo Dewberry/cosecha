@@ -4,6 +4,7 @@ from __future__ import annotations
 
 __all__ = [
     "APIError",
+    "DataNotFoundError",
     "DateRangeError",
     "InvalidSiteError",
     "ReaperError",
@@ -25,6 +26,10 @@ class DateRangeError(ReaperError):
 
 class APIError(ReaperError):
     """Raised when an API call fails."""
+
+
+class DataNotFoundError(ReaperError):
+    """Raised when a query returns no data."""
 
 
 class TransformationError(ReaperError):
