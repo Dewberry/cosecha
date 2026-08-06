@@ -167,20 +167,22 @@ class LSRReaper(TimeSeriesReaper):
             # Extract coordinates from geometry
             coords = geom.get("coordinates", [None, None])
 
-            records.append({
-                "valid": props.get("valid"),
-                "event_type": event_type,
-                "magnitude": props.get("magnitude"),
-                "unit": props.get("unit"),
-                "wfo": props.get("wfo"),
-                "county": props.get("county"),
-                "state": props.get("st"),
-                "city": props.get("city"),
-                "source": props.get("source"),
-                "remark": props.get("remark"),
-                "longitude": coords[0] if coords else None,
-                "latitude": coords[1] if len(coords) > 1 else None,
-            })
+            records.append(
+                {
+                    "valid": props.get("valid"),
+                    "event_type": event_type,
+                    "magnitude": props.get("magnitude"),
+                    "unit": props.get("unit"),
+                    "wfo": props.get("wfo"),
+                    "county": props.get("county"),
+                    "state": props.get("st"),
+                    "city": props.get("city"),
+                    "source": props.get("source"),
+                    "remark": props.get("remark"),
+                    "longitude": coords[0] if coords else None,
+                    "latitude": coords[1] if len(coords) > 1 else None,
+                }
+            )
 
         if not records:
             raise DataNotFoundError(
