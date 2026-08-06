@@ -23,14 +23,6 @@ __all__ = [
 
 BASE_URL = "https://mesonet.agron.iastate.edu/geojson/lsr.php"
 
-FLOOD_EVENT_TYPES = [
-    "HEAVY RAIN",
-    "HEAVY SNOW",
-    "DEBRIS FLOW",
-    "FLASH FLOOD",
-    "FLOOD",
-]
-
 
 class LSRReaper(TimeSeriesReaper):
     """Reaper for NWS Local Storm Reports via the IEM GeoJSON endpoint.
@@ -75,8 +67,7 @@ class LSRReaper(TimeSeriesReaper):
             If None, fetches reports from all WFOs.
         event_types : list[str] | None, optional
             Event types to include (e.g., ["FLASH FLOOD", "HEAVY RAIN"]).
-            If None, returns all event types. Use ``FLOOD_EVENT_TYPES`` for
-            a convenient preset of flood-related types.
+            If None, returns all event types.
         state : str | None, optional
             Two-letter state abbreviation to filter results (e.g., "CO").
             If None, no state filtering is applied.
