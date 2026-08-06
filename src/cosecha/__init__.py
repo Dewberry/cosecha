@@ -9,6 +9,7 @@ from cosecha._logging import configure_logger
 from cosecha.reaping import (
     ASOSReaper,
     GriddedReaper,
+    LSRReaper,
     MRMSReaper,
     NWPReaper,
     TimeSeriesReaper,
@@ -23,6 +24,7 @@ except PackageNotFoundError:
 __all__ = [
     "ASOSReaper",
     "GriddedReaper",
+    "LSRReaper",
     "MRMSReaper",
     "NWPReaper",
     "TimeSeriesReaper",

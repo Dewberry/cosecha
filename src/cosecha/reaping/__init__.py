@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from cosecha.reaping.asos import ASOSReaper
 from cosecha.reaping.base import GriddedReaper, TimeSeriesReaper
+from cosecha.reaping.lsr import LSRReaper
 from cosecha.reaping.mrms import MRMSReaper
 from cosecha.reaping.nwis import USGSNWISReaper
 from cosecha.reaping.nwp import NWPReaper
@@ -16,6 +17,7 @@ from cosecha.reaping.usace import ReservoirReaper
 __all__ = [
     "ASOSReaper",
     "GriddedReaper",
+    "LSRReaper",
     "MRMSReaper",
     "NWPReaper",
     "ReservoirReaper",
