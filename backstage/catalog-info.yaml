@@ -1,0 +1,24 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: cosecha
+  title: Cosecha
+  description: Repo for harvesting earth observation data for use in flood forecasting.
+  tags:
+    - python        # add relevant tags
+    - NWP
+    - MRMS
+    - flood-forecasting
+    - earth-observation
+    - USGS
+    - USACE
+    - ASOS
+  annotations:
+    github.com/project-slug: Dewberry/cosecha
+  links:
+    - url: https://github.com/Dewberry/cosecha
+      title: GitHub
+spec:
+  type: library       # library | service | website | tool
+  lifecycle: active   # experimental | active | deprecated
+  owner: dewberry     # must match a group defined in dewberry-org.yaml
