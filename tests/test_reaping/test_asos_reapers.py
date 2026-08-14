@@ -24,8 +24,8 @@ class TestASOSReaper:
         )
         assert reaper.state == "TX"
         assert reaper.network == "TX_ASOS"
-        assert reaper.start_date == pd.Timestamp("2026-04-12")
-        assert reaper.end_date == pd.Timestamp("2026-04-13")
+        assert reaper.start_date == pd.Timestamp("2026-04-12", tz="UTC")
+        assert reaper.end_date == pd.Timestamp("2026-04-13", tz="UTC")
         assert reaper.data_vars == ["p01i"]
 
     def test_initialization_multiple_data_vars(self):

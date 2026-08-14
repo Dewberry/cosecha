@@ -13,7 +13,7 @@ import pandas as pd
 import tiny_retriever
 
 from cosecha._logging import logger
-from cosecha._utils import apply_ts_transformations, wrap_errors
+from cosecha._utils import apply_ts_transformations, parse_date_range, wrap_errors
 from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
 from cosecha.reaping.base import TimeSeriesReaper
 
@@ -64,10 +64,7 @@ class ReservoirReaper(TimeSeriesReaper):
                     f"Unknown parameter: {param!r}. Available: {list(LABEL_MAP)}"
                 )
 
-        if self.start_date > self.end_date:
-            raise DateRangeError(
-                f"start_date ({self.start_date}) must be <= end_date ({self.end_date})"
-            )
+
 
     def __init__(
         self,
@@ -111,11 +108,7 @@ class ReservoirReaper(TimeSeriesReaper):
         self.params = params
         self.provider = provider
         self.transformations = transformations
-        try:
-            self.start_date = pd.to_datetime(start_date)
-            self.end_date = pd.to_datetime(end_date)
-        except Exception as e:
-            raise DateRangeError(f"Could not parse date: {e}") from e
+        self.start_date, self.end_date = parse_date_range(start_date, end_date)
         self._validate_params()
         logger.debug(
             f"Initialized {self.__class__.__name__}: "

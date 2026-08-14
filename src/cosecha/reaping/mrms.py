@@ -18,7 +18,7 @@ import s3fs
 import xarray as xr
 
 from cosecha._logging import logger
-from cosecha._utils import apply_gridded_transformations, to_180, wrap_errors
+from cosecha._utils import apply_gridded_transformations, parse_date_range, to_180, wrap_errors
 from cosecha.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.reaping.base import GriddedReaper
 
@@ -27,17 +27,6 @@ __all__ = ["MRMSReaper"]
 
 class MRMSReaper(GriddedReaper):
     """Reaper for NOAA MRMS gridded precipitation data."""
-
-    def _validate_params(self) -> None:
-        """Validate initialization parameters.
-
-        Raises
-        ------
-        DateRangeError
-            If time parameters are invalid.
-        """
-        if self.start_date > self.end_date:
-            raise DateRangeError("start_date must be <= end_date.")
 
     def __init__(
         self,
@@ -74,15 +63,12 @@ class MRMSReaper(GriddedReaper):
             self.end_date = datetime.now(UTC)
             self.start_date = self.end_date - timedelta(days=1)
         else:
-            self.start_date = pd.to_datetime(dates[0], utc=True)
-            self.end_date = pd.to_datetime(dates[1], utc=True)
+            self.start_date, self.end_date = parse_date_range(dates[0], dates[1])
 
         self.transformations = transformations
         self.cache_data = cache_data
 
         self.cache_dir = Path(tempfile.gettempdir()) / "mrms_cache"
-
-        self._validate_params()
 
         self.aws = s3fs.S3FileSystem(
             anon=True, config_kwargs={"connect_timeout": 30, "read_timeout": 60}

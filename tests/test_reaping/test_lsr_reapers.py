@@ -94,8 +94,8 @@ class TestLSRReaper:
             event_types=["FLASH FLOOD", "HEAVY RAIN"],
             state="CO",
         )
-        assert reaper.start_date == pd.Timestamp("2026-07-01T00:00:00Z")
-        assert reaper.end_date == pd.Timestamp("2026-07-02T00:00:00Z")
+        assert reaper.start_date == pd.Timestamp("2026-07-01T00:00:00", tz="UTC")
+        assert reaper.end_date == pd.Timestamp("2026-07-02T00:00:00", tz="UTC")
         assert reaper.wfos == ["BOU", "GJT"]
         assert reaper.event_types == ["FLASH FLOOD", "HEAVY RAIN"]
         assert reaper.state == "CO"
@@ -111,7 +111,7 @@ class TestLSRReaper:
         assert reaper.event_types is None
 
     def test_invalid_date_range(self):
-        """Test initialization fails with start >= end."""
+        """Test initialization fails with start > end."""
         with pytest.raises(DateRangeError):
             LSRReaper(
                 start_date="2026-07-02",

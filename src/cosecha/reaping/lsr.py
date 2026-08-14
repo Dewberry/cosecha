@@ -13,7 +13,7 @@ import pandas as pd
 import tiny_retriever
 
 from cosecha._logging import logger
-from cosecha._utils import apply_ts_transformations, wrap_errors
+from cosecha._utils import apply_ts_transformations, parse_date_range, wrap_errors
 from cosecha.exceptions import APIError, DataNotFoundError, DateRangeError
 from cosecha.reaping.base import TimeSeriesReaper
 
@@ -30,19 +30,6 @@ class LSRReaper(TimeSeriesReaper):
     Fetches storm report features for a given time window, optionally filtering
     by WFO (Weather Forecast Office), event type, and state.
     """
-
-    def _validate_params(self) -> None:
-        """Validate initialization parameters.
-
-        Raises
-        ------
-        DateRangeError
-            If dates are invalid.
-        """
-        if self.start_date >= self.end_date:
-            raise DateRangeError(
-                f"start_date ({self.start_date}) must be < end_date ({self.end_date})"
-            )
 
     def __init__(
         self,
@@ -89,11 +76,7 @@ class LSRReaper(TimeSeriesReaper):
         """
         super().__init__()
 
-        try:
-            self.start_date = pd.to_datetime(start_date)
-            self.end_date = pd.to_datetime(end_date)
-        except Exception as e:
-            raise DateRangeError(f"Could not parse date: {e}") from e
+        self.start_date, self.end_date = parse_date_range(start_date, end_date)
 
         self.wfos = [w.upper().strip() for w in wfos] if wfos else None
         self.event_types = [et.upper().strip() for et in event_types] if event_types else None
@@ -101,7 +84,6 @@ class LSRReaper(TimeSeriesReaper):
         self.transformations = transformations
         self.timeout = timeout
 
-        self._validate_params()
         logger.debug(
             f"Initialized {self.__class__.__name__}: "
             f"wfos={self.wfos}, event_types={self.event_types}, state={self.state}, "

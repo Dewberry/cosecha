@@ -6,13 +6,14 @@ import contextlib
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar
 
+import pandas as pd
+
 from cosecha._logging import logger
-from cosecha.exceptions import TransformationError
+from cosecha.exceptions import DateRangeError, TransformationError
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    import pandas as pd
     import xarray as xr
 
 T_Data = TypeVar("T_Data", "xr.DataArray", "xr.Dataset")
@@ -27,6 +28,39 @@ def ensure_local_parent(path: str | Path) -> None:
     """Create parent directories when *path* is local; no-op for remote URIs."""
     if not is_remote(path):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
+
+
+def parse_date_range(start: Any, end: Any) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """Parse and validate a start/end date pair.
+
+    Naive input is interpreted as UTC; offset-aware input is converted to UTC.
+
+    Parameters
+    ----------
+    start, end : Any
+        Values accepted by ``pd.to_datetime`` (strings, datetimes, etc.).
+
+    Returns
+    -------
+    tuple[pd.Timestamp, pd.Timestamp]
+        UTC-aware ``(start, end)`` timestamps.
+
+    Raises
+    ------
+    DateRangeError
+        If *start* or *end* cannot be parsed, resolve to ``NaT``, or
+        *start* is after *end*.
+    """
+    try:
+        start_ts = pd.to_datetime(start, utc=True)
+        end_ts = pd.to_datetime(end, utc=True)
+    except (ValueError, TypeError) as e:
+        raise DateRangeError(f"Could not parse date: {e}") from e
+    if pd.isna(start_ts) or pd.isna(end_ts):
+        raise DateRangeError(f"Dates must not be empty or NaT: start={start!r}, end={end!r}")
+    if start_ts > end_ts:
+        raise DateRangeError(f"start_date ({start_ts}) must be <= end_date ({end_ts})")
+    return start_ts, end_ts
 
 
 @contextlib.contextmanager
