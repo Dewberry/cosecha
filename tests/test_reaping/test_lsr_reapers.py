@@ -9,7 +9,7 @@ import pyarrow as pa
 import pytest
 
 from cosecha.exceptions import APIError, DataNotFoundError, DateRangeError
-from cosecha.reaping.lsr import LSRReaper, _IEM_ROW_CAP
+from cosecha.reaping.lsr import LSRReaper
 
 
 def _feature(

@@ -112,9 +112,7 @@ class LSRReaper(TimeSeriesReaper):
             f"dates={self.start_date} to {self.end_date}"
         )
 
-    def _build_url(
-        self, start: pd.Timestamp | None = None, end: pd.Timestamp | None = None
-    ) -> str:
+    def _build_url(self, start: pd.Timestamp | None = None, end: pd.Timestamp | None = None) -> str:
         """Build the IEM LSR GeoJSON request URL.
 
         Parameters

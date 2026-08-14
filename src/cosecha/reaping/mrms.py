@@ -13,13 +13,12 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal, cast
 
-import pandas as pd
 import s3fs
 import xarray as xr
 
 from cosecha._logging import logger
 from cosecha._utils import apply_gridded_transformations, parse_date_range, to_180, wrap_errors
-from cosecha.exceptions import APIError, DateRangeError, ReaperError
+from cosecha.exceptions import APIError, ReaperError
 from cosecha.reaping.base import GriddedReaper
 
 __all__ = ["MRMSReaper"]

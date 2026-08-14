@@ -26,7 +26,7 @@ class TestParseDateRange:
         assert e == pd.Timestamp("2026-01-02", tz="UTC")
 
     def test_aware_strings_converted_to_utc(self):
-        s, e = parse_date_range("2026-01-01T00:00:00+05:00", "2026-01-02T00:00:00+05:00")
+        s, _e = parse_date_range("2026-01-01T00:00:00+05:00", "2026-01-02T00:00:00+05:00")
         assert s == pd.Timestamp("2025-12-31T19:00:00", tz="UTC")
 
     def test_mixed_awareness_ok(self):

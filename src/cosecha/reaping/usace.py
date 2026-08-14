@@ -14,7 +14,7 @@ import tiny_retriever
 
 from cosecha._logging import logger
 from cosecha._utils import apply_ts_transformations, parse_date_range, wrap_errors
-from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
+from cosecha.exceptions import APIError, InvalidSiteError
 from cosecha.reaping.base import TimeSeriesReaper
 
 __all__ = [
@@ -63,8 +63,6 @@ class ReservoirReaper(TimeSeriesReaper):
                 raise InvalidSiteError(
                     f"Unknown parameter: {param!r}. Available: {list(LABEL_MAP)}"
                 )
-
-
 
     def __init__(
         self,
