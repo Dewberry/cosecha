@@ -112,6 +112,9 @@ class LSRReaper(TimeSeriesReaper):
             f"dates={self.start_date} to {self.end_date}"
         )
 
+    def _validate_params(self) -> None:
+        """Date validation is handled by parse_date_range at construction."""
+
     def _build_url(self, start: pd.Timestamp | None = None, end: pd.Timestamp | None = None) -> str:
         """Build the IEM LSR GeoJSON request URL.
 
@@ -168,7 +171,7 @@ class LSRReaper(TimeSeriesReaper):
                         f"LSR window {start} to {end} hits IEM's {_IEM_ROW_CAP}-row cap "
                         "and cannot be split further. Narrow the query with 'state' or 'wfos'."
                     )
-                logger.debug(f"Window {start}–{end} hit row cap, bisecting at {mid}")
+                logger.debug(f"Window {start}-{end} hit row cap, bisecting at {mid}")
                 next_round += [(start, mid), (mid + pd.Timedelta(minutes=1), end)]
             pending = next_round
         return features
@@ -198,6 +201,11 @@ class LSRReaper(TimeSeriesReaper):
 
         df = pd.json_normalize(features)
         props_cols = [f"properties.{c}" for c in _COLUMNS]
+        missing = [c for c in props_cols if c not in df.columns]
+        if missing:
+            raise APIError(
+                f"IEM response missing expected properties: {[c.split('.', 1)[1] for c in missing]}"
+            )
         df = df[props_cols]
         df.columns = list(_COLUMNS.values())
 
@@ -216,7 +224,7 @@ class LSRReaper(TimeSeriesReaper):
             )
 
         logger.debug(f"Parsed {len(df)} storm reports matching filters")
-        return df
+        return df.reset_index(drop=True)
 
     def _reap(self) -> pd.DataFrame:
         """Fetch and parse NWS Local Storm Reports."""
