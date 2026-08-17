@@ -16,6 +16,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - uses: prefix-dev/setup-pixi@v0.9.4
+      with:
+        pixi-version: v0.67.0
+        environments: lint
+        activate-environment: lint
+    - name: Run linters
+      run: pixi r lint
+
   test:
     name: unit - ${{ matrix.environment }}, ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
