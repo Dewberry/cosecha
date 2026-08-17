@@ -40,8 +40,9 @@ class ReaperBase(ABC):
     def _reap(self) -> pd.DataFrame | xr.Dataset:
         """Implement data fetching."""
 
+    @abstractmethod
     def _validate_params(self) -> None:
-        """Validate initialization parameters (override in subclasses as needed)."""
+        """Validate initialization parameters."""
 
     def reap(self) -> pd.DataFrame | xr.Dataset:
         """Fetch data from source and store it in instance state.
@@ -51,6 +52,7 @@ class ReaperBase(ABC):
         pd.DataFrame | xr.Dataset
             Harvested data from the source.
         """
+        self._validate_params()
         self.data = self._reap()
         return self.data
 

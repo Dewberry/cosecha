@@ -73,6 +73,9 @@ class MRMSReaper(GriddedReaper):
             anon=True, config_kwargs={"connect_timeout": 30, "read_timeout": 60}
         )
 
+    def _validate_params(self) -> None:
+        """Date validation is handled by parse_date_range at construction."""
+
     def _find_available_files(self) -> list[str]:
         files_list = []
 

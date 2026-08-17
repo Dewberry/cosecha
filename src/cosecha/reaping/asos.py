@@ -90,6 +90,9 @@ class ASOSReaper(TimeSeriesReaper):
             f"data={self.data_vars}"
         )
 
+    def _validate_params(self) -> None:
+        """Date validation is handled by parse_date_range at construction."""
+
     def _build_url(self) -> str:
         """Build the IEM ASOS request URL with query parameters."""
         params = {
