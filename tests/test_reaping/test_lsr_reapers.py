@@ -9,6 +9,7 @@ import pyarrow as pa
 import pytest
 
 from cosecha.exceptions import APIError, DataNotFoundError, DateRangeError
+from cosecha.reaping import lsr as lsr_mod
 from cosecha.reaping.lsr import LSRReaper
 
 
@@ -428,8 +429,6 @@ class TestLSRReaper:
         )
 
         # Use a lower cap to trigger bisection with our small fixture
-        import cosecha.reaping.lsr as lsr_mod
-
         original_cap = lsr_mod._IEM_ROW_CAP
         lsr_mod._IEM_ROW_CAP = len(capped_features)
         try:
@@ -453,8 +452,6 @@ class TestLSRReaper:
             start_date="2026-07-01T12:00:00Z",
             end_date="2026-07-01T12:01:00Z",
         )
-
-        import cosecha.reaping.lsr as lsr_mod
 
         original_cap = lsr_mod._IEM_ROW_CAP
         lsr_mod._IEM_ROW_CAP = len(capped_features)
