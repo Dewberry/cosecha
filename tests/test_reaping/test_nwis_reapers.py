@@ -23,8 +23,8 @@ class TestUSGSStreamflowReaper:
             end_date="2026-01-31",
         )
         assert reaper.site_ids == ["01018035"]
-        assert reaper.start_date == pd.Timestamp("2026-01-01")
-        assert reaper.end_date == pd.Timestamp("2026-01-31")
+        assert reaper.start_date == pd.Timestamp("2026-01-01", tz="UTC")
+        assert reaper.end_date == pd.Timestamp("2026-01-31", tz="UTC")
         assert reaper.parameter_code == "00060"
 
     def test_initialization_multiple_sites(self):

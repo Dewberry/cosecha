@@ -50,8 +50,8 @@ class TestReservoirReaper:
         )
         assert reaper.site_ids == ["JPLT2"]
         assert reaper.params == ["storage", "elevation"]
-        assert reaper.start_date == pd.Timestamp("2026-06-04T00:00:00Z")
-        assert reaper.end_date == pd.Timestamp("2026-06-05T00:00:00Z")
+        assert reaper.start_date == pd.Timestamp("2026-06-04T00:00:00", tz="UTC")
+        assert reaper.end_date == pd.Timestamp("2026-06-05T00:00:00", tz="UTC")
         assert reaper.provider == "swf"
 
     def test_initialization_custom_provider(self):

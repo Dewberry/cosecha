@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-from pandas._libs.tslibs.parsing import DateParseError
 
 from cosecha.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.reaping.mrms import MRMSReaper
@@ -50,7 +49,7 @@ class TestMRMSReaper:
 
     def test_invalid_start_after_end(self):
         """Test initialization fails when start_time > end_time."""
-        with pytest.raises(DateRangeError, match="start_date must be <= end_date"):
+        with pytest.raises(DateRangeError, match="must be <="):
             MRMSReaper(dates=("2026-01-02", "2026-01-01"))
 
     def test_validate_params_valid(self):
@@ -94,8 +93,8 @@ class TestMRMSReaper:
             reaper.reap()
 
     def test_invalid_time_string(self):
-        """Test that an unparsable time string raises DateParseError."""
-        with pytest.raises(DateParseError):
+        """Test that an unparsable time string raises DateRangeError."""
+        with pytest.raises(DateRangeError, match="Could not parse date"):
             MRMSReaper(dates=("not-a-valid-date", "not-a-valid-date"))
 
     def test_find_available_files_matches_hour(self, mocker):

@@ -52,6 +52,7 @@ class ReaperBase(ABC):
         pd.DataFrame | xr.Dataset
             Harvested data from the source.
         """
+        self._validate_params()
         self.data = self._reap()
         return self.data
 

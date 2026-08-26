@@ -10,10 +10,49 @@ import xarray as xr
 from cosecha._utils import (
     apply_gridded_transformations,
     apply_ts_transformations,
+    parse_date_range,
     to_180,
     wrap_errors,
 )
-from cosecha.exceptions import TransformationError
+from cosecha.exceptions import DateRangeError, TransformationError
+
+
+class TestParseDateRange:
+    """Tests for parse_date_range utility."""
+
+    def test_naive_strings_become_utc(self):
+        s, e = parse_date_range("2026-01-01", "2026-01-02")
+        assert s == pd.Timestamp("2026-01-01", tz="UTC")
+        assert e == pd.Timestamp("2026-01-02", tz="UTC")
+
+    def test_aware_strings_converted_to_utc(self):
+        s, _e = parse_date_range("2026-01-01T00:00:00+05:00", "2026-01-02T00:00:00+05:00")
+        assert s == pd.Timestamp("2025-12-31T19:00:00", tz="UTC")
+
+    def test_mixed_awareness_ok(self):
+        s, e = parse_date_range("2026-01-01", "2026-01-02T00:00:00Z")
+        assert s.tzinfo is not None
+        assert e.tzinfo is not None
+
+    def test_equal_dates_allowed(self):
+        s, e = parse_date_range("2026-01-01", "2026-01-01")
+        assert s == e
+
+    def test_start_after_end_raises(self):
+        with pytest.raises(DateRangeError, match="must be <="):
+            parse_date_range("2026-01-02", "2026-01-01")
+
+    def test_unparsable_raises(self):
+        with pytest.raises(DateRangeError, match="Could not parse date"):
+            parse_date_range("not-a-date", "2026-01-01")
+
+    def test_empty_string_raises(self):
+        with pytest.raises(DateRangeError, match="NaT"):
+            parse_date_range("", "2026-01-01")
+
+    def test_none_raises(self):
+        with pytest.raises(DateRangeError, match="NaT"):
+            parse_date_range(None, "2026-01-01")
 
 
 class TestWrapErrors:

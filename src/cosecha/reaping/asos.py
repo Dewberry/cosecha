@@ -14,8 +14,8 @@ import pandas as pd
 import tiny_retriever
 
 from cosecha._logging import logger
-from cosecha._utils import apply_ts_transformations, wrap_errors
-from cosecha.exceptions import APIError, DataNotFoundError, DateRangeError
+from cosecha._utils import apply_ts_transformations, parse_date_range, wrap_errors
+from cosecha.exceptions import APIError, DataNotFoundError
 from cosecha.reaping.base import TimeSeriesReaper
 
 __all__ = [
@@ -28,19 +28,6 @@ _IEM_ALL_VARS = "all"
 
 class ASOSReaper(TimeSeriesReaper):
     """Reaper for IEM ASOS data."""
-
-    def _validate_params(self) -> None:
-        """Validate initialization parameters.
-
-        Raises
-        ------
-        DateRangeError
-            If dates are invalid.
-        """
-        if self.start_date > self.end_date:
-            raise DateRangeError(
-                f"start_date ({self.start_date}) must be <= end_date ({self.end_date})"
-            )
 
     def __init__(
         self,
@@ -78,11 +65,7 @@ class ASOSReaper(TimeSeriesReaper):
         self.state = state
         self.network = f"{state.upper()}_ASOS" if state else None
 
-        try:
-            self.start_date = pd.to_datetime(start_date)
-            self.end_date = pd.to_datetime(end_date)
-        except Exception as e:
-            raise DateRangeError(f"Could not parse date: {e}") from e
+        self.start_date, self.end_date = parse_date_range(start_date, end_date)
 
         if variable is None:
             self.data_vars = [_IEM_ALL_VARS]
@@ -101,12 +84,14 @@ class ASOSReaper(TimeSeriesReaper):
         else:
             self.report_type = report_type
 
-        self._validate_params()
         logger.debug(
             f"Initialized {self.__class__.__name__}: "
             f"network={self.network}, dates={self.start_date} to {self.end_date}, "
             f"data={self.data_vars}"
         )
+
+    def _validate_params(self) -> None:
+        """Date validation is handled by parse_date_range at construction."""
 
     def _build_url(self) -> str:
         """Build the IEM ASOS request URL with query parameters."""

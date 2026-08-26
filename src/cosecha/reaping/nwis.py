@@ -12,8 +12,8 @@ import pandas as pd
 from dataretrieval import waterdata as dr_waterdata
 
 from cosecha._logging import logger
-from cosecha._utils import apply_ts_transformations, wrap_errors
-from cosecha.exceptions import APIError, DateRangeError, InvalidSiteError
+from cosecha._utils import apply_ts_transformations, parse_date_range, wrap_errors
+from cosecha.exceptions import APIError, InvalidSiteError
 from cosecha.reaping.base import TimeSeriesReaper
 
 __all__ = [
@@ -31,8 +31,6 @@ class USGSNWISReaper(TimeSeriesReaper):
         ------
         InvalidSiteError
             If no site IDs provided.
-        DateRangeError
-            If dates are invalid.
         """
         if not self.site_ids:
             raise InvalidSiteError("site_ids cannot be empty")
@@ -40,11 +38,6 @@ class USGSNWISReaper(TimeSeriesReaper):
         for site_id in self.site_ids:
             if not isinstance(site_id, str) or not site_id.strip():
                 raise InvalidSiteError(f"Invalid site ID: {site_id}")
-
-        if self.start_date > self.end_date:
-            raise DateRangeError(
-                f"start_date ({self.start_date}) must be <= end_date ({self.end_date})"
-            )
 
     def __init__(
         self,
@@ -83,11 +76,7 @@ class USGSNWISReaper(TimeSeriesReaper):
         """
         super().__init__()
         self.site_ids = site_ids
-        try:
-            self.start_date = pd.to_datetime(start_date)
-            self.end_date = pd.to_datetime(end_date)
-        except Exception as e:
-            raise DateRangeError(f"Could not parse date: {e}") from e
+        self.start_date, self.end_date = parse_date_range(start_date, end_date)
         self.transformations = transformations
         self.parameter_code = parameter_code
         self._validate_params()
