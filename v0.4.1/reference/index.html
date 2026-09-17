@@ -20,8 +20,15 @@
         
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
+      
+      
+        
+        
+        
+          <link rel="icon" href="../assets/images/favicon.png">
+        
+      
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-materialx-10.2.0">
     
     
       
@@ -29,15 +36,16 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.d7aee198.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.a45159b5.min.css">
       
-      
-
+    
+    
 
     
+
     
       
     
@@ -64,6 +72,8 @@
   </head>
   
   
+  
+  
     
     
       
@@ -71,12 +81,14 @@
     
     
     
-    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" data-mx-topbar="glass">
   
     
     <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="toc" type="checkbox" id="__toc" autocomplete="off">
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
     <label class="md-overlay" for="__drawer"></label>
+    <label class="md-overlay" for="__toc"></label>
     <div data-md-component="skip">
       
         
@@ -167,6 +179,48 @@
       <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
     
     
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10.25 2a8.25 8.25 0 0 1 6.34 13.53l5.69 5.69a.749.749 0 0 1-.326 1.275.75.75 0 0 1-.734-.215l-5.69-5.69A8.25 8.25 0 1 1 10.25 2M3.5 10.25a6.75 6.75 0 1 0 13.5 0 6.75 6.75 0 0 0-13.5 0"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10.25 2a8.25 8.25 0 0 1 6.34 13.53l5.69 5.69a.749.749 0 0 1-.326 1.275.75.75 0 0 1-.734-.215l-5.69-5.69A8.25 8.25 0 1 1 10.25 2M3.5 10.25a6.75 6.75 0 1 0 13.5 0 6.75 6.75 0 0 0-13.5 0"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0">
+        <div class="md-search-result md-search-result--pagefind" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
     
     
       <div class="md-header__source">
@@ -359,7 +413,7 @@
 </a>
     </div>
   
-  <ul class="md-nav__list" data-md-scrollfix>
+  <ul class="md-nav__list">
     
       
       
@@ -455,7 +509,7 @@
   
 
           </label>
-          <ul class="md-nav__list" data-md-scrollfix>
+          <ul class="md-nav__list">
             
               
             
@@ -558,7 +612,7 @@
       <span class="md-nav__icon md-icon"></span>
       Table of contents
     </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+    <ul class="md-nav__list" data-md-component="toc">
       
         <li class="md-nav__item">
   <a href="#cosecha" class="md-nav__link">
@@ -1073,14 +1127,14 @@
 
 
               
-              <article class="md-content__inner md-typeset">
+              
+              
+              <article class="md-content__inner md-typeset" data-pagefind-body>
                 
 
 
 
                   
-
-
   
     <a href="https://github.com/dewberry/cosecha/edit/main/docs/reference.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
       
@@ -1156,7 +1210,7 @@
     <ul>
         <li class="doc-section-item field-body">
             <b><code>start_date</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
           –
           <div class="doc-md-description">
             <p>Start date in ISO 8601 format (YYYY-MM-DDTHH:MMZ).</p>
@@ -1164,7 +1218,7 @@
         </li>
         <li class="doc-section-item field-body">
             <b><code>end_date</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
           –
           <div class="doc-md-description">
             <p>End date in ISO 8601 format (YYYY-MM-DDTHH:MMZ).</p>
@@ -1172,7 +1226,7 @@
         </li>
         <li class="doc-section-item field-body">
             <b><code>state</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | None</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | None</code>, default:
                   <code>None</code>
 )
           –
@@ -1183,7 +1237,7 @@ all networks (IEM limits this to a 24-hour window).</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>variable</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>] | None</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>] | None</code>, default:
                   <code>None</code>
 )
           –
@@ -1194,7 +1248,7 @@ If None, fetches 'all'.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>report_type</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>] | None</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a>] | None</code>, default:
                   <code>None</code>
 )
           –
@@ -1205,7 +1259,7 @@ If None (default), returns all report types.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>transformations</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>]</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#dict">dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>]</code>, default:
                   <code>None</code>
 )
           –
@@ -1215,7 +1269,7 @@ If None (default), returns all report types.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>timeout</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a></code>, default:
                   <code>120</code>
 )
           –
@@ -1298,7 +1352,7 @@ If None (default), returns all report types.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>file_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Local path or remote URI (e.g. <code>s3://bucket/key.parquet</code>)
@@ -1324,7 +1378,7 @@ Parent directories are created automatically for local paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The path or URI of the written Parquet file.</p>
@@ -1362,7 +1416,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>warehouse_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Path to the Iceberg warehouse directory. Will be created if needed.</p>
@@ -1370,7 +1424,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>table_name</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
           –
           <div class="doc-md-description">
             <p>Name of the Iceberg table to create or append to.</p>
@@ -1378,7 +1432,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>namespace</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>, default:
                   <code>&#39;default&#39;</code>
 )
           –
@@ -1388,7 +1442,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>catalog_name</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>, default:
                   <code>&#39;default&#39;</code>
 )
           –
@@ -1402,7 +1456,7 @@ Parent directories are created automatically for local paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The fully qualified table name (namespace.table_name).</p>
@@ -1516,7 +1570,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>file_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Local path or remote URI (e.g. <code>s3://bucket/store.zarr</code>)
@@ -1526,7 +1580,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>consolidate</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#bool">bool</a></code>, default:
                   <code>True</code>
 )
           –
@@ -1540,7 +1594,7 @@ Parent directories are created automatically for local paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The path or URI of the written Zarr store.</p>
@@ -1573,7 +1627,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>file_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Local path or remote URI (e.g. <code>s3://bucket/data.nc</code>)
@@ -1587,7 +1641,7 @@ Parent directories are created automatically for local paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The path or URI of the written NetCDF file.</p>
@@ -1620,7 +1674,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>storage_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Local path or S3 URI (e.g. <code>s3://bucket/prefix</code>) for the
@@ -1630,7 +1684,7 @@ S3 credentials are read from the environment.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>group_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
           –
           <div class="doc-md-description">
             <p>Path to the IceChunk group within the repository.</p>
@@ -1642,7 +1696,7 @@ S3 credentials are read from the environment.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The path or URI of the written IceChunk grouping.</p>
@@ -1700,7 +1754,7 @@ by WFO (Weather Forecast Office), event type, and state.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>start_date</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
           –
           <div class="doc-md-description">
             <p>Start datetime in ISO 8601 format (e.g., "2026-07-01T00:00:00Z").</p>
@@ -1708,7 +1762,7 @@ by WFO (Weather Forecast Office), event type, and state.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>end_date</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
           –
           <div class="doc-md-description">
             <p>End datetime in ISO 8601 format (e.g., "2026-07-02T00:00:00Z").</p>
@@ -1716,7 +1770,7 @@ by WFO (Weather Forecast Office), event type, and state.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>wfos</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>] | None</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>] | None</code>, default:
                   <code>None</code>
 )
           –
@@ -1727,7 +1781,7 @@ If None, fetches reports from all WFOs.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>event_types</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>] | None</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>] | None</code>, default:
                   <code>None</code>
 )
           –
@@ -1738,7 +1792,7 @@ If None, returns all event types.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>state</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | None</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | None</code>, default:
                   <code>None</code>
 )
           –
@@ -1753,7 +1807,7 @@ neighbouring state code are excluded.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>transformations</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>]</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#dict">dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>]</code>, default:
                   <code>None</code>
 )
           –
@@ -1763,7 +1817,7 @@ neighbouring state code are excluded.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>timeout</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a></code>, default:
                   <code>120</code>
 )
           –
@@ -1858,7 +1912,7 @@ neighbouring state code are excluded.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>file_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Local path or remote URI (e.g. <code>s3://bucket/key.parquet</code>)
@@ -1884,7 +1938,7 @@ Parent directories are created automatically for local paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The path or URI of the written Parquet file.</p>
@@ -1922,7 +1976,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>warehouse_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Path to the Iceberg warehouse directory. Will be created if needed.</p>
@@ -1930,7 +1984,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>table_name</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
           –
           <div class="doc-md-description">
             <p>Name of the Iceberg table to create or append to.</p>
@@ -1938,7 +1992,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>namespace</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>, default:
                   <code>&#39;default&#39;</code>
 )
           –
@@ -1948,7 +2002,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>catalog_name</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>, default:
                   <code>&#39;default&#39;</code>
 )
           –
@@ -1962,7 +2016,7 @@ Parent directories are created automatically for local paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The fully qualified table name (namespace.table_name).</p>
@@ -2015,7 +2069,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>dates</code></b>
-              (<code><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a>[&#39;latest&#39;] | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>)
+              (<code><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a>[&#39;latest&#39;] | <a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>]</code>)
           –
           <div class="doc-md-description">
             <p>"latest" to fetch the most recent available data, or a tuple of (start_time, end_time) to fetch a custom range, e.g. ("2026-01-01 00:00Z", "2026-01-01 18:00Z").
@@ -2024,7 +2078,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>variable</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>, default:
                   <code>&#39;MultiSensor_QPE_01H_Pass2_00.00&#39;</code>
 )
           –
@@ -2034,7 +2088,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>transformations</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>]</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#dict">dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>]</code>, default:
                   <code>None</code>
 )
           –
@@ -2044,7 +2098,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>cache_data</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#bool">bool</a></code>, default:
                   <code>False</code>
 )
           –
@@ -2127,7 +2181,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>file_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Local path or remote URI (e.g. <code>s3://bucket/store.zarr</code>)
@@ -2137,7 +2191,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>consolidate</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#bool">bool</a></code>, default:
                   <code>True</code>
 )
           –
@@ -2151,7 +2205,7 @@ Parent directories are created automatically for local paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The path or URI of the written Zarr store.</p>
@@ -2184,7 +2238,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>file_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Local path or remote URI (e.g. <code>s3://bucket/data.nc</code>)
@@ -2198,7 +2252,7 @@ Parent directories are created automatically for local paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The path or URI of the written NetCDF file.</p>
@@ -2231,7 +2285,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>storage_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Local path or S3 URI (e.g. <code>s3://bucket/prefix</code>) for the
@@ -2241,7 +2295,7 @@ S3 credentials are read from the environment.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>group_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
           –
           <div class="doc-md-description">
             <p>Path to the IceChunk group within the repository.</p>
@@ -2253,7 +2307,7 @@ S3 credentials are read from the environment.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The path or URI of the written IceChunk grouping.</p>
@@ -2309,7 +2363,7 @@ S3 credentials are read from the environment.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>init_time</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
           –
           <div class="doc-md-description">
             <p>Model initialization time in format "YYYY-MM-DD HH:MM" or similar.
@@ -2319,7 +2373,7 @@ the most recent initialization time for the specified model.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>forecast_hours</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>] | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#range">range</a> | None</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a>] | <a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#range">range</a> | None</code>, default:
                   <code>None</code>
 )
           –
@@ -2329,7 +2383,7 @@ the most recent initialization time for the specified model.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>model</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>, default:
                   <code>&#39;hrrr&#39;</code>
 )
           –
@@ -2339,7 +2393,7 @@ the most recent initialization time for the specified model.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>variable</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>] | None</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>] | None</code>, default:
                   <code>&#39;hourly_precip&#39;</code>
 )
           –
@@ -2351,7 +2405,7 @@ strings. Common examples include 'hourly_precip', 'total_precip',
         </li>
         <li class="doc-section-item field-body">
             <b><code>search_str</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>] | None</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>] | None</code>, default:
                   <code>None</code>
 )
           –
@@ -2361,7 +2415,7 @@ strings. Common examples include 'hourly_precip', 'total_precip',
         </li>
         <li class="doc-section-item field-body">
             <b><code>product</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | None</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | None</code>, default:
                   <code>None</code>
 )
           –
@@ -2371,7 +2425,7 @@ strings. Common examples include 'hourly_precip', 'total_precip',
         </li>
         <li class="doc-section-item field-body">
             <b><code>transformations</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>] | None</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#dict">dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>] | None</code>, default:
                   <code>None</code>
 )
           –
@@ -2385,7 +2439,7 @@ strings. Common examples include 'hourly_precip', 'total_precip',
 <p><span class="doc-section-title">Raises:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError">ValueError</a></code>
             –
           <div class="doc-md-description">
             <p>If init_time is invalid or forecast_hours are malformed.</p>
@@ -2400,7 +2454,7 @@ or neither <code>variable</code> nor <code>search_str</code> are provided.</p>
           </div>
         </li>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ImportError">ImportError</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/exceptions.html#ImportError">ImportError</a></code>
             –
           <div class="doc-md-description">
             <p>If herbie is not installed.</p>
@@ -2495,7 +2549,7 @@ or neither <code>variable</code> nor <code>search_str</code> are provided.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>file_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Local path or remote URI (e.g. <code>s3://bucket/store.zarr</code>)
@@ -2505,7 +2559,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>consolidate</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#bool">bool</a></code>, default:
                   <code>True</code>
 )
           –
@@ -2519,7 +2573,7 @@ Parent directories are created automatically for local paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The path or URI of the written Zarr store.</p>
@@ -2552,7 +2606,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>file_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Local path or remote URI (e.g. <code>s3://bucket/data.nc</code>)
@@ -2566,7 +2620,7 @@ Parent directories are created automatically for local paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The path or URI of the written NetCDF file.</p>
@@ -2599,7 +2653,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>storage_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Local path or S3 URI (e.g. <code>s3://bucket/prefix</code>) for the
@@ -2609,7 +2663,7 @@ S3 credentials are read from the environment.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>group_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
           –
           <div class="doc-md-description">
             <p>Path to the IceChunk group within the repository.</p>
@@ -2621,7 +2675,7 @@ S3 credentials are read from the environment.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The path or URI of the written IceChunk grouping.</p>
@@ -2735,7 +2789,7 @@ S3 credentials are read from the environment.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>file_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Local path or remote URI (e.g. <code>s3://bucket/key.parquet</code>)
@@ -2761,7 +2815,7 @@ Parent directories are created automatically for local paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The path or URI of the written Parquet file.</p>
@@ -2799,7 +2853,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>warehouse_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Path to the Iceberg warehouse directory. Will be created if needed.</p>
@@ -2807,7 +2861,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>table_name</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
           –
           <div class="doc-md-description">
             <p>Name of the Iceberg table to create or append to.</p>
@@ -2815,7 +2869,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>namespace</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>, default:
                   <code>&#39;default&#39;</code>
 )
           –
@@ -2825,7 +2879,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>catalog_name</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>, default:
                   <code>&#39;default&#39;</code>
 )
           –
@@ -2839,7 +2893,7 @@ Parent directories are created automatically for local paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The fully qualified table name (namespace.table_name).</p>
@@ -2893,7 +2947,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>site_ids</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>]</code>)
           –
           <div class="doc-md-description">
             <p>List of USGS site IDs (e.g., ["01018035"]).</p>
@@ -2901,7 +2955,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>start_date</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
           –
           <div class="doc-md-description">
             <p>Start date in ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ).</p>
@@ -2909,7 +2963,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>end_date</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
           –
           <div class="doc-md-description">
             <p>End date in ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ).</p>
@@ -2917,7 +2971,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>parameter_code</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>] | None</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#list">list</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>] | None</code>, default:
                   <code>None</code>
 )
           –
@@ -2929,7 +2983,7 @@ If None, fetches all available parameters.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>transformations</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>]</code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#dict">dict</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>]</code>, default:
                   <code>None</code>
 )
           –
@@ -3023,7 +3077,7 @@ If None, fetches all available parameters.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>file_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Local path or remote URI (e.g. <code>s3://bucket/key.parquet</code>)
@@ -3049,7 +3103,7 @@ Parent directories are created automatically for local paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The path or URI of the written Parquet file.</p>
@@ -3087,7 +3141,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>warehouse_path</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>)
           –
           <div class="doc-md-description">
             <p>Path to the Iceberg warehouse directory. Will be created if needed.</p>
@@ -3095,7 +3149,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>table_name</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>)
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>)
           –
           <div class="doc-md-description">
             <p>Name of the Iceberg table to create or append to.</p>
@@ -3103,7 +3157,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>namespace</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>, default:
                   <code>&#39;default&#39;</code>
 )
           –
@@ -3113,7 +3167,7 @@ Parent directories are created automatically for local paths.</p>
         </li>
         <li class="doc-section-item field-body">
             <b><code>catalog_name</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>, default:
                   <code>&#39;default&#39;</code>
 )
           –
@@ -3127,7 +3181,7 @@ Parent directories are created automatically for local paths.</p>
 <p><span class="doc-section-title">Returns:</span></p>
     <ul>
         <li class="doc-section-item field-body">
-              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+              <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></code>
           –
           <div class="doc-md-description">
             <p>The fully qualified table name (namespace.table_name).</p>
@@ -3177,7 +3231,7 @@ Parent directories are created automatically for local paths.</p>
     <ul>
         <li class="doc-section-item field-body">
             <b><code>verbose</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#bool">bool</a></code>, default:
                   <code>None</code>
 )
           –
@@ -3188,7 +3242,7 @@ If both <code>level</code> and <code>verbose</code> are given, <code>level</code
         </li>
         <li class="doc-section-item field-body">
             <b><code>level</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> or <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> or <a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a></code>, default:
                   <code>None</code>
 )
           –
@@ -3198,7 +3252,7 @@ If both <code>level</code> and <code>verbose</code> are given, <code>level</code
         </li>
         <li class="doc-section-item field-body">
             <b><code>file</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> or <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> or <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>, default:
                   <code>None</code>
 )
           –
@@ -3208,7 +3262,7 @@ If both <code>level</code> and <code>verbose</code> are given, <code>level</code
         </li>
         <li class="doc-section-item field-body">
             <b><code>file_level</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> or <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> or <a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a></code>, default:
                   <code>None</code>
 )
           –
@@ -3228,7 +3282,7 @@ If both <code>level</code> and <code>verbose</code> are given, <code>level</code
         </li>
         <li class="doc-section-item field-body">
             <b><code>file_only</code></b>
-              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>, default:
+              (<code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#bool">bool</a></code>, default:
                   <code>False</code>
 )
           –
@@ -3272,13 +3326,23 @@ If both <code>level</code> and <code>verbose</code> are given, <code>level</code
 
 <script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
         </div>
-        
-          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
-  Back to top
-</button>
-        
+          <div class="md-top" data-md-component="top" hidden>
+  <div class="md-top__center">
+    <button type="button" class="md-top__button md-top__button--main" data-md-action="top">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+      <span>Back to top</span>
+    </button>
+    
+      
+      
+      <label class="md-top__button md-top__side md-top__side--nav" for="__drawer" >
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-panel-left" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
+      </label>
+    
+    
+  </div>
+</div>
       </main>
       
         <footer class="md-footer">
@@ -3329,8 +3393,8 @@ If both <code>level</code> and <code>verbose</code> are given, <code>level</code
   
   
     Made with
-    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
-      Material for MkDocs
+    <a href="https://jaywhj.github.io/mkdocs-materialx/" target="_blank" rel="noopener">
+      MaterialX
     </a>
   
 </div>
@@ -3366,10 +3430,17 @@ If both <code>level</code> and <code>verbose</code> are given, <code>level</code
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.tabs.link", "content.code.copy", "content.action.edit", "content.code.annotate", "navigation.sections", "navigation.expand", "navigation.collapse", "navigation.instant", "navigation.instant.progress", "navigation.tracking", "navigation.top", "navigation.footer", "navigation.indexes", "navigation.tabs", "navigation.tabs.sticky", "navigation.path", "search.suggest", "search.highlight", "toc.follow", "toc.integrate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      
+      
+        
+        
+          
+          
+        
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "code": null, "features": ["content.tabs.link", "content.code.copy", "content.action.edit", "content.code.annotate", "navigation.sections", "navigation.expand", "navigation.collapse", "navigation.instant", "navigation.instant.progress", "navigation.tracking", "navigation.top", "navigation.footer", "navigation.indexes", "navigation.tabs", "navigation.tabs.sticky", "navigation.path", "search.suggest", "search.highlight", "toc.follow", "toc.integrate"], "search": {"options": {"baseUrl": "..", "bundleUrl": "../search/", "highlight": true, "searchOptions": {}}, "provider": "pagefind"}, "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "code.collapse": "Collapse", "code.download": "Download", "code.expand": "Expand remaining # lines", "code.select": "Toggle line selection", "search.offline": "Switch to Lunr for offline search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../assets/javascripts/bundle.44453a05.min.js"></script>
       
     
   </body>
