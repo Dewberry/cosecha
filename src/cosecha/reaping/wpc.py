@@ -34,6 +34,34 @@ _CYCLE_MAX_HOURS = {0: 168, 6: 174, 12: 168, 18: 174}
 class WPCQPFReaper(GriddedReaper):
     """Reaper for NOAA WPC 2.5 km CONUS 6-hour QPF forecasts."""
 
+    def _validate_params(self) -> None:
+        """Validate initialization parameters.
+
+        Raises
+        ------
+        DateRangeError
+            If init_time is not a WPC issuance time or forecast_hours are invalid.
+        """
+        if self.init_time is not None and (
+            self.init_time.hour not in _CYCLE_MAX_HOURS
+            or self.init_time != self.init_time.floor("h")
+        ):
+            raise DateRangeError(f"init_time must be at 00, 06, 12 or 18 UTC, got {self.init_time}")
+
+        if self.forecast_hours is not None and not (
+            self.forecast_hours
+            and all(
+                isinstance(h, int)
+                and 0 < h <= max(_CYCLE_MAX_HOURS.values())
+                and h % _STEP_HOURS == 0
+                for h in self.forecast_hours
+            )
+        ):
+            raise DateRangeError(
+                f"forecast_hours must be positive multiples of {_STEP_HOURS}, "
+                f"got {self.forecast_hours}"
+            )
+
     def __init__(
         self,
         init_time: str,
@@ -97,35 +125,6 @@ class WPCQPFReaper(GriddedReaper):
             f"forecast_hours={self.forecast_hours or 'all'}"
         )
 
-    def _validate_params(self) -> None:
-        """Validate initialization parameters.
-
-        Raises
-        ------
-        DateRangeError
-            If init_time is not a WPC issuance time or forecast_hours are invalid.
-        """
-        if self.init_time is not None and (
-            self.init_time.hour not in _CYCLE_MAX_HOURS
-            or self.init_time != self.init_time.floor("h")
-        ):
-            raise DateRangeError(
-                f"init_time must be at 00, 06, 12 or 18 UTC, got {self.init_time}"
-            )
-
-        if self.forecast_hours is not None and not (
-            self.forecast_hours
-            and all(
-                isinstance(h, int) and 0 < h <= max(_CYCLE_MAX_HOURS.values())
-                and h % _STEP_HOURS == 0
-                for h in self.forecast_hours
-            )
-        ):
-            raise DateRangeError(
-                f"forecast_hours must be positive multiples of {_STEP_HOURS}, "
-                f"got {self.forecast_hours}"
-            )
-
     def _requested_hours(self, init_time: pd.Timestamp) -> set[int]:
         """Return the forecast hours to fetch for an issuance."""
         if self.forecast_hours is not None:
@@ -136,7 +135,8 @@ class WPCQPFReaper(GriddedReaper):
         """Find the WPC QPF file URLs to download from the server's directory listing.
 
         When init_time is "latest", this also sets self.init_time to the most recent
-        issuance that has all requested forecast hours."""
+        issuance that has all requested forecast hours.
+        """
         with wrap_errors(APIError, f"Could not list available WPC QPF files at {BASE_URL}"):
             listing = tiny_retriever.fetch(BASE_URL, "text", timeout=self.timeout)
 
@@ -199,7 +199,9 @@ class WPCQPFReaper(GriddedReaper):
             for i, file in enumerate(files):
                 wpc_ds = self._process_single_file(file)
                 # The lat/lon grid is identical across files, so keep one copy to limit memory.
-                data_arrays.append(wpc_ds if i == 0 else wpc_ds.drop_vars(["latitude", "longitude"]))
+                data_arrays.append(
+                    wpc_ds if i == 0 else wpc_ds.drop_vars(["latitude", "longitude"])
+                )
 
         wpc_ds = xr.concat(data_arrays, dim="step", coords="minimal", compat="override")
         return to_180(wpc_ds)
