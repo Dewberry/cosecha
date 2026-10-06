@@ -163,18 +163,17 @@ class WPCQPFReaper(GriddedReaper):
 
         init_time = cast("pd.Timestamp", self.init_time)
         requested = self._requested_hours(init_time)
-        hours = sorted(requested & available.get(init_time, set()))
-        if not hours:
+        if init_time not in available:
             raise DataNotFoundError(
                 f"No WPC QPF files found for {init_time}. WPC only keeps roughly the "
                 "last 6 days of issuances online."
             )
 
-        missing = sorted(requested - set(hours))
+        missing = sorted(requested - available[init_time])
         if missing:
-            logger.warning(f"Forecast hours {missing} not available for {init_time}, skipping.")
+            raise DataNotFoundError(f"Forecast hours {missing} not available for {init_time}.")
 
-        return [f"{BASE_URL}p06m_{init_time:%Y%m%d%H}f{hour:03d}.grb" for hour in hours]
+        return [f"{BASE_URL}p06m_{init_time:%Y%m%d%H}f{hour:03d}.grb" for hour in sorted(requested)]
 
     def _process_single_file(self, file: Path) -> xr.Dataset:
         """Load a single WPC QPF GRIB2 file."""
