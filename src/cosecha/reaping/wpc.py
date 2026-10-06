@@ -197,14 +197,18 @@ class WPCQPFReaper(GriddedReaper):
                 tiny_retriever.download(urls, files, timeout=self.timeout)
 
             for i, file in enumerate(files):
-                wpc_ds = self._process_single_file(file)
+                wpc_ds = to_180(self._process_single_file(file))
+                if self.transformations:
+                    # Deep copy so the subset view doesn't keep the full grid in memory.
+                    wpc_ds = apply_gridded_transformations(wpc_ds, self.transformations).copy(
+                        deep=True
+                    )
                 # The lat/lon grid is identical across files, so keep one copy to limit memory.
                 data_arrays.append(
                     wpc_ds if i == 0 else wpc_ds.drop_vars(["latitude", "longitude"])
                 )
 
-        wpc_ds = xr.concat(data_arrays, dim="step", coords="minimal", compat="override")
-        return to_180(wpc_ds)
+        return xr.concat(data_arrays, dim="step", coords="minimal", compat="override")
 
     def _reap(self) -> xr.Dataset:
         """Fetch and return WPC QPF gridded data.
@@ -223,9 +227,5 @@ class WPCQPFReaper(GriddedReaper):
 
         with wrap_errors(ReaperError, "WPC QPF reaping failed", ReaperError):
             ds = self._fetch_data()
-
-            if self.transformations:
-                ds = apply_gridded_transformations(ds, self.transformations)
-
             logger.info(f"Successfully reaped WPC QPF data: {ds.sizes.get('step', 0)} steps")
             return ds
