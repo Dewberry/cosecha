@@ -221,7 +221,7 @@ class WPCQPFReaper(GriddedReaper):
         """
         logger.info(f"Reaping WPC QPF data for {self.init_time or 'latest'}")
 
-        with wrap_errors(ReaperError, "WPC QPF reaping failed"):
+        with wrap_errors(ReaperError, "WPC QPF reaping failed", ReaperError):
             ds = self._fetch_data()
 
             if self.transformations:

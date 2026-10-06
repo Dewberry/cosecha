@@ -187,12 +187,22 @@ class TestWPCQPFReaper:
         assert isinstance(harvested, xr.Dataset)
         assert "tp" in harvested.data_vars
 
-    def test_reap_api_error_handling(self, mocker):
-        """Test that reap wraps errors from _fetch_data."""
+    def test_reap_error_handling(self, mocker):
+        """Test that reap wraps unexpected errors from _fetch_data."""
         reaper = WPCQPFReaper(init_time="latest")
-        mocker.patch.object(reaper, "_fetch_data", side_effect=APIError("fetch failed"))
+        mocker.patch.object(reaper, "_fetch_data", side_effect=ValueError("bad grib"))
 
         with pytest.raises(ReaperError, match="WPC QPF reaping failed"):
+            reaper.reap()
+
+    def test_reap_passes_through_reaper_errors(self, mocker):
+        """Test that reap re-raises ReaperError subclasses unchanged."""
+        reaper = WPCQPFReaper(init_time="latest")
+        mocker.patch.object(
+            reaper, "_fetch_data", side_effect=DataNotFoundError("not published yet")
+        )
+
+        with pytest.raises(DataNotFoundError, match="not published yet"):
             reaper.reap()
 
     def test_reap_with_transformations(self, mocker):
