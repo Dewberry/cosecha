@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 import tempfile
+from collections import defaultdict
 from pathlib import Path
 from typing import Any, cast
 
@@ -140,10 +141,9 @@ class WPCQPFReaper(GriddedReaper):
         with wrap_errors(APIError, f"Could not list available WPC QPF files at {BASE_URL}"):
             listing = tiny_retriever.fetch(BASE_URL, "text", timeout=self.timeout)
 
-        available: dict[pd.Timestamp, set[int]] = {}
+        available: defaultdict[pd.Timestamp, set[int]] = defaultdict(set)
         for init_str, hour_str in _FILE_PATTERN.findall(listing):
-            init = pd.to_datetime(init_str, format="%Y%m%d%H", utc=True)
-            available.setdefault(init, set()).add(int(hour_str))
+            available[pd.to_datetime(init_str, format="%Y%m%d%H", utc=True)].add(int(hour_str))
 
         if self.is_latest:
             self.init_time = next(
