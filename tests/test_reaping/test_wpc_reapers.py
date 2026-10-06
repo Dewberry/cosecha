@@ -232,10 +232,9 @@ class TestWPCQPFReaper:
                 f"{BASE_URL}p06m_2026092312f012.grb",
             ],
         )
-        mocker.patch.object(
-            reaper,
-            "_process_single_file",
-            side_effect=[_mock_qpf_dataset(6), _mock_qpf_dataset(12)],
+        mocker.patch(
+            "cosecha.reaping.wpc.xr.load_dataarray",
+            side_effect=[_mock_qpf_dataset(h)["tp"].isel(step=0) for h in (6, 12)],
         )
 
         result = reaper._fetch_data()
@@ -244,6 +243,7 @@ class TestWPCQPFReaper:
         assert "tp" not in result.data_vars
         assert dict(result.sizes) == {"step": 2, "y": 1, "x": 2}
         assert result["latitude"].values.min() == 31.0
+        assert result["longitude"].values.max() <= 180
 
     @pytest.mark.network
     def test_reap_network(self):

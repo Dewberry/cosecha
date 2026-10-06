@@ -179,38 +179,37 @@ class WPCQPFReaper(GriddedReaper):
         return [f"{BASE_URL}p06m_{init_time:%Y%m%d%H}f{hour:03d}.grb" for hour in sorted(requested)]
 
     def _process_single_file(self, file: Path) -> xr.Dataset:
-        """Load a single WPC QPF GRIB2 file."""
+        """Load a single WPC QPF GRIB2 file, applying transformations if set."""
         data_in = xr.load_dataarray(
             file, engine="cfgrib", decode_timedelta=True, backend_kwargs={"indexpath": ""}
         )
         wpc_da = data_in.expand_dims("step")
         wpc_da = wpc_da.assign_coords(valid_time=wpc_da["valid_time"].expand_dims("step"))
-        return wpc_da.to_dataset()
+        wpc_ds = wpc_da.to_dataset()
+        if not self.transformations:
+            return wpc_ds
+        # Deep copy so the subset view doesn't keep the full grid in memory.
+        return apply_gridded_transformations(to_180(wpc_ds), self.transformations).copy(deep=True)
 
     def _fetch_data(self) -> xr.Dataset:
         """Fetch WPC QPF data over HTTPS."""
         urls = self._find_available_files()
         logger.info(f"Fetching {len(urls)} WPC QPF files for {self.init_time}")
 
-        data_arrays: list[xr.Dataset] = []
         with tempfile.TemporaryDirectory() as tmp_dir:
             files = [Path(tmp_dir) / url.rsplit("/", maxsplit=1)[-1] for url in urls]
             with wrap_errors(APIError, "Could not download WPC QPF files"):
                 tiny_retriever.download(urls, files, timeout=self.timeout)
 
-            for i, file in enumerate(files):
-                wpc_ds = to_180(self._process_single_file(file))
-                if self.transformations:
-                    # Deep copy so the subset view doesn't keep the full grid in memory.
-                    wpc_ds = apply_gridded_transformations(wpc_ds, self.transformations).copy(
-                        deep=True
-                    )
-                # The lat/lon grid is identical across files, so keep one copy to limit memory.
-                data_arrays.append(
-                    wpc_ds if i == 0 else wpc_ds.drop_vars(["latitude", "longitude"])
-                )
+            wpc_ds = xr.concat(
+                (self._process_single_file(file) for file in files),
+                dim="step",
+                coords="minimal",
+                compat="override",
+            )
 
-        return xr.concat(data_arrays, dim="step", coords="minimal", compat="override")
+        # Transformed files are already converted; convert the full grid once otherwise.
+        return wpc_ds if self.transformations else to_180(wpc_ds)
 
     def _reap(self) -> xr.Dataset:
         """Fetch and return WPC QPF gridded data.
@@ -222,8 +221,12 @@ class WPCQPFReaper(GriddedReaper):
 
         Raises
         ------
+        DataNotFoundError
+            If the issuance is no longer online or any requested forecast hour is missing.
+        APIError
+            If listing or downloading the WPC QPF files fails.
         ReaperError
-            If data fetching fails.
+            If processing the downloaded files fails.
         """
         logger.info(f"Reaping WPC QPF data for {'latest' if self.is_latest else self.init_time}")
 
