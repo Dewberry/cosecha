@@ -49,17 +49,20 @@ class WPCQPFReaper(GriddedReaper):
         ):
             raise DateRangeError(f"init_time must be at 00, 06, 12 or 18 UTC, got {self.init_time}")
 
+        max_hour = (
+            _CYCLE_MAX_HOURS[self.init_time.hour]
+            if self.init_time is not None
+            else max(_CYCLE_MAX_HOURS.values())
+        )
         if self.forecast_hours is not None and not (
             self.forecast_hours
             and all(
-                isinstance(h, int)
-                and 0 < h <= max(_CYCLE_MAX_HOURS.values())
-                and h % _STEP_HOURS == 0
+                isinstance(h, int) and 0 < h <= max_hour and h % _STEP_HOURS == 0
                 for h in self.forecast_hours
             )
         ):
             raise DateRangeError(
-                f"forecast_hours must be positive multiples of {_STEP_HOURS}, "
+                f"forecast_hours must be positive multiples of {_STEP_HOURS} up to {max_hour}, "
                 f"got {self.forecast_hours}"
             )
 
