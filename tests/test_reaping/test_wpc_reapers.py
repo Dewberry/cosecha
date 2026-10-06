@@ -69,6 +69,17 @@ class TestWPCQPFReaper:
         with pytest.raises(DateRangeError, match="positive multiples of 6"):
             WPCQPFReaper(init_time="latest", forecast_hours=forecast_hours)
 
+    @pytest.mark.parametrize(("init_time", "max_hour"), [("00:00", 168), ("12:00", 168)])
+    def test_forecast_hours_beyond_cycle_max(self, init_time, max_hour):
+        """Test that 00Z/12Z issuances reject hour 174, which only 06Z/18Z publish."""
+        with pytest.raises(DateRangeError, match=f"up to {max_hour}"):
+            WPCQPFReaper(init_time=f"2026-10-04 {init_time}", forecast_hours=[174])
+
+    def test_forecast_hours_cycle_max_06z(self):
+        """Test that 06Z issuances accept hour 174."""
+        reaper = WPCQPFReaper(init_time="2026-10-04 06:00", forecast_hours=[174])
+        assert reaper.forecast_hours == [174]
+
     @patch("cosecha.reaping.wpc.tiny_retriever.fetch")
     def test_find_available_files_init_time(self, mock_fetch):
         """Test _find_available_files returns URLs for the requested init_time and hours."""
@@ -108,16 +119,13 @@ class TestWPCQPFReaper:
         assert len(result) == 2
 
     @patch("cosecha.reaping.wpc.tiny_retriever.fetch")
-    def test_find_available_files_missing_hours(self, mock_fetch, mocker):
-        """Test _find_available_files skips and warns about missing forecast hours."""
+    def test_find_available_files_missing_hours(self, mock_fetch):
+        """Test _find_available_files raises DataNotFoundError for missing forecast hours."""
         mock_fetch.return_value = _listing(["p06m_2026092312f006.grb"])
-        mock_logger = mocker.patch("cosecha.reaping.wpc.logger")
         reaper = WPCQPFReaper(init_time="2026-09-23 12:00", forecast_hours=[6, 12])
 
-        result = reaper._find_available_files()
-
-        assert result == [f"{BASE_URL}p06m_2026092312f006.grb"]
-        mock_logger.warning.assert_called_once()
+        with pytest.raises(DataNotFoundError, match=r"Forecast hours \[12\] not available"):
+            reaper._find_available_files()
 
     @patch("cosecha.reaping.wpc.tiny_retriever.fetch")
     def test_find_available_files_no_files(self, mock_fetch):
@@ -205,18 +213,37 @@ class TestWPCQPFReaper:
         with pytest.raises(DataNotFoundError, match="not published yet"):
             reaper.reap()
 
-    def test_reap_with_transformations(self, mocker):
-        """Test _reap applies transformations when provided."""
+    @patch("cosecha.reaping.wpc.tiny_retriever.download")
+    def test_fetch_data_with_transformations(self, mock_download, mocker):
+        """Test _fetch_data applies transformations to each file before concatenating."""
         reaper = WPCQPFReaper(
-            init_time="latest",
-            transformations={"variable_rename": {"tp": "qpf"}},
+            init_time="2026-09-23 12:00",
+            forecast_hours=[6, 12],
+            transformations={
+                "spatial_subset": {"lat_bounds": (30.5, 32), "lon_bounds": (-96, -93)},
+                "variable_rename": {"tp": "qpf"},
+            },
         )
-        mocker.patch.object(reaper, "_fetch_data", return_value=_mock_qpf_dataset(6))
+        mocker.patch.object(
+            reaper,
+            "_find_available_files",
+            return_value=[
+                f"{BASE_URL}p06m_2026092312f006.grb",
+                f"{BASE_URL}p06m_2026092312f012.grb",
+            ],
+        )
+        mocker.patch.object(
+            reaper,
+            "_process_single_file",
+            side_effect=[_mock_qpf_dataset(6), _mock_qpf_dataset(12)],
+        )
 
-        result = reaper.reap()
+        result = reaper._fetch_data()
 
         assert "qpf" in result.data_vars
         assert "tp" not in result.data_vars
+        assert dict(result.sizes) == {"step": 2, "y": 1, "x": 2}
+        assert result["latitude"].values.min() == 31.0
 
     @pytest.mark.network
     def test_reap_network(self):
