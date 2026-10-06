@@ -219,7 +219,7 @@ class WPCQPFReaper(GriddedReaper):
         ReaperError
             If data fetching fails.
         """
-        logger.info(f"Reaping WPC QPF data for {self.init_time or 'latest'}")
+        logger.info(f"Reaping WPC QPF data for {'latest' if self.is_latest else self.init_time}")
 
         with wrap_errors(ReaperError, "WPC QPF reaping failed", ReaperError):
             ds = self._fetch_data()
