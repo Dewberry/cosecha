@@ -223,7 +223,6 @@ class WPCQPFReaper(GriddedReaper):
 
         with wrap_errors(ReaperError, "WPC QPF reaping failed"):
             ds = self._fetch_data()
-            ds = ds.rename({k: k.lower() for k in map(str, ds.dims) if k != k.lower()})
 
             if self.transformations:
                 ds = apply_gridded_transformations(ds, self.transformations)
