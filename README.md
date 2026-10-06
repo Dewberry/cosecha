@@ -26,7 +26,6 @@ sources and writing to various formats with optional transformations.
 | `MRMSReaper`      | Gridded     | NOAA MRMS accumulated precipitation from S3                   |
 | `WPCQPFReaper`    | Gridded     | NOAA WPC 2.5 km CONUS 6-hour QPF forecasts                    |
 
-
 ## Installation
 
 ```console
