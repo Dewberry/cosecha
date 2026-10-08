@@ -491,6 +491,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#available-reapers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Reapers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#installation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -809,12 +820,60 @@
 sources and writing to various formats with optional transformations.</p>
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">#</a></h2>
 <ul>
-<li>Time-series data collection (USGS NWIS streamflow, stage, precipitation)</li>
-<li>Gridded data support (HRRR, RRFS, RTMA via herbie; MRMS via S3)</li>
+<li>Time-series data collection (USGS NWIS, IEM ASOS, NWS Local Storm Reports, USACE
+    reservoirs)</li>
+<li>Gridded data support (HRRR, RRFS, RTMA via herbie; MRMS via S3; WPC 6-hour QPF)</li>
 <li>Multiple output formats: Parquet, NetCDF, Zarr, Iceberg, IceChunk</li>
 <li>Data transformations: unit conversion, spatial subsetting, variable selection/rename</li>
 <li>Cross-platform support (ecCodes C library required for GRIB2/MRMS)</li>
 </ul>
+<h2 id="available-reapers">Available Reapers<a class="headerlink" href="#available-reapers" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Reaper</th>
+<th>Type</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>USGSNWISReaper</code></td>
+<td>Time series</td>
+<td>USGS NWIS streamflow, stage and precipitation</td>
+</tr>
+<tr>
+<td><code>ASOSReaper</code></td>
+<td>Time series</td>
+<td>ASOS surface observations from the Iowa Environmental Mesonet</td>
+</tr>
+<tr>
+<td><code>LSRReaper</code></td>
+<td>Time series</td>
+<td>NWS Local Storm Reports from the Iowa Environmental Mesonet</td>
+</tr>
+<tr>
+<td><code>ReservoirReaper</code></td>
+<td>Time series</td>
+<td>USACE CDA reservoir storage, elevation and outflow</td>
+</tr>
+<tr>
+<td><code>NWPReaper</code></td>
+<td>Gridded</td>
+<td>HRRR, RRFS, RTMA and other NWP models via herbie (<code>[nwp]</code>)</td>
+</tr>
+<tr>
+<td><code>MRMSReaper</code></td>
+<td>Gridded</td>
+<td>NOAA MRMS accumulated precipitation from S3</td>
+</tr>
+<tr>
+<td><code>WPCQPFReaper</code></td>
+<td>Gridded</td>
+<td>NOAA WPC 2.5 km CONUS 6-hour QPF forecasts</td>
+</tr>
+</tbody>
+</table>
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">#</a></h2>
 <div class="language-console highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="go">pip install cosecha</span>
 </span></code></pre></div>
@@ -847,6 +906,19 @@ via conda-forge:</p>
 </span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>
 </span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="c1"># Write to Parquet</span>
 </span><span id="__span-4-15"><a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a><span class="n">path</span> <span class="o">=</span> <span class="n">reaper</span><span class="o">.</span><span class="n">sow_to_parquet</span><span class="p">(</span><span class="n">file_path</span><span class="o">=</span><span class="s2">"./data/streamflow.pq"</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Gridded reapers work the same way. For example, the latest WPC 6-hour QPF for the first
+72 hours over a bounding box:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">cosecha</span><span class="w"> </span><span class="kn">import</span> <span class="n">WPCQPFReaper</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="n">reaper</span> <span class="o">=</span> <span class="n">WPCQPFReaper</span><span class="p">(</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>    <span class="n">init_time</span><span class="o">=</span><span class="s2">"latest"</span><span class="p">,</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">forecast_hours</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">73</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">transformations</span><span class="o">=</span><span class="p">{</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="s2">"spatial_subset"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"lat_bounds"</span><span class="p">:</span> <span class="p">(</span><span class="mi">29</span><span class="p">,</span> <span class="mi">31</span><span class="p">),</span> <span class="s2">"lon_bounds"</span><span class="p">:</span> <span class="p">(</span><span class="o">-</span><span class="mi">96</span><span class="p">,</span> <span class="o">-</span><span class="mi">94</span><span class="p">)},</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="p">},</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="p">)</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="n">qpf</span> <span class="o">=</span> <span class="n">reaper</span><span class="o">.</span><span class="n">reap</span><span class="p">()</span>
 </span></code></pre></div>
 <h2 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">#</a></h2>
 <p>Full documentation at <a href="https://dewberry.github.io/cosecha/">https://dewberry.github.io/cosecha/</a></p>
