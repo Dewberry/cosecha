@@ -7,11 +7,24 @@ sources and writing to various formats with optional transformations.
 
 ## Features
 
-- Time-series data collection (USGS NWIS streamflow, stage, precipitation)
-- Gridded data support (HRRR, RRFS, RTMA via herbie; MRMS via S3)
+- Time-series data collection (USGS NWIS, IEM ASOS, NWS Local Storm Reports, USACE
+    reservoirs)
+- Gridded data support (HRRR, RRFS, RTMA via herbie; MRMS via S3; WPC 6-hour QPF)
 - Multiple output formats: Parquet, NetCDF, Zarr, Iceberg, IceChunk
 - Data transformations: unit conversion, spatial subsetting, variable selection/rename
 - Cross-platform support (ecCodes C library required for GRIB2/MRMS)
+
+## Available Reapers
+
+| Reaper            | Type        | Source                                                        |
+| ----------------- | ----------- | ------------------------------------------------------------- |
+| `USGSNWISReaper`  | Time series | USGS NWIS streamflow, stage and precipitation                 |
+| `ASOSReaper`      | Time series | ASOS surface observations from the Iowa Environmental Mesonet |
+| `LSRReaper`       | Time series | NWS Local Storm Reports from the Iowa Environmental Mesonet   |
+| `ReservoirReaper` | Time series | USACE CDA reservoir storage, elevation and outflow            |
+| `NWPReaper`       | Gridded     | HRRR, RRFS, RTMA and other NWP models via herbie (`[nwp]`)    |
+| `MRMSReaper`      | Gridded     | NOAA MRMS accumulated precipitation from S3                   |
+| `WPCQPFReaper`    | Gridded     | NOAA WPC 2.5 km CONUS 6-hour QPF forecasts                    |
 
 ## Installation
 
@@ -59,6 +72,22 @@ data = reaper.reap()
 
 # Write to Parquet
 path = reaper.sow_to_parquet(file_path="./data/streamflow.pq")
+```
+
+Gridded reapers work the same way. For example, the latest WPC 6-hour QPF for the first
+72 hours over a bounding box:
+
+```python
+from cosecha import WPCQPFReaper
+
+reaper = WPCQPFReaper(
+    init_time="latest",
+    forecast_hours=range(6, 73, 6),
+    transformations={
+        "spatial_subset": {"lat_bounds": (29, 31), "lon_bounds": (-96, -94)},
+    },
+)
+qpf = reaper.reap()
 ```
 
 ## Documentation

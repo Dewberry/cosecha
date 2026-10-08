@@ -14,6 +14,7 @@ from cosecha.reaping import (
     NWPReaper,
     TimeSeriesReaper,
     USGSNWISReaper,
+    WPCQPFReaper,
 )
 
 try:
@@ -29,6 +30,7 @@ __all__ = [
     "NWPReaper",
     "TimeSeriesReaper",
     "USGSNWISReaper",
+    "WPCQPFReaper",
     "__version__",
     "configure_logger",
     "exceptions",

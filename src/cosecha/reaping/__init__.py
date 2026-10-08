@@ -13,6 +13,7 @@ from cosecha.reaping.mrms import MRMSReaper
 from cosecha.reaping.nwis import USGSNWISReaper
 from cosecha.reaping.nwp import NWPReaper
 from cosecha.reaping.usace import ReservoirReaper
+from cosecha.reaping.wpc import WPCQPFReaper
 
 __all__ = [
     "ASOSReaper",
@@ -23,4 +24,5 @@ __all__ = [
     "ReservoirReaper",
     "TimeSeriesReaper",
     "USGSNWISReaper",
+    "WPCQPFReaper",
 ]
