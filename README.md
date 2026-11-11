@@ -9,7 +9,8 @@ sources and writing to various formats with optional transformations.
 
 - Time-series data collection (USGS NWIS, IEM ASOS, NWS Local Storm Reports, USACE
     reservoirs)
-- Gridded data support (HRRR, RRFS, RTMA via herbie; MRMS via S3; WPC 6-hour QPF)
+- Gridded data support (HRRR, RRFS, RTMA via herbie; MRMS via S3; WPC 6-hour QPF; SMAP
+    L4 soil moisture via NASA OPeNDAP)
 - Multiple output formats: Parquet, NetCDF, Zarr, Iceberg, IceChunk
 - Data transformations: unit conversion, spatial subsetting, variable selection/rename
 - Cross-platform support (ecCodes C library required for GRIB2/MRMS)
@@ -25,6 +26,7 @@ sources and writing to various formats with optional transformations.
 | `NWPReaper`       | Gridded     | HRRR, RRFS, RTMA and other NWP models via herbie (`[nwp]`)    |
 | `MRMSReaper`      | Gridded     | NOAA MRMS accumulated precipitation from S3                   |
 | `WPCQPFReaper`    | Gridded     | NOAA WPC 2.5 km CONUS 6-hour QPF forecasts                    |
+| `SMAPL4Reaper`    | Gridded     | NASA SMAP L4 9 km 3-hourly soil moisture (`[earthdata]`)      |
 
 ## Installation
 
@@ -37,6 +39,16 @@ With optional dependencies for NWP (HRRR, RRFS) support:
 ```console
 pip install 'cosecha[nwp]'
 ```
+
+With optional dependencies for NASA Earthdata (SMAP) support:
+
+```console
+pip install 'cosecha[earthdata]'
+```
+
+`SMAPL4Reaper` requires a free [NASA Earthdata Login](https://urs.earthdata.nasa.gov),
+read from the `EARTHDATA_TOKEN` (or `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD`)
+environment variables or from `~/.netrc`.
 
 **Note:** Cosecha depends on the [ecCodes](https://confluence.ecmwf.int/display/ECC) C
 library for reading GRIB2 data (used by MRMS). When installing with pip, you must have
@@ -88,6 +100,23 @@ reaper = WPCQPFReaper(
     },
 )
 qpf = reaper.reap()
+```
+
+SMAP L4 surface and root-zone soil moisture over a bounding box (requires
+`cosecha[earthdata]` and Earthdata credentials). The bounding box is subset on NASA's
+servers, so only those grid cells are downloaded:
+
+```python
+from cosecha import SMAPL4Reaper
+
+reaper = SMAPL4Reaper(
+    dates=("2026-09-28", "2026-10-03"),
+    variables=["sm_surface", "sm_rootzone"],
+    transformations={
+        "spatial_subset": {"lat_bounds": (31.5, 34.0), "lon_bounds": (-98.5, -95.5)},
+    },
+)
+soil_moisture = reaper.reap()
 ```
 
 ## Documentation

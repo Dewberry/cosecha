@@ -43,6 +43,7 @@ dependencies = [
   "pandas>=2",
   "pyarrow>=12",
   "pyiceberg>=0.5",
+  "requests>=2.26",
   "s3fs",
   "sqlalchemy",
   "tiny-retriever>=0.3",
@@ -71,6 +72,9 @@ optional-dependencies.docs = [
   "mkdocs-materialx>=10.1.1",
   "mkdocstrings[python]>=0.27",
   "ruff",
+]
+optional-dependencies.earthdata = [
+  "earthaccess>=0.14",
 ]
 optional-dependencies.lint = [
   "codespell",
@@ -108,10 +112,10 @@ build.targets.wheel.packages = [
 version.source = "vcs"
 
 [tool.pixi.environments]
-dev = { features = [ "dev", "nwp", "py314" ] }
-test311 = { features = [ "test", "nwp", "py311" ] }
-test314 = { features = [ "test", "nwp", "py314" ] }
-typecheck = { features = [ "typecheck", "nwp", "py314" ] }
+dev = { features = [ "dev", "nwp", "earthdata", "py314" ] }
+test311 = { features = [ "test", "nwp", "earthdata", "py311" ] }
+test314 = { features = [ "test", "nwp", "earthdata", "py314" ] }
+typecheck = { features = [ "typecheck", "nwp", "earthdata", "py314" ] }
 lint = { features = [ "lint", "py314" ], no-default-feature = true }
 docs = { features = [ "docs", "py314" ] }
 
