@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import importlib
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar
 
@@ -13,10 +14,35 @@ from cosecha.exceptions import DateRangeError, TransformationError
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from types import ModuleType
 
     import xarray as xr
 
 T_Data = TypeVar("T_Data", "xr.DataArray", "xr.Dataset")
+
+
+def import_optional(name: str, extra: str) -> ModuleType:
+    """Import an optional dependency, pointing to the cosecha extra that provides it.
+
+    Parameters
+    ----------
+    name : str
+        Module to import, e.g. ``"s3fs"`` or ``"pyiceberg.catalog"``.
+    extra : str
+        The cosecha extra that installs it, e.g. ``"mrms"``.
+
+    Raises
+    ------
+    ImportError
+        If the module or a library it needs is missing.
+    """
+    try:
+        return importlib.import_module(name)
+    # eccodes raises RuntimeError when its C library is missing.
+    except (ImportError, RuntimeError) as e:
+        raise ImportError(
+            f"{name} could not be imported ({e}). Install with: pip install 'cosecha[{extra}]'"
+        ) from e
 
 
 def is_remote(path: str | Path) -> bool:
