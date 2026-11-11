@@ -33,21 +33,18 @@ dynamic = [
   "version",
 ]
 dependencies = [
-  "cfgrib",
-  "dataretrieval",
-  "eccodes",
+  "fsspec",
   "h5netcdf>=1.2",
   "h5py>=3",
-  "httpx>=0.24",
-  "icechunk>=0.1",
   "pandas>=2",
   "pyarrow>=12",
-  "pyiceberg>=0.5",
-  "s3fs",
-  "sqlalchemy",
+  "requests>=2.26",
   "tiny-retriever>=0.3",
   "xarray>=2025.11",
   "zarr>=3",
+]
+optional-dependencies.all = [
+  "cosecha[iceberg,icechunk,mrms,nwis,nwp,s3,smap,wpc]",
 ]
 optional-dependencies.dev = [
   "geopandas>=1",
@@ -72,17 +69,37 @@ optional-dependencies.docs = [
   "mkdocstrings[python]>=0.27",
   "ruff",
 ]
+optional-dependencies.iceberg = [
+  "pyiceberg[sql-sqlite]>=0.5",
+]
+optional-dependencies.icechunk = [
+  "icechunk>=0.1",
+]
 optional-dependencies.lint = [
   "codespell",
   "pre-commit",
 ]
+optional-dependencies.mrms = [
+  "cfgrib",
+  "eccodes",
+  "s3fs>=2025.11",
+]
+optional-dependencies.nwis = [
+  "dataretrieval",
+]
 optional-dependencies.nwp = [
   "herbie-data>=2026.9",
+]
+optional-dependencies.s3 = [
+  "s3fs>=2025.11",
+]
+optional-dependencies.smap = [
+  "earthaccess>=0.14",
 ]
 optional-dependencies.test = [
   "boto3",
   "coverage[toml]",
-  "moto[s3]",
+  "moto[s3,server]",
   "pytest-cov",
   "pytest-mock",
   "pytest-sugar",
@@ -94,6 +111,10 @@ optional-dependencies.typecheck = [
   "types-geopandas",
   "types-pyyaml",
   "types-shapely",
+]
+optional-dependencies.wpc = [
+  "cfgrib",
+  "eccodes",
 ]
 urls.Changelog = "https://github.com/dewberry/cosecha/blob/main/CHANGELOG.md"
 urls.CI = "https://github.com/dewberry/cosecha/actions"
@@ -108,10 +129,10 @@ build.targets.wheel.packages = [
 version.source = "vcs"
 
 [tool.pixi.environments]
-dev = { features = [ "dev", "nwp", "py314" ] }
-test311 = { features = [ "test", "nwp", "py311" ] }
-test314 = { features = [ "test", "nwp", "py314" ] }
-typecheck = { features = [ "typecheck", "nwp", "py314" ] }
+dev = { features = [ "dev", "all", "py314" ] }
+test311 = { features = [ "test", "all", "py311" ] }
+test314 = { features = [ "test", "all", "py314" ] }
+typecheck = { features = [ "typecheck", "all", "py314" ] }
 lint = { features = [ "lint", "py314" ], no-default-feature = true }
 docs = { features = [ "docs", "py314" ] }
 

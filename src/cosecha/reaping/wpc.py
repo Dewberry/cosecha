@@ -17,7 +17,7 @@ import tiny_retriever
 import xarray as xr
 
 from cosecha._logging import logger
-from cosecha._utils import apply_gridded_transformations, to_180, wrap_errors
+from cosecha._utils import apply_gridded_transformations, import_optional, to_180, wrap_errors
 from cosecha.exceptions import APIError, DataNotFoundError, DateRangeError, ReaperError
 from cosecha.reaping.base import GriddedReaper
 
@@ -96,6 +96,8 @@ class WPCQPFReaper(GriddedReaper):
         ------
         DateRangeError
             If init_time or forecast_hours are invalid.
+        ImportError
+            If cfgrib or ecCodes is not installed (``pip install 'cosecha[wpc]'``).
 
         Examples
         --------
@@ -108,6 +110,7 @@ class WPCQPFReaper(GriddedReaper):
         ... )
         """
         super().__init__()
+        import_optional("cfgrib", "wpc")
         self.is_latest = init_time == "latest"
         self.init_time: pd.Timestamp | None = None
         if not self.is_latest:

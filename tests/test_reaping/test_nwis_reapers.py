@@ -91,7 +91,7 @@ class TestUSGSStreamflowReaper:
         assert "value" in harvested.columns
         assert isinstance(harvested, pd.DataFrame)
 
-    @patch("cosecha.reaping.nwis.dr_waterdata.get_continuous")
+    @patch("dataretrieval.waterdata.get_continuous")
     def test_reap_success(self, mock_get_continuous):
         """Test successful data retrieval using dataretrieval."""
         mock_df = pd.DataFrame(
@@ -121,7 +121,7 @@ class TestUSGSStreamflowReaper:
         assert "monitoring_location_id" in harvested.columns
         mock_get_continuous.assert_called_once()
 
-    @patch("cosecha.reaping.nwis.dr_waterdata.get_continuous")
+    @patch("dataretrieval.waterdata.get_continuous")
     def test_reap_multiple_sites(self, mock_get_continuous):
         """Test retrieval for multiple sites."""
         mock_df = pd.DataFrame(
@@ -150,7 +150,7 @@ class TestUSGSStreamflowReaper:
             "USGS-01040000",
         ]
 
-    @patch("cosecha.reaping.nwis.dr_waterdata.get_continuous")
+    @patch("dataretrieval.waterdata.get_continuous")
     def test_reap_api_error(self, mock_get_continuous):
         """Test error handling when dataretrieval fails."""
         mock_get_continuous.side_effect = Exception("API connection failed")
@@ -165,7 +165,7 @@ class TestUSGSStreamflowReaper:
         with pytest.raises(APIError, match="Failed to fetch NWIS data"):
             reaper.reap()
 
-    @patch("cosecha.reaping.nwis.dr_waterdata.get_continuous")
+    @patch("dataretrieval.waterdata.get_continuous")
     def test_reap_empty_response(self, mock_get_continuous):
         """Test reap handles empty API response."""
         mock_get_continuous.return_value = (pd.DataFrame(), {})
@@ -181,7 +181,7 @@ class TestUSGSStreamflowReaper:
         assert isinstance(harvested, pd.DataFrame)
         assert harvested.empty
 
-    @patch("cosecha.reaping.nwis.dr_waterdata.get_continuous")
+    @patch("dataretrieval.waterdata.get_continuous")
     def test_reap_with_transformations(self, mock_get_continuous):
         """Test reap applies transformations."""
         mock_df = pd.DataFrame({"value": [1.0, 2.0], "site": ["A", "B"]})

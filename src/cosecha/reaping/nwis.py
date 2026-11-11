@@ -9,10 +9,14 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
-from dataretrieval import waterdata as dr_waterdata
 
 from cosecha._logging import logger
-from cosecha._utils import apply_ts_transformations, parse_date_range, wrap_errors
+from cosecha._utils import (
+    apply_ts_transformations,
+    import_optional,
+    parse_date_range,
+    wrap_errors,
+)
 from cosecha.exceptions import APIError, InvalidSiteError
 from cosecha.reaping.base import TimeSeriesReaper
 
@@ -75,6 +79,7 @@ class USGSNWISReaper(TimeSeriesReaper):
         >>> data = reaper.reap()
         """
         super().__init__()
+        import_optional("dataretrieval", "nwis")
         self.site_ids = site_ids
         self.start_date, self.end_date = parse_date_range(start_date, end_date)
         self.transformations = transformations
@@ -108,7 +113,8 @@ class USGSNWISReaper(TimeSeriesReaper):
         time_range = f"{self.start_date.isoformat()}/{self.end_date.isoformat()}"
 
         with wrap_errors(APIError, "Failed to fetch NWIS data"):
-            df, _metadata = dr_waterdata.get_continuous(
+            waterdata = import_optional("dataretrieval.waterdata", "nwis")
+            df, _metadata = waterdata.get_continuous(
                 monitoring_location_id=sites,
                 time=time_range,
                 parameter_code=self.parameter_code,
