@@ -22,7 +22,12 @@ from requests.utils import get_netrc_auth
 from urllib3.util import Retry
 
 from cosecha._logging import logger
-from cosecha._utils import apply_gridded_transformations, parse_date_range, wrap_errors
+from cosecha._utils import (
+    apply_gridded_transformations,
+    import_optional,
+    parse_date_range,
+    wrap_errors,
+)
 from cosecha.exceptions import APIError, DataNotFoundError, ReaperError, TransformationError
 from cosecha.reaping.base import GriddedReaper
 
@@ -95,8 +100,45 @@ _LATEST_LOOKBACK = timedelta(days=14)
 _EDL_HOST = "urs.earthdata.nasa.gov"
 
 
+def _index_slice(coord: np.ndarray, bounds: tuple[float, float] | None, label: str) -> slice:
+    """Return the index range of ``coord`` values within ``bounds``."""
+    if bounds is None:
+        return slice(0, coord.size)
+    idx = np.flatnonzero((coord >= bounds[0]) & (coord <= bounds[1]))
+    if idx.size == 0:
+        raise DataNotFoundError(f"spatial_subset {label}={bounds} contains no SMAP cells.")
+    return slice(int(idx[0]), int(idx[-1]) + 1)
+
+
 class SMAPL4Reaper(GriddedReaper):
     """Reaper for NASA SMAP L4 3-hourly 9 km soil moisture (SPL4SMGP)."""
+
+    def _validate_params(self) -> None:
+        """Validate initialization parameters."""
+        if not self.variables:
+            raise ReaperError("variables must contain at least one variable name.")
+        if unknown := sorted(set(self.variables) - VALID_VARIABLES):
+            raise ReaperError(
+                f"Unknown {SHORT_NAME} variables {unknown}. Valid: {sorted(VALID_VARIABLES)}"
+            )
+        if self.max_workers < 1 or self.timeout <= 0:
+            raise ReaperError(
+                f"max_workers and timeout must be positive, got {self.max_workers}, {self.timeout}"
+            )
+
+        if unknown := sorted(set(self.bounds) - {"lat_bounds", "lon_bounds"}):
+            raise TransformationError(
+                f"Unknown spatial_subset keys {unknown}; expected 'lat_bounds' and/or 'lon_bounds'."
+            )
+        for key, limit in (("lat_bounds", 90), ("lon_bounds", 180)):
+            bounds = self.bounds.get(key)
+            if bounds is not None and not (
+                len(bounds) == 2 and -limit <= bounds[0] <= bounds[1] <= limit
+            ):
+                raise TransformationError(
+                    f"{key} must be (min, max) with -{limit} <= min <= max <= {limit}, got "
+                    f"{bounds}. Ranges crossing the antimeridian are not supported."
+                )
 
     def __init__(
         self,
@@ -137,7 +179,7 @@ class SMAPL4Reaper(GriddedReaper):
         Raises
         ------
         ImportError
-            If earthaccess is not installed.
+            If earthaccess is not installed (``pip install 'cosecha[smap]'``).
         DateRangeError
             If dates cannot be parsed or start is after end.
         ReaperError
@@ -156,12 +198,7 @@ class SMAPL4Reaper(GriddedReaper):
         ... )
         """
         super().__init__()
-        try:
-            import earthaccess  # noqa: F401,PLC0415
-        except ImportError:
-            raise ImportError(
-                "earthaccess is not installed. Install with: pip install 'cosecha[earthdata]'"
-            ) from None
+        import_optional("earthaccess", "smap")
 
         if dates != "latest" and not (isinstance(dates, (tuple, list)) and len(dates) == 2):
             raise ValueError(
@@ -183,33 +220,6 @@ class SMAPL4Reaper(GriddedReaper):
 
         self._validate_params()
         logger.debug(f"Initialized {self.__class__.__name__}: dates={dates}, variables={variables}")
-
-    def _validate_params(self) -> None:
-        """Validate initialization parameters."""
-        if not self.variables:
-            raise ReaperError("variables must contain at least one variable name.")
-        if unknown := sorted(set(self.variables) - VALID_VARIABLES):
-            raise ReaperError(
-                f"Unknown {SHORT_NAME} variables {unknown}. Valid: {sorted(VALID_VARIABLES)}"
-            )
-        if self.max_workers < 1 or self.timeout <= 0:
-            raise ReaperError(
-                f"max_workers and timeout must be positive, got {self.max_workers}, {self.timeout}"
-            )
-
-        if unknown := sorted(set(self.bounds) - {"lat_bounds", "lon_bounds"}):
-            raise TransformationError(
-                f"Unknown spatial_subset keys {unknown}; expected 'lat_bounds' and/or 'lon_bounds'."
-            )
-        for key, limit in (("lat_bounds", 90), ("lon_bounds", 180)):
-            bounds = self.bounds.get(key)
-            if bounds is not None and not (
-                len(bounds) == 2 and -limit <= bounds[0] <= bounds[1] <= limit
-            ):
-                raise TransformationError(
-                    f"{key} must be (min, max) with -{limit} <= min <= max <= {limit}, got "
-                    f"{bounds}. Ranges crossing the antimeridian are not supported."
-                )
 
     def _login(self) -> requests.Session:
         """Return a retrying session authorized for NASA Earthdata.
@@ -351,13 +361,3 @@ class SMAPL4Reaper(GriddedReaper):
             ds = apply_gridded_transformations(self._fetch_data(), self.transformations)
             logger.info(f"Successfully reaped SMAP L4 data: {ds.sizes['time']} time steps")
             return ds
-
-
-def _index_slice(coord: np.ndarray, bounds: tuple[float, float] | None, label: str) -> slice:
-    """Return the index range of ``coord`` values within ``bounds``."""
-    if bounds is None:
-        return slice(0, coord.size)
-    idx = np.flatnonzero((coord >= bounds[0]) & (coord <= bounds[1]))
-    if idx.size == 0:
-        raise DataNotFoundError(f"spatial_subset {label}={bounds} contains no SMAP cells.")
-    return slice(int(idx[0]), int(idx[-1]) + 1)
