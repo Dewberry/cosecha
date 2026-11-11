@@ -44,7 +44,7 @@ dependencies = [
   "pyarrow>=12",
   "pyiceberg>=0.5",
   "requests>=2.26",
-  "s3fs",
+  "s3fs>=2025.11",
   "sqlalchemy",
   "tiny-retriever>=0.3",
   "xarray>=2025.11",
@@ -86,7 +86,7 @@ optional-dependencies.nwp = [
 optional-dependencies.test = [
   "boto3",
   "coverage[toml]",
-  "moto[s3]",
+  "moto[s3,server]",
   "pytest-cov",
   "pytest-mock",
   "pytest-sugar",

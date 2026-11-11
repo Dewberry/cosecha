@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import boto3
 import fsspec
-import moto
 import pandas as pd
 import pytest
 import s3fs
 import xarray as xr
+from moto.server import ThreadedMotoServer
 
 from cosecha.exceptions import ReaperError
 from cosecha.reaping.base import GriddedReaper, TimeSeriesReaper
@@ -119,14 +119,22 @@ class TestSowToS3:
 
     @pytest.fixture
     def _mock_s3(self, monkeypatch):
-        monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
-        monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
-        monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
-        s3fs.S3FileSystem.clear_instance_cache()
-        with moto.mock_aws():
-            boto3.client("s3", region_name="us-east-1").create_bucket(Bucket="test-bucket")
+        # moto.mock_aws() can't intercept s3fs's async (aiobotocore) calls, so run a real
+        # local moto server and point all S3 clients at it.
+        server = ThreadedMotoServer(ip_address="127.0.0.1", port=0, verbose=False)
+        server.start()
+        try:
+            host, port = server.get_host_and_port()
+            monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+            monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+            monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+            monkeypatch.setenv("AWS_ENDPOINT_URL", f"http://{host}:{port}")
+            s3fs.S3FileSystem.clear_instance_cache()
+            boto3.client("s3").create_bucket(Bucket="test-bucket")
             yield
-        s3fs.S3FileSystem.clear_instance_cache()
+        finally:
+            s3fs.S3FileSystem.clear_instance_cache()
+            server.stop()
 
     @pytest.mark.usefixtures("_mock_s3")
     def test_parquet_s3(self):
