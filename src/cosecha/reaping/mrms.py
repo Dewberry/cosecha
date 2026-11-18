@@ -29,6 +29,14 @@ from cosecha.reaping.base import GriddedReaper
 __all__ = ["MRMSReaper"]
 
 
+def _file_time(path: str) -> datetime:
+    """Parse the UTC timestamp from an MRMS file name like ``Variable_YYYYMMDD-HHMMSS.grib2.gz``."""
+    timestamp_str = (
+        path.rsplit("/", maxsplit=1)[-1].rsplit("_", maxsplit=1)[-1].split(".", maxsplit=1)[0]
+    )
+    return datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S").replace(tzinfo=UTC)
+
+
 class MRMSReaper(GriddedReaper):
     """Reaper for NOAA MRMS gridded precipitation data."""
 
@@ -38,6 +46,8 @@ class MRMSReaper(GriddedReaper):
         variable: str = "MultiSensor_QPE_01H_Pass2_00.00",
         transformations: dict[str, Any] | None = None,
         cache_data: bool = False,
+        interval: float | None = None,
+        tolerance: float = 90,
     ) -> None:
         """Initialize MRMSReaper.
 
@@ -52,6 +62,12 @@ class MRMSReaper(GriddedReaper):
             Optional transformations to apply to the raw data before returning.
         cache_data : bool, optional
             Whether to cache decompressed MRMS files on disk.
+        interval : float, optional
+            Minutes between selected files, e.g. 10 to take roughly every 10th minute from
+            start_time to end_time. The file nearest each step is used. None (default)
+            returns all files in the range. Not supported with dates="latest".
+        tolerance : float, optional
+            Max seconds between an interval step and the selected file. Default is 90.
 
         Raises
         ------
@@ -67,8 +83,16 @@ class MRMSReaper(GriddedReaper):
                 'dates must be "latest" or a sequence of length 2, e.g. ("2026-01-01 00:00Z", "2026-01-01 18:00Z")'
             )
 
+        if interval is not None:
+            if dates == "latest":
+                raise ValueError('interval is not supported with dates="latest"')
+            if interval <= 0:
+                raise ValueError("interval must be a positive number of minutes")
+
         self.variable = variable
         self.is_latest = dates == "latest"
+        self.interval = timedelta(minutes=interval) if interval is not None else None
+        self.tolerance = timedelta(seconds=tolerance)
 
         if self.is_latest:
             self.end_date = datetime.now(UTC)
@@ -88,11 +112,44 @@ class MRMSReaper(GriddedReaper):
     def _validate_params(self) -> None:
         """Date validation is handled by parse_date_range at construction."""
 
-    def _find_available_files(self) -> list[str]:
-        files_list = []
+    def _select_by_interval(
+        self, files_list: list[tuple[datetime, str]], interval: timedelta
+    ) -> list[str]:
+        """Keep the file nearest each interval step, if it's within tolerance."""
+        selected: list[str] = []
+        skipped: list[str] = []
+        target = self.start_date
+        while target <= self.end_date:
+            file_dt, file = min(files_list, key=lambda x, t=target: abs(x[0] - t))
+            if abs(file_dt - target) > self.tolerance:
+                skipped.append(target.strftime("%Y-%m-%d %H:%M:%SZ"))
+            elif file not in selected:
+                selected.append(file)
+            target += interval
 
-        current_date = self.start_date.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_date = self.end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        if skipped:
+            logger.error(
+                f"No {self.variable} file within {self.tolerance.total_seconds():g}s of "
+                f"{len(skipped)} interval step(s), skipping: {', '.join(skipped)}. "
+                "Try to increase tolerance."
+            )
+
+        if not selected:
+            raise APIError(
+                f"No files found for {self.variable} within tolerance of interval. "
+                "Try to increase tolerance."
+            )
+        return selected
+
+    def _find_available_files(self) -> list[str]:
+        files_list: list[tuple[datetime, str]] = []
+
+        # With an interval, allow files up to `tolerance` outside the range to match the end steps
+        pad = self.tolerance if self.interval else timedelta(0)
+        search_start, search_end = self.start_date - pad, self.end_date + pad
+
+        current_date = search_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = search_end.replace(hour=0, minute=0, second=0, microsecond=0)
 
         while current_date <= end_date:
             yyyymmdd = current_date.strftime("%Y%m%d")
@@ -112,21 +169,21 @@ class MRMSReaper(GriddedReaper):
 
             for file in available_files:
                 with contextlib.suppress(ValueError, IndexError):
-                    filename = file.split("/")[-1]
-                    # filename looks like: Variable_YYYYMMDD-HHMMSS.grib2.gz
-                    timestamp_str = filename.split("_")[-1].split(".")[0]
-                    file_dt = datetime.strptime(timestamp_str, "%Y%m%d-%H%M%S").replace(tzinfo=UTC)
-
-                    if self.start_date <= file_dt <= self.end_date:
-                        files_list.append(file)
+                    file_dt = _file_time(file)
+                    if search_start <= file_dt <= search_end:
+                        files_list.append((file_dt, file))
 
             current_date += timedelta(days=1)
 
         if not files_list:
             raise APIError(f"No files found for {self.variable} for the requested times.")
 
-        sorted_files = sorted(files_list)
-        return [sorted_files[-1]] if self.is_latest else sorted_files
+        files_list.sort()
+        if self.is_latest:
+            return [files_list[-1][1]]
+        if self.interval is None:
+            return [file for _, file in files_list]
+        return self._select_by_interval(files_list, self.interval)
 
     def _process_single_file(self, file: str) -> xr.Dataset | None:
         # Deterministic filename for cache based on the S3 file path name
@@ -171,7 +228,10 @@ class MRMSReaper(GriddedReaper):
                     data_in = xr.load_dataarray(f.name, engine="cfgrib", decode_timedelta=True)
 
         mrms_da = to_180(data_in)
-        mrms_da = mrms_da.expand_dims("time")
+        # GRIB time drops the seconds, so use the exact timestamp from the file name
+        mrms_da = mrms_da.expand_dims("time").assign_coords(
+            time=[_file_time(file).replace(tzinfo=None)]
+        )
         mrms_da = mrms_da.sortby("latitude")
 
         return mrms_da.to_dataset(name=self.variable)
