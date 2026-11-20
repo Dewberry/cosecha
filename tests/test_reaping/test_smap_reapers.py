@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import os
 import re
 from types import SimpleNamespace
 from unittest.mock import MagicMock
@@ -11,6 +12,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
+from requests.utils import get_netrc_auth
 
 from cosecha.exceptions import (
     APIError,
@@ -22,6 +24,12 @@ from cosecha.exceptions import (
 from cosecha.reaping.smap import SMAPL4Reaper
 
 pytest.importorskip("earthaccess")
+
+HAS_EARTHDATA_CREDENTIALS = bool(
+    os.getenv("EARTHDATA_TOKEN")
+    or (os.getenv("EARTHDATA_USERNAME") and os.getenv("EARTHDATA_PASSWORD"))
+    or get_netrc_auth("https://urs.earthdata.nasa.gov")
+)
 
 # Mock grid: latitude descends with row, longitude ascends with column (as on EASE-Grid).
 LAT = np.array([35.0, 34.0, 33.0, 32.0, 31.0])
@@ -245,6 +253,7 @@ class TestSMAPL4Reaper:
         session_cls.assert_called_once_with("urs.earthdata.nasa.gov", ("user", "pw"))
 
     @pytest.mark.network
+    @pytest.mark.skipif(not HAS_EARTHDATA_CREDENTIALS, reason="needs NASA Earthdata credentials")
     def test_reap_network(self):
         """Live fetch; requires NASA Earthdata credentials."""
         start = pd.Timestamp.now(tz="UTC").floor("D") - pd.Timedelta(days=7)
