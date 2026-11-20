@@ -14,15 +14,13 @@ from typing import TypeVar
 from urllib.parse import urlparse
 
 import fsspec
-import icechunk
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import xarray as xr
-from pyiceberg.catalog import load_catalog
 
 from cosecha._logging import logger
-from cosecha._utils import ensure_local_parent, is_remote, wrap_errors
+from cosecha._utils import ensure_local_parent, import_optional, is_remote, wrap_errors
 from cosecha.exceptions import ReaperError
 
 __all__ = ["GriddedReaper", "TimeSeriesReaper"]
@@ -149,6 +147,7 @@ class TimeSeriesReaper(ReaperBase):
             The fully qualified table name (namespace.table_name).
         """
         data = self._ensure_data(pd.DataFrame, "time-series (DataFrame)")
+        catalogs = import_optional("pyiceberg.catalog", "iceberg")
 
         wh_path = Path(warehouse_path).resolve()
         if wh_path.exists() and wh_path.is_file():
@@ -159,7 +158,7 @@ class TimeSeriesReaper(ReaperBase):
         metadata_dir.mkdir(parents=True, exist_ok=True)
 
         with (
-            load_catalog(
+            catalogs.load_catalog(
                 catalog_name,
                 type="sql",
                 uri=f"sqlite:///{metadata_dir / 'iceberg.db'}",
@@ -262,6 +261,7 @@ class GriddedReaper(ReaperBase):
             The path or URI of the written IceChunk grouping.
         """
         data = self._ensure_data(xr.Dataset, "an xarray Dataset")
+        icechunk = import_optional("icechunk", "icechunk")
 
         path_str = str(storage_path)
         if is_remote(path_str):

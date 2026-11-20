@@ -13,7 +13,7 @@ import pandas as pd
 import xarray as xr
 
 from cosecha._logging import logger
-from cosecha._utils import apply_gridded_transformations, to_180, wrap_errors
+from cosecha._utils import apply_gridded_transformations, import_optional, to_180, wrap_errors
 from cosecha.exceptions import APIError, DateRangeError, ReaperError
 from cosecha.reaping.base import GriddedReaper
 
@@ -56,14 +56,6 @@ class NWPReaper(GriddedReaper):
             )
 
         logger.debug(f"Validation passed for forecast_hours: {self.forecast_hours}")
-
-    def _check_herbie(self) -> None:
-        try:
-            import herbie  # noqa: F401,PLC0415
-        except ImportError:
-            raise ImportError(
-                "herbie is not installed. Install with: pip install 'cosecha[nwp]'"
-            ) from None
 
     def _get_latest_model_init(self) -> pd.Timestamp:
         from herbie import HerbieLatest  # noqa: PLC0415
@@ -113,7 +105,7 @@ class NWPReaper(GriddedReaper):
             If ``variable`` is not recognized for the given ``model``,
             or neither ``variable`` nor ``search_str`` are provided.
         ImportError
-            If herbie is not installed.
+            If herbie is not installed (``pip install 'cosecha[nwp]'``).
 
         Examples
         --------
@@ -129,7 +121,7 @@ class NWPReaper(GriddedReaper):
         ... )
         """
         super().__init__()
-        self._check_herbie()
+        import_optional("herbie", "nwp")
         self.model = model
         self.forecast_hours = (
             list(forecast_hours) if isinstance(forecast_hours, range) else forecast_hours
