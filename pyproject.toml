@@ -33,18 +33,18 @@ dynamic = [
   "version",
 ]
 dependencies = [
+  "aiohttp>=3.12",
   "fsspec",
   "h5netcdf>=1.2",
   "h5py>=3",
   "pandas>=2",
   "pyarrow>=12",
-  "requests>=2.26",
   "tiny-retriever>=0.3",
   "xarray>=2025.11",
   "zarr>=3",
 ]
 optional-dependencies.all = [
-  "cosecha[iceberg,icechunk,mrms,nwis,nwp,s3,smap,wpc]",
+  "cosecha[iceberg,icechunk,mrms,nwis,nwp,s3,wpc]",
 ]
 optional-dependencies.dev = [
   "geopandas>=1",
@@ -70,7 +70,7 @@ optional-dependencies.docs = [
   "ruff",
 ]
 optional-dependencies.iceberg = [
-  "pyiceberg[sql-sqlite]>=0.5",
+  "pyiceberg[sql-sqlite]>=0.6",
 ]
 optional-dependencies.icechunk = [
   "icechunk>=0.1",
@@ -92,9 +92,6 @@ optional-dependencies.nwp = [
 ]
 optional-dependencies.s3 = [
   "s3fs>=2025.11",
-]
-optional-dependencies.smap = [
-  "earthaccess>=0.14",
 ]
 optional-dependencies.test = [
   "boto3",

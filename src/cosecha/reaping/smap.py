@@ -1,35 +1,35 @@
 """SMAP L4 reaper for gridded surface and root-zone soil moisture.
 
 Reaps the NASA SMAP L4 Global 3-hourly 9 km soil moisture product (SPL4SMGP). Granules
-are found through NASA CMR with earthaccess and subset server-side by the Earthdata
-Cloud OPeNDAP service, so only the requested cells and variables are downloaded.
+are found through NASA CMR and subset server-side by the Earthdata Cloud OPeNDAP
+service, so only the requested cells and variables are downloaded.
 """
 
 from __future__ import annotations
 
+import base64
 import io
+import itertools
+import netrc
 import os
-from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
+from urllib.parse import urlsplit
 
 import numpy as np
 import pandas as pd
-import requests
+import tiny_retriever
 import xarray as xr
-from requests.adapters import HTTPAdapter
-from requests.utils import get_netrc_auth
-from urllib3.util import Retry
+from aiohttp import ClientResponseError, hdrs
+from tiny_retriever.exceptions import ServiceError
 
 from cosecha._logging import logger
-from cosecha._utils import (
-    apply_gridded_transformations,
-    import_optional,
-    parse_date_range,
-    wrap_errors,
-)
+from cosecha._utils import apply_gridded_transformations, parse_date_range, wrap_errors
 from cosecha.exceptions import APIError, DataNotFoundError, ReaperError, TransformationError
 from cosecha.reaping.base import GriddedReaper
+
+if TYPE_CHECKING:
+    from aiohttp import ClientHandlerType, ClientRequest, ClientResponse
 
 __all__ = ["SMAPL4Reaper"]
 
@@ -98,6 +98,88 @@ _NROWS, _NCOLS = 1624, 3856
 # SMAP L4 latency is a few days; "latest" searches this far back.
 _LATEST_LOOKBACK = timedelta(days=14)
 _EDL_HOST = "urs.earthdata.nasa.gov"
+_OPENDAP_HOST = "opendap.earthdata.nasa.gov"
+_CMR_URL = "https://cmr.earthdata.nasa.gov/search/granules.umm_json"
+# CMR returns at most 2000 granules per page; 8 granules/day keeps a 200-day window under it.
+_CMR_PAGE_SIZE = 2000
+_CMR_WINDOW = timedelta(days=200)
+
+
+def _netrc_credentials() -> tuple[str, str] | None:
+    """Read Earthdata Login credentials from NETRC or the default ~/.netrc."""
+    try:
+        entry = netrc.netrc(os.getenv("NETRC") or None).authenticators(_EDL_HOST)
+    except FileNotFoundError:
+        return None
+    except (OSError, netrc.NetrcParseError) as e:
+        raise APIError(
+            "Could not read Earthdata credentials from netrc; check its syntax and permissions."
+        ) from e
+    if entry:
+        login, account, password = entry
+        username = login or account
+        if username and password:
+            return username, password
+    return None
+
+
+class _EarthdataAuth:
+    """aiohttp middleware that adds Earthdata credentials on NASA hosts only.
+
+    Username/password are sent to Earthdata Login on OPeNDAP's OAuth redirect rather than
+    exchanged for a token, as the EDL token API rejects some valid accounts. A token is
+    sent to OPeNDAP directly. Environment username/password take precedence over a token,
+    followed by Earthdata Login credentials from ``NETRC`` or ``~/.netrc``.
+
+    Any other ``Authorization`` header, e.g. from a ``~/.netrc`` entry that aiohttp picks up,
+    is removed, so only the selected credentials reach their intended host.
+
+    OPeNDAP stores the URL to return to after login in its session, so concurrent logins
+    sharing a cookie jar get sent back to each other's URLs. Log in with a single request
+    first; later requests reuse the session cookies captured here and skip the redirect.
+    """
+
+    def __init__(self) -> None:
+        username, password = os.getenv("EARTHDATA_USERNAME"), os.getenv("EARTHDATA_PASSWORD")
+        token = os.getenv("EARTHDATA_TOKEN")
+        if not (username and password) and not token:
+            username, password = _netrc_credentials() or (None, None)
+        if username and password:
+            self._host = _EDL_HOST
+            self._value = "Basic " + base64.b64encode(f"{username}:{password}".encode()).decode()
+        elif token:
+            self._host, self._value = _OPENDAP_HOST, f"Bearer {token}"
+        else:
+            raise APIError(
+                "NASA Earthdata credentials not found. Set EARTHDATA_USERNAME and "
+                "EARTHDATA_PASSWORD (or EARTHDATA_TOKEN), or add an "
+                f"{_EDL_HOST} entry to NETRC or ~/.netrc; register at "
+                f"https://{_EDL_HOST}."
+            )
+        self.cookies: dict[str, str] = {}
+        self.logins = 0
+
+    async def __call__(self, request: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
+        if request.url.scheme == "https" and request.url.host == self._host:
+            request.headers[hdrs.AUTHORIZATION] = self._value
+            self.logins += self._host == _EDL_HOST
+        else:
+            request.headers.pop(hdrs.AUTHORIZATION, None)
+        if request.url.scheme == "https" and request.url.host == _OPENDAP_HOST:
+            request.update_cookies(self.cookies)
+        response = await handler(request)
+        if request.url.scheme == "https" and request.url.host == _OPENDAP_HOST:
+            self.cookies.update({name: morsel.value for name, morsel in response.cookies.items()})
+        return response
+
+
+def _cmr_time(ts: pd.Timestamp) -> str:
+    return f"{ts:%Y-%m-%dT%H:%M:%SZ}"
+
+
+def _load(blob: bytes, group: str | None = None) -> xr.Dataset:
+    """Load an OPeNDAP NetCDF-4 response into memory."""
+    return xr.load_dataset(io.BytesIO(blob), engine="h5netcdf", group=group, phony_dims="sort")
 
 
 def _index_slice(coord: np.ndarray, bounds: tuple[float, float] | None, label: str) -> slice:
@@ -152,8 +234,9 @@ class SMAPL4Reaper(GriddedReaper):
 
         Each time step is the 3-hour granule centered on that time (e.g. 01:30 covers
         00:00-03:00 UTC). Requires a free NASA Earthdata Login, read from the
-        ``EARTHDATA_TOKEN`` (or ``EARTHDATA_USERNAME``/``EARTHDATA_PASSWORD``) environment
-        variables, or from ``~/.netrc``.
+        ``EARTHDATA_USERNAME`` and ``EARTHDATA_PASSWORD`` environment variables, or an
+        Earthdata token from ``EARTHDATA_TOKEN`` (tokens expire after 60 days). If neither
+        is set, reads the ``urs.earthdata.nasa.gov`` entry from ``NETRC`` or ``~/.netrc``.
 
         Parameters
         ----------
@@ -178,8 +261,6 @@ class SMAPL4Reaper(GriddedReaper):
 
         Raises
         ------
-        ImportError
-            If earthaccess is not installed (``pip install 'cosecha[smap]'``).
         DateRangeError
             If dates cannot be parsed or start is after end.
         ReaperError
@@ -198,7 +279,6 @@ class SMAPL4Reaper(GriddedReaper):
         ... )
         """
         super().__init__()
-        import_optional("earthaccess", "smap")
 
         if dates != "latest" and not (isinstance(dates, (tuple, list)) and len(dates) == 2):
             raise ValueError(
@@ -221,61 +301,52 @@ class SMAPL4Reaper(GriddedReaper):
         self._validate_params()
         logger.debug(f"Initialized {self.__class__.__name__}: dates={dates}, variables={variables}")
 
-    def _login(self) -> requests.Session:
-        """Return a retrying session authorized for NASA Earthdata.
-
-        Username/password are sent to Earthdata Login on OPeNDAP's redirect rather than
-        exchanged for a token, as the token API rejects some valid accounts.
-        """
-        from earthaccess.auth import SessionWithHeaderRedirection  # noqa: PLC0415
-
-        token = os.getenv("EARTHDATA_TOKEN")
-        username, password = os.getenv("EARTHDATA_USERNAME"), os.getenv("EARTHDATA_PASSWORD")
-        if token:
-            session = requests.Session()
-            session.headers["Authorization"] = f"Bearer {token}"
-        elif (
-            creds := (username, password)
-            if username and password
-            else get_netrc_auth(f"https://{_EDL_HOST}")
-        ):
-            session = SessionWithHeaderRedirection(_EDL_HOST, creds)
-        else:
-            raise APIError(
-                "NASA Earthdata credentials not found. Set EARTHDATA_TOKEN or "
-                "EARTHDATA_USERNAME and EARTHDATA_PASSWORD, or add "
-                f"{_EDL_HOST} to ~/.netrc (register at https://{_EDL_HOST})."
-            )
-
-        retry = Retry(total=3, backoff_factor=1, status_forcelist=(429, 500, 502, 503, 504))
-        session.mount("https://", HTTPAdapter(max_retries=retry))
-        return session
-
-    def _find_granules(self) -> list[tuple[pd.Timestamp, str]]:
+    def _find_granules(self, auth: _EarthdataAuth) -> list[tuple[pd.Timestamp, str]]:
         """Search CMR and return (center time, OPeNDAP URL) pairs sorted by time."""
-        import earthaccess  # noqa: PLC0415
-
+        edges = pd.date_range(self.start_date, self.end_date, freq=_CMR_WINDOW)
+        edges = edges.append(pd.DatetimeIndex([self.end_date])).unique()
+        windows = list(itertools.pairwise(edges)) or [(self.start_date, self.end_date)]
+        kwargs = [
+            {
+                "params": {
+                    "short_name": SHORT_NAME,
+                    "version": VERSION,
+                    "temporal": f"{_cmr_time(start)},{_cmr_time(end)}",
+                    "page_size": _CMR_PAGE_SIZE,
+                },
+                "middlewares": (auth,),
+            }
+            for start, end in windows
+        ]
         with wrap_errors(APIError, f"Could not search NASA CMR for {SHORT_NAME}"):
-            results = earthaccess.search_data(
-                short_name=SHORT_NAME,
-                version=VERSION,
-                temporal=(self.start_date.isoformat(), self.end_date.isoformat()),
+            pages = tiny_retriever.fetch(
+                [_CMR_URL] * len(windows), "json", request_kwargs=kwargs, timeout=self.timeout
             )
 
         granules: dict[pd.Timestamp, str] = {}
-        for granule in results:
-            umm = granule["umm"]
-            url = next(
-                (u["URL"] for u in umm["RelatedUrls"] if u.get("Subtype") == "OPENDAP DATA"),
-                None,
-            )
-            span = umm["TemporalExtent"]["RangeDateTime"]
-            begin, end = pd.to_datetime(
-                [span["BeginningDateTime"], span["EndingDateTime"]], utc=True
-            )
-            center = begin + (end - begin) / 2
-            # Duplicate granules (e.g. reprocessed copies) share a center time; last wins.
-            if url and self.start_date <= center <= self.end_date:
+        for page in pages:
+            if page["hits"] > len(page["items"]):
+                raise APIError(
+                    f"CMR returned {len(page['items'])} of {page['hits']} {SHORT_NAME} granules."
+                )
+            for item in page["items"]:
+                umm = item["umm"]
+                url = next(
+                    (u["URL"] for u in umm["RelatedUrls"] if u.get("Subtype") == "OPENDAP DATA"),
+                    None,
+                )
+                span = umm["TemporalExtent"]["RangeDateTime"]
+                begin, end = pd.to_datetime(
+                    [span["BeginningDateTime"], span["EndingDateTime"]], utc=True
+                )
+                center = begin + (end - begin) / 2
+                if not url or not self.start_date <= center <= self.end_date:
+                    continue
+                parts = urlsplit(url)
+                if parts.scheme != "https" or parts.hostname != _OPENDAP_HOST:
+                    raise APIError(f"Unexpected {SHORT_NAME} OPeNDAP URL from CMR: {url}")
+                # Duplicate granules (e.g. reprocessed copies or window overlaps) share a
+                # center time; last wins.
                 granules[center] = url
 
         if not granules:
@@ -285,17 +356,32 @@ class SMAPL4Reaper(GriddedReaper):
         ordered = sorted(granules.items())
         return ordered[-1:] if self.is_latest else ordered
 
-    def _open(
-        self, session: requests.Session, url: str, constraint: str, group: str | None = None
-    ) -> xr.Dataset:
-        """Load a DAP4-constrained NetCDF-4 subset from OPeNDAP into memory."""
-        response = session.get(
-            f"{url}.dap.nc4", params={"dap4.ce": constraint}, timeout=self.timeout
-        )
-        response.raise_for_status()
-        return xr.load_dataset(
-            io.BytesIO(response.content), engine="h5netcdf", group=group, phony_dims="sort"
-        )
+    def _fetch_dap(
+        self, urls: list[str], constraints: list[str], auth: _EarthdataAuth
+    ) -> list[bytes]:
+        """Download DAP4-constrained NetCDF-4 subsets from OPeNDAP concurrently."""
+        kwargs = [{"params": {"dap4.ce": ce}, "middlewares": (auth,)} for ce in constraints]
+        try:
+            return tiny_retriever.fetch(
+                [f"{url}.dap.nc4" for url in urls],
+                "binary",
+                request_kwargs=kwargs,
+                limit_per_host=self.max_workers,
+                timeout=self.timeout,
+            )
+        except ServiceError as e:
+            cause = e.__cause__
+            if isinstance(cause, ClientResponseError) and cause.status in (401, 403):
+                raise APIError(
+                    f"NASA Earthdata rejected the credentials (HTTP {cause.status}). Check "
+                    "EARTHDATA_USERNAME and EARTHDATA_PASSWORD or the Earthdata netrc entry, "
+                    "or renew EARTHDATA_TOKEN."
+                ) from e
+            if isinstance(cause, TimeoutError):
+                raise ReaperError(
+                    f"OPeNDAP request timed out after {self.timeout} s; try a larger timeout."
+                ) from e
+            raise
 
     def _fetch_data(self) -> xr.Dataset:
         """Fetch the requested SMAP L4 variables, time steps and cells via OPeNDAP.
@@ -305,14 +391,17 @@ class SMAPL4Reaper(GriddedReaper):
         xr.Dataset
             Dataset with dims (time, latitude, longitude), latitude ascending.
         """
-        granules = self._find_granules()
-        session = self._login()
+        auth = _EarthdataAuth()
+        granules = self._find_granules(auth)
         logger.info(f"Fetching {len(granules)} {SHORT_NAME} granules via OPeNDAP")
 
+        # One request at a time, so the first one logs in before any concurrent requests.
         # Separate requests: a lat column and lon row can't share (y, x) dims in one file.
         url = granules[0][1]
-        lat = self._open(session, url, f"/cell_lat[0:1:{_NROWS - 1}][0]")["cell_lat"].values.ravel()
-        lon = self._open(session, url, f"/cell_lon[0][0:1:{_NCOLS - 1}]")["cell_lon"].values.ravel()
+        (lat_blob,) = self._fetch_dap([url], [f"/cell_lat[0:1:{_NROWS - 1}][0]"], auth)
+        (lon_blob,) = self._fetch_dap([url], [f"/cell_lon[0][0:1:{_NCOLS - 1}]"], auth)
+        lat = _load(lat_blob)["cell_lat"].values.ravel()
+        lon = _load(lon_blob)["cell_lon"].values.ravel()
         rows = _index_slice(lat, self.bounds.get("lat_bounds"), "lat_bounds")
         cols = _index_slice(lon, self.bounds.get("lon_bounds"), "lon_bounds")
         if not self.bounds:
@@ -320,19 +409,28 @@ class SMAPL4Reaper(GriddedReaper):
 
         hyperslab = f"[{rows.start}:1:{rows.stop - 1}][{cols.start}:1:{cols.stop - 1}]"
         constraint = ";".join(f"/Geophysical_Data/{v}{hyperslab}" for v in self.variables)
+        logins = auth.logins
+        urls = [u for _, u in granules]
+        blobs: list[bytes] = []
+        # Batches of max_workers: aiohttp's timeout also counts time queued for a connection.
+        for i in range(0, len(urls), self.max_workers):
+            batch = urls[i : i + self.max_workers]
+            blobs += self._fetch_dap(batch, [constraint] * len(batch), auth)
+        if auth.logins != logins:
+            raise APIError(
+                "NASA Earthdata session expired while downloading, so granules may be mixed "
+                "up; please retry."
+            )
 
-        def fetch(granule: tuple[pd.Timestamp, str]) -> xr.Dataset:
-            time, url = granule
-            logger.debug(f"Fetching {SHORT_NAME} granule {time}")
-            ds = self._open(session, url, constraint, group="Geophysical_Data")[self.variables]
+        steps = []
+        for (time, _), blob in zip(granules, blobs, strict=True):
+            ds = _load(blob, group="Geophysical_Data")[self.variables]
             ds = ds.drop_vars(list(ds.coords))
             # All Geophysical_Data variables share the same (y, x) grid.
             dims = dict(zip(ds[self.variables[0]].dims, ("latitude", "longitude"), strict=True))
-            return ds.rename_dims(dims).expand_dims(time=[time.tz_convert(None)])
+            steps.append(ds.rename_dims(dims).expand_dims(time=[time.tz_convert(None)]))
 
-        with ThreadPoolExecutor(self.max_workers) as pool:
-            ds = xr.concat(list(pool.map(fetch, granules)), dim="time")
-
+        ds = xr.concat(steps, dim="time")
         ds = ds.assign_coords(latitude=lat[rows], longitude=lon[cols])
         # Flip so latitude ascends, matching the other gridded reapers.
         return ds.isel(latitude=slice(None, None, -1))
@@ -350,7 +448,7 @@ class SMAPL4Reaper(GriddedReaper):
         DataNotFoundError
             If no granules exist for the requested dates or the subset has no cells.
         APIError
-            If CMR search or Earthdata login fails.
+            If CMR search fails or Earthdata credentials are missing or rejected.
         ReaperError
             If OPeNDAP requests or processing fail.
         """

@@ -16,6 +16,7 @@ from cosecha._utils import (
     apply_ts_transformations,
     import_optional,
     parse_date_range,
+    require_s3fs,
     to_180,
     wrap_errors,
 )
@@ -394,14 +395,21 @@ class TestImportOptional:
         with pytest.raises(ImportError, match=r"Cannot find ecCodes.*cosecha\[wpc\]"):
             import_optional("cfgrib", "wpc")
 
+    def test_require_s3fs(self, mocker):
+        mocker.patch("importlib.import_module", side_effect=ImportError("No module named s3fs"))
+        require_s3fs("./local.parquet")
+        require_s3fs("gs://bucket/a.parquet")
+        with pytest.raises(ImportError, match=r"cosecha\[s3\]"):
+            require_s3fs("s3://bucket/a.parquet")
+
     def test_core_install_without_extras(self):
         """Cosecha imports and core reapers work when no optional packages are installed."""
         script = textwrap.dedent(
             """
             import sys
 
-            OPTIONAL = {"cfgrib", "dataretrieval", "earthaccess", "eccodes", "herbie",
-                        "icechunk", "pyiceberg", "s3fs"}
+            OPTIONAL = {"cfgrib", "dataretrieval", "eccodes", "herbie", "icechunk",
+                        "pyiceberg", "s3fs"}
 
             class Block:
                 def find_spec(self, name, path=None, target=None):
@@ -410,20 +418,27 @@ class TestImportOptional:
 
             sys.meta_path.insert(0, Block())
 
+            import pandas as pd
+            import xarray as xr
+
             from cosecha import ASOSReaper, MRMSReaper, SMAPL4Reaper, WPCQPFReaper
 
-            ASOSReaper(start_date="2026-01-01", end_date="2026-01-02", state="IA")
-            for cls, kwargs, extra in [
-                (MRMSReaper, {"dates": "latest"}, "mrms"),
-                (WPCQPFReaper, {"init_time": "latest"}, "wpc"),
-                (SMAPL4Reaper, {"dates": "latest"}, "smap"),
+            asos = ASOSReaper(start_date="2026-01-01", end_date="2026-01-02", state="IA")
+            smap = SMAPL4Reaper(dates="latest")
+            asos.data, smap.data = pd.DataFrame({"a": [1]}), xr.Dataset({"a": ("x", [1])})
+            for call, extra in [
+                (lambda: MRMSReaper(dates="latest"), "mrms"),
+                (lambda: WPCQPFReaper(init_time="latest"), "wpc"),
+                (lambda: asos.sow_to_parquet("s3://bucket/a.parquet"), "s3"),
+                (lambda: smap.sow_to_zarr("s3://bucket/a.zarr"), "s3"),
+                (lambda: smap.sow_to_netcdf("s3://bucket/a.nc"), "s3"),
             ]:
                 try:
-                    cls(**kwargs)
+                    call()
                 except ImportError as e:
                     assert f"cosecha[{extra}]" in str(e), e
                 else:
-                    raise AssertionError(f"{cls.__name__} did not raise ImportError")
+                    raise AssertionError(f"{extra} call did not raise ImportError")
             """
         )
         result = subprocess.run(

@@ -13,7 +13,7 @@ sources and writing to various formats with optional transformations.
     L4 soil moisture via NASA OPeNDAP)
 - Multiple output formats: Parquet, NetCDF, Zarr, Iceberg, IceChunk
 - Data transformations: unit conversion, spatial subsetting, variable selection/rename
-- Cross-platform support (ecCodes C library required only for GRIB2: MRMS and WPC)
+- Cross-platform support (ecCodes C library required only for GRIB2: MRMS, WPC and NWP)
 
 ## Available Reapers
 
@@ -36,28 +36,36 @@ Install everything:
 pip install 'cosecha[all]'
 ```
 
-Or install only what you need. The base install covers the ASOS, LSR and USACE reapers
-and the Parquet, NetCDF and Zarr writers; extras add the rest:
+Or install only what you need. The base install covers the ASOS, LSR, USACE and SMAP
+reapers and the Parquet, NetCDF and Zarr writers; extras add the rest:
 
-| Extra      | Adds                                          |
-| ---------- | --------------------------------------------- |
-| `nwis`     | `USGSNWISReaper`                              |
-| `mrms`     | `MRMSReaper` (needs ecCodes, see below)       |
-| `wpc`      | `WPCQPFReaper` (needs ecCodes, see below)     |
-| `nwp`      | `NWPReaper` (HRRR, RRFS, RTMA via herbie)     |
-| `smap`     | `SMAPL4Reaper` (needs a NASA Earthdata Login) |
-| `s3`       | Writing to `s3://` paths                      |
-| `iceberg`  | `sow_to_iceberg`                              |
-| `icechunk` | `sow_to_icechunk`                             |
+| Extra      | Adds                                      |
+| ---------- | ----------------------------------------- |
+| `nwis`     | `USGSNWISReaper`                          |
+| `mrms`     | `MRMSReaper` (needs ecCodes, see below)   |
+| `wpc`      | `WPCQPFReaper` (needs ecCodes, see below) |
+| `nwp`      | `NWPReaper` (needs ecCodes, see below)    |
+| `s3`       | Writing to `s3://` paths                  |
+| `iceberg`  | `sow_to_iceberg`                          |
+| `icechunk` | `sow_to_icechunk`                         |
 
 For example, `pip install 'cosecha[nwis,mrms]'`. Using a reaper or writer without its
 extra raises an `ImportError` naming the extra to install.
 
 `SMAPL4Reaper` requires a free [NASA Earthdata Login](https://urs.earthdata.nasa.gov),
-read from the `EARTHDATA_TOKEN` (or `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD`)
-environment variables or from `~/.netrc`.
+read from the `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD` environment variables. An
+Earthdata token in `EARTHDATA_TOKEN` also works, but tokens expire after 60 days.
+If neither is available, credentials are read from the `urs.earthdata.nasa.gov`
+entry in `~/.netrc` (or the file specified by `NETRC`). Environment username/password
+take precedence over a token, which takes precedence over netrc.
 
-**Note:** the `mrms` and `wpc` extras depend on the
+```text
+machine urs.earthdata.nasa.gov login YOUR_USERNAME password YOUR_PASSWORD
+```
+
+On Unix, restrict access to this file with `chmod 600 ~/.netrc`.
+
+**Note:** the `mrms`, `wpc` and `nwp` extras depend on the
 [ecCodes](https://confluence.ecmwf.int/display/ECC) C library for reading GRIB2 data.
 When installing with pip, you must have ecCodes available on your system. The easiest
 cross-platform approach is to install it via conda-forge:
@@ -109,9 +117,9 @@ reaper = WPCQPFReaper(
 qpf = reaper.reap()
 ```
 
-SMAP L4 surface and root-zone soil moisture over a bounding box (requires
-`cosecha[smap]` and Earthdata credentials). The bounding box is subset on NASA's
-servers, so only those grid cells are downloaded:
+SMAP L4 surface and root-zone soil moisture over a bounding box (requires Earthdata
+credentials, see above). The bounding box is subset on NASA's servers, so only those
+grid cells are downloaded:
 
 ```python
 from cosecha import SMAPL4Reaper

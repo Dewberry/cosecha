@@ -113,7 +113,8 @@ class USGSNWISReaper(TimeSeriesReaper):
         time_range = f"{self.start_date.isoformat()}/{self.end_date.isoformat()}"
 
         with wrap_errors(APIError, "Failed to fetch NWIS data"):
-            waterdata = import_optional("dataretrieval.waterdata", "nwis")
+            from dataretrieval import waterdata  # noqa: PLC0415
+
             df, _metadata = waterdata.get_continuous(
                 monitoring_location_id=sites,
                 time=time_range,

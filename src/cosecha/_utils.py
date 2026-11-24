@@ -50,6 +50,12 @@ def is_remote(path: str | Path) -> bool:
     return isinstance(path, str) and "://" in path
 
 
+def require_s3fs(path: str) -> None:
+    """Raise an `ImportError` naming the `s3` extra if *path* is on S3 without s3fs."""
+    if path.startswith("s3://"):
+        import_optional("s3fs", "s3")
+
+
 def ensure_local_parent(path: str | Path) -> None:
     """Create parent directories when *path* is local; no-op for remote URIs."""
     if not is_remote(path):

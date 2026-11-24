@@ -20,7 +20,13 @@ import pyarrow.parquet as pq
 import xarray as xr
 
 from cosecha._logging import logger
-from cosecha._utils import ensure_local_parent, import_optional, is_remote, wrap_errors
+from cosecha._utils import (
+    ensure_local_parent,
+    import_optional,
+    is_remote,
+    require_s3fs,
+    wrap_errors,
+)
 from cosecha.exceptions import ReaperError
 
 __all__ = ["GriddedReaper", "TimeSeriesReaper"]
@@ -113,6 +119,7 @@ class TimeSeriesReaper(ReaperBase):
         data = self._ensure_data(pd.DataFrame, "time-series (DataFrame)")
 
         path_str = str(file_path)
+        require_s3fs(path_str)
         with wrap_errors(ReaperError, "Parquet write failed"):
             ensure_local_parent(path_str)
             table = pa.Table.from_pandas(data)
@@ -208,6 +215,7 @@ class GriddedReaper(ReaperBase):
         data = self._ensure_data(xr.Dataset, "an xarray Dataset")
 
         path_str = str(file_path)
+        require_s3fs(path_str)
         ensure_local_parent(path_str)
 
         with wrap_errors(ReaperError, "Zarr write failed"):
@@ -236,6 +244,7 @@ class GriddedReaper(ReaperBase):
         data = self._ensure_data(xr.Dataset, "an xarray Dataset")
 
         path_str = str(file_path)
+        require_s3fs(path_str)
         ensure_local_parent(path_str)
 
         with wrap_errors(ReaperError, "NetCDF write failed"):
