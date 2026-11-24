@@ -127,6 +127,33 @@ def fetch(mocker, credentials):
     return mocker.patch("cosecha.reaping.smap.tiny_retriever.fetch", side_effect=_fake_fetch)
 
 
+class TestSMAPL4ReaperNetwork:
+    """Live tests against NASA CMR and OPeNDAP."""
+
+    @pytest.mark.network
+    def test_reap_network(self):
+        """Live fetch; requires NASA Earthdata credentials."""
+        if not (
+            os.getenv("EARTHDATA_TOKEN")
+            or (os.getenv("EARTHDATA_USERNAME") and os.getenv("EARTHDATA_PASSWORD"))
+            or _netrc_credentials()
+        ):
+            pytest.skip("needs NASA Earthdata credentials")
+        start = pd.Timestamp.now(tz="UTC").floor("D") - pd.Timedelta(days=7)
+        reaper = SMAPL4Reaper(
+            dates=(str(start), str(start + pd.Timedelta(hours=6))),
+            variables=["sm_surface", "sm_rootzone"],
+            transformations={
+                "spatial_subset": {"lat_bounds": (31.5, 34.0), "lon_bounds": (-98.5, -95.5)}
+            },
+        )
+        ds = reaper.reap()
+        assert ds.sizes["time"] == 2
+        assert float(ds.latitude.min()) >= 31.5
+        assert float(ds.longitude.max()) <= -95.5
+        assert float(ds["sm_surface"].max()) <= 1.0
+
+
 class TestSMAPL4Reaper:
     """Test SMAPL4Reaper implementation."""
 
@@ -526,30 +553,3 @@ class TestAuthMiddleware:
 
         assert auth.logins == 1
         assert auth.cookies == {"JSESSIONID": "b"}
-
-
-class TestSMAPL4ReaperNetwork:
-    """Live tests against NASA CMR and OPeNDAP."""
-
-    @pytest.mark.network
-    def test_reap_network(self):
-        """Live fetch; requires NASA Earthdata credentials."""
-        if not (
-            os.getenv("EARTHDATA_TOKEN")
-            or (os.getenv("EARTHDATA_USERNAME") and os.getenv("EARTHDATA_PASSWORD"))
-            or _netrc_credentials()
-        ):
-            pytest.skip("needs NASA Earthdata credentials")
-        start = pd.Timestamp.now(tz="UTC").floor("D") - pd.Timedelta(days=7)
-        reaper = SMAPL4Reaper(
-            dates=(str(start), str(start + pd.Timedelta(hours=6))),
-            variables=["sm_surface", "sm_rootzone"],
-            transformations={
-                "spatial_subset": {"lat_bounds": (31.5, 34.0), "lon_bounds": (-98.5, -95.5)}
-            },
-        )
-        ds = reaper.reap()
-        assert ds.sizes["time"] == 2
-        assert float(ds.latitude.min()) >= 31.5
-        assert float(ds.longitude.max()) <= -95.5
-        assert float(ds["sm_surface"].max()) <= 1.0

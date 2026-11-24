@@ -54,10 +54,10 @@ extra raises an `ImportError` naming the extra to install.
 
 `SMAPL4Reaper` requires a free [NASA Earthdata Login](https://urs.earthdata.nasa.gov),
 read from the `EARTHDATA_USERNAME` and `EARTHDATA_PASSWORD` environment variables. An
-Earthdata token in `EARTHDATA_TOKEN` also works, but tokens expire after 60 days.
-If neither is available, credentials are read from the `urs.earthdata.nasa.gov`
-entry in `~/.netrc` (or the file specified by `NETRC`). Environment username/password
-take precedence over a token, which takes precedence over netrc.
+Earthdata token in `EARTHDATA_TOKEN` also works, but tokens expire after 60 days. If
+neither is available, credentials are read from the `urs.earthdata.nasa.gov` entry in
+`~/.netrc` (or the file specified by `NETRC`). Environment username/password take
+precedence over a token, which takes precedence over netrc.
 
 ```text
 machine urs.earthdata.nasa.gov login YOUR_USERNAME password YOUR_PASSWORD
