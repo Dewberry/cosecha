@@ -13,11 +13,16 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal, cast
 
-import s3fs
 import xarray as xr
 
 from cosecha._logging import logger
-from cosecha._utils import apply_gridded_transformations, parse_date_range, to_180, wrap_errors
+from cosecha._utils import (
+    apply_gridded_transformations,
+    import_optional,
+    parse_date_range,
+    to_180,
+    wrap_errors,
+)
 from cosecha.exceptions import APIError, ReaperError
 from cosecha.reaping.base import GriddedReaper
 
@@ -47,8 +52,15 @@ class MRMSReaper(GriddedReaper):
             Optional transformations to apply to the raw data before returning.
         cache_data : bool, optional
             Whether to cache decompressed MRMS files on disk.
+
+        Raises
+        ------
+        ImportError
+            If s3fs, cfgrib or ecCodes is not installed (``pip install 'cosecha[mrms]'``).
         """
         super().__init__()
+        import_optional("cfgrib", "mrms")
+        s3fs = import_optional("s3fs", "mrms")
 
         if dates != "latest" and not (isinstance(dates, (tuple, list)) and len(dates) == 2):
             raise ValueError(

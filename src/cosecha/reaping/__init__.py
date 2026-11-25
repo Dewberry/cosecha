@@ -1,7 +1,7 @@
 """Data reaping (harvesting) subpackage for cosecha.
 
 This package provides abstract base classes and concrete implementations for
-fetching data from various sources (USGS NWIS, NWP models, MRMS, etc.).
+fetching data from various sources (USGS NWIS, NWP models, MRMS, SMAP, etc.).
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from cosecha.reaping.lsr import LSRReaper
 from cosecha.reaping.mrms import MRMSReaper
 from cosecha.reaping.nwis import USGSNWISReaper
 from cosecha.reaping.nwp import NWPReaper
+from cosecha.reaping.smap import SMAPL4Reaper
 from cosecha.reaping.usace import ReservoirReaper
 from cosecha.reaping.wpc import WPCQPFReaper
 
@@ -22,6 +23,7 @@ __all__ = [
     "MRMSReaper",
     "NWPReaper",
     "ReservoirReaper",
+    "SMAPL4Reaper",
     "TimeSeriesReaper",
     "USGSNWISReaper",
     "WPCQPFReaper",

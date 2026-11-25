@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
+import textwrap
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -10,7 +14,9 @@ import xarray as xr
 from cosecha._utils import (
     apply_gridded_transformations,
     apply_ts_transformations,
+    import_optional,
     parse_date_range,
+    require_s3fs,
     to_180,
     wrap_errors,
 )
@@ -372,3 +378,70 @@ class TestApplyTsTransformations:
         transforms = {"unit_conversions": {"flow": 100.0}}
         apply_ts_transformations(sample_df, transforms)
         np.testing.assert_array_equal(sample_df["flow"].values, original_flow)
+
+
+class TestImportOptional:
+    """Tests for optional dependency imports."""
+
+    def test_returns_module(self):
+        assert import_optional("json", "all").dumps([]) == "[]"
+
+    def test_missing_module_names_extra(self):
+        with pytest.raises(ImportError, match=r"pip install 'cosecha\[mrms\]'"):
+            import_optional("not_a_real_module_xyz", "mrms")
+
+    def test_runtime_error_becomes_import_error(self, mocker):
+        mocker.patch("importlib.import_module", side_effect=RuntimeError("Cannot find ecCodes"))
+        with pytest.raises(ImportError, match=r"Cannot find ecCodes.*cosecha\[wpc\]"):
+            import_optional("cfgrib", "wpc")
+
+    def test_require_s3fs(self, mocker):
+        mocker.patch("importlib.import_module", side_effect=ImportError("No module named s3fs"))
+        require_s3fs("./local.parquet")
+        require_s3fs("gs://bucket/a.parquet")
+        with pytest.raises(ImportError, match=r"cosecha\[s3\]"):
+            require_s3fs("s3://bucket/a.parquet")
+
+    def test_core_install_without_extras(self):
+        """Cosecha imports and core reapers work when no optional packages are installed."""
+        script = textwrap.dedent(
+            """
+            import sys
+
+            OPTIONAL = {"cfgrib", "dataretrieval", "eccodes", "herbie", "icechunk",
+                        "pyiceberg", "s3fs"}
+
+            class Block:
+                def find_spec(self, name, path=None, target=None):
+                    if name.split(".")[0] in OPTIONAL:
+                        raise ModuleNotFoundError(name)
+
+            sys.meta_path.insert(0, Block())
+
+            import pandas as pd
+            import xarray as xr
+
+            from cosecha import ASOSReaper, MRMSReaper, SMAPL4Reaper, WPCQPFReaper
+
+            asos = ASOSReaper(start_date="2026-01-01", end_date="2026-01-02", state="IA")
+            smap = SMAPL4Reaper(dates="latest")
+            asos.data, smap.data = pd.DataFrame({"a": [1]}), xr.Dataset({"a": ("x", [1])})
+            for call, extra in [
+                (lambda: MRMSReaper(dates="latest"), "mrms"),
+                (lambda: WPCQPFReaper(init_time="latest"), "wpc"),
+                (lambda: asos.sow_to_parquet("s3://bucket/a.parquet"), "s3"),
+                (lambda: smap.sow_to_zarr("s3://bucket/a.zarr"), "s3"),
+                (lambda: smap.sow_to_netcdf("s3://bucket/a.nc"), "s3"),
+            ]:
+                try:
+                    call()
+                except ImportError as e:
+                    assert f"cosecha[{extra}]" in str(e), e
+                else:
+                    raise AssertionError(f"{extra} call did not raise ImportError")
+            """
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", script], capture_output=True, text=True, check=False
+        )
+        assert result.returncode == 0, result.stderr
