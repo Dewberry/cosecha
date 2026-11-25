@@ -479,6 +479,7 @@ class TestAuthMiddleware:
         if default_path:
             monkeypatch.delenv("NETRC")
             monkeypatch.setenv("HOME", str(netrc_file.parent))
+            monkeypatch.setenv("USERPROFILE", str(netrc_file.parent))
         auth = _EarthdataAuth()
         basic = "Basic " + base64.b64encode(b"netrc-user:netrc-pw").decode()
 
